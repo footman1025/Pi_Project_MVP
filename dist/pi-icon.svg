@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded square background -->
+  <rect width="32" height="32" rx="7" fill="url(#bg)"/>
+
+  <!-- π symbol, white, clean and centered -->
+
+  <!-- Top horizontal bar of π -->
+  <rect x="6.5" y="9" width="19" height="2.8" rx="1.4" fill="white"/>
+
+  <!-- Left leg — straight down -->
+  <rect x="8.5" y="11.8" width="2.8" height="11" rx="1.4" fill="white"/>
+
+  <!-- Right leg — curves outward at bottom (arch shape) -->
+  <path
+    d="M17 11.8 C17 11.8 17 19 17 20.5 C17 22.5 18.5 23.8 20 23.2 C21.2 22.8 21.8 21.5 22 20.5"
+    stroke="white"
+    stroke-width="2.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+  />
+</svg>

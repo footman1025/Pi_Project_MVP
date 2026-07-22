@@ -1,0 +1,362 @@
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { supabase, Community } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
+import { UsersRound, Sparkles, Loader2, Send, MessageCircle, Search as SearchIcon } from 'lucide-react'
+import { Post } from '../lib/supabase'
+import { mockCommunities as mockCommData } from '../data/mockData'
+import MockIcon from '../components/MockIcon'
+
+// Map community name → AI reason from mock data
+const mockCommunityReasons: Record<string, string> = Object.fromEntries(
+  mockCommData.map(c => [c.name, c.aiReason])
+)
+
+const categories = ['All', 'Technology', 'Business', 'Creator', 'Design', 'Finance', 'Health', 'Music']
+
+function CommunityDetail({ community, onBack }: { community: Community, onBack: () => void }) {
+  const { user } = useAuth()
+  const [posts, setPosts] = useState<Post[]>([])
+  const [newPost, setNewPost] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [posting, setPosting] = useState(false)
+  const [joined, setJoined] = useState(community.joined || false)
+  const [joiningLoading, setJoiningLoading] = useState(false)
+
+  useEffect(() => {
+    fetchPosts()
+    if (user) checkMembership()
+  }, [community.id])
+
+  const checkMembership = async () => {
+    if (!user) return
+    const { data } = await supabase
+      .from('community_members')
+      .select('user_id')
+      .eq('community_id', community.id)
+      .eq('user_id', user.id)
+      .single()
+    setJoined(!!data)
+  }
+
+  const fetchPosts = async () => {
+    const { data } = await supabase
+      .from('posts')
+      .select('*, profiles(full_name, role)')
+      .eq('community_id', community.id)
+      .order('created_at', { ascending: false })
+      .limit(20)
+    setPosts(data || [])
+    setLoading(false)
+  }
+
+  const toggleJoin = async () => {
+    if (!user) return
+    setJoiningLoading(true)
+    if (joined) {
+      await supabase.from('community_members').delete()
+        .eq('community_id', community.id).eq('user_id', user.id)
+      await supabase.from('communities').update({ members_count: community.members_count - 1 }).eq('id', community.id)
+    } else {
+      await supabase.from('community_members').insert({ community_id: community.id, user_id: user.id })
+      await supabase.from('communities').update({ members_count: community.members_count + 1 }).eq('id', community.id)
+    }
+    setJoined(v => !v)
+    setJoiningLoading(false)
+  }
+
+  const handlePost = async () => {
+    if (!newPost.trim() || !user) return
+    setPosting(true)
+    await supabase.from('posts').insert({ author_id: user.id, community_id: community.id, content: newPost.trim() })
+    setNewPost('')
+    await fetchPosts()
+    setPosting(false)
+  }
+
+  const timeAgo = (date: string) => {
+    const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
+    if (s < 60) return `${s}s ago`
+    if (s < 3600) return `${Math.floor(s / 60)}m ago`
+    if (s < 86400) return `${Math.floor(s / 3600)}h ago`
+    return `${Math.floor(s / 86400)}d ago`
+  }
+
+  return (
+    <div className="animate-fade-in">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-6">
+        <button onClick={onBack} className="text-slate-400 hover:text-white transition-colors text-sm">← Back</button>
+      </div>
+
+      <div className="p-6 rounded-2xl border border-white/5 mb-6" style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.5), rgba(14,20,25,0.7))' }}>
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
+            <MockIcon name={(community as any).iconName || 'Globe2'} size={26} />
+          </div>
+          <div className="flex-1">
+            <h2 className="font-display text-2xl font-extrabold text-white">{community.name}</h2>
+            <p className="text-slate-400 text-sm">{community.members_count.toLocaleString()} members · {community.category}</p>
+          </div>
+          {user && (
+            <button onClick={toggleJoin} disabled={joiningLoading}
+              className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all hover:scale-105 disabled:opacity-50 ${joined ? 'border border-white/20 text-slate-300 hover:border-red-500/40 hover:text-red-400' : 'text-white'}`}
+              style={joined ? {} : { background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
+              {joiningLoading ? <Loader2 size={14} className="animate-spin" /> : joined ? 'Leave' : 'Join'}
+            </button>
+          )}
+        </div>
+        {community.description && <p className="text-slate-400 text-sm mt-3">{community.description}</p>}
+      </div>
+
+      {/* Post box */}
+      {user && joined && (
+        <div className="p-4 rounded-2xl border border-white/5 mb-6" style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.4), rgba(14,20,25,0.6))' }}>
+          <textarea value={newPost} onChange={e => setNewPost(e.target.value)}
+            placeholder={`Share something with ${community.name}...`} rows={3}
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-pi-500/50 transition-colors resize-none mb-3" />
+          <div className="flex justify-end">
+            <button onClick={handlePost} disabled={posting || !newPost.trim()}
+              className="flex items-center gap-2 px-5 py-2 rounded-xl font-semibold text-white text-sm disabled:opacity-40 transition-all hover:scale-105"
+              style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
+              {posting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+              {posting ? 'Posting...' : 'Post'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Posts */}
+      {loading ? (
+        <div className="flex justify-center py-12"><Loader2 size={28} className="animate-spin text-pi-400" /></div>
+      ) : posts.length === 0 ? (
+        <div className="text-center py-12">
+          <MessageCircle size={36} className="text-slate-600 mx-auto mb-3" />
+          <p className="text-slate-400 text-sm">No posts yet in this community.</p>
+          {!joined && user && <p className="text-slate-600 text-xs mt-1">Join to start posting!</p>}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {posts.map(post => (
+            <div key={post.id} className="p-4 rounded-2xl border border-white/5 hover:border-white/10 transition-all"
+              style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.4), rgba(14,20,25,0.6))' }}>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-bold text-xs"
+                  style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
+                  {post.profiles?.full_name?.charAt(0).toUpperCase() || '?'}
+                </div>
+                <div>
+                  <p className="text-white text-sm font-semibold">{post.profiles?.full_name || 'Anonymous'}</p>
+                  <p className="text-slate-500 text-xs">{timeAgo(post.created_at)}</p>
+                </div>
+              </div>
+              <p className="text-slate-200 text-sm leading-relaxed">{post.content}</p>
+              <div className="flex items-center gap-4 mt-3 pt-3 border-t border-white/5 text-xs text-slate-500">
+                <span className="flex items-center gap-1">❤️ {post.likes_count}</span>
+                <span className="flex items-center gap-1">💬 {post.comments_count}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function CommunityPage() {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const [active, setActive] = useState('All')
+  const [communities, setCommunities] = useState<Community[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selected, setSelected] = useState<Community | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searching, setSearching] = useState(false)
+
+  useEffect(() => { fetchCommunities() }, [user])
+
+  // Debounced search — runs against Supabase whenever query changes
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (searchQuery.trim()) {
+        searchCommunities(searchQuery)
+      } else {
+        fetchCommunities()
+      }
+    }, 300)
+    return () => clearTimeout(t)
+  }, [searchQuery])
+
+  const fetchCommunities = async () => {
+    setLoading(true)
+    const { data } = await supabase
+      .from('communities')
+      .select('*')
+      .order('members_count', { ascending: false })
+    if (!data) { setLoading(false); return }
+    await mergeMemberships(data)
+    setLoading(false)
+  }
+
+  const searchCommunities = async (q: string) => {
+    setSearching(true)
+    const { data } = await supabase
+      .from('communities')
+      .select('*')
+      .or(`name.ilike.%${q}%,description.ilike.%${q}%,category.ilike.%${q}%`)
+      .order('members_count', { ascending: false })
+    if (!data) { setSearching(false); return }
+    await mergeMemberships(data)
+    setSearching(false)
+  }
+
+  const mergeMemberships = async (data: Community[]) => {
+    if (user) {
+      const { data: memberships } = await supabase
+        .from('community_members')
+        .select('community_id')
+        .eq('user_id', user.id)
+      const joinedIds = new Set((memberships || []).map((m: any) => m.community_id))
+      setCommunities(data.map(c => ({ ...c, joined: joinedIds.has(c.id) })))
+    } else {
+      setCommunities(data)
+    }
+  }
+
+  // Filter by category (applied on top of search results)
+  const filtered = active === 'All' ? communities : communities.filter(c => c.category === active)
+
+  if (selected) {
+    return (
+      <div className="p-6 max-w-3xl mx-auto">
+        <CommunityDetail community={selected} onBack={() => { setSelected(null); fetchCommunities() }} />
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-6 max-w-5xl mx-auto">
+      <div className="mb-8">
+        <div className="flex items-center gap-2 mb-2">
+          <UsersRound size={22} className="text-emerald-400" />
+          <h1 className="font-display text-3xl font-extrabold text-white">Communities</h1>
+        </div>
+        <p className="text-slate-400">Join communities that match your interests. Discuss, share, and grow together.</p>
+      </div>
+
+      {/* Search bar */}
+      <div className="relative mb-4">
+        <SearchIcon size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+        <input
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          placeholder="Search communities by name, topic, or category..."
+          className="w-full bg-white/5 border border-white/10 rounded-2xl pl-11 pr-4 py-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-pi-500/50 transition-colors"
+        />
+        {searching && (
+          <div className="absolute right-4 top-1/2 -translate-y-1/2">
+            <Loader2 size={15} className="animate-spin text-pi-400" />
+          </div>
+        )}
+        {searchQuery && !searching && (
+          <button
+            onClick={() => setSearchQuery('')}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors text-xs">
+            ✕
+          </button>
+        )}
+      </div>
+
+      {/* Category filter */}
+      <div className="flex gap-2 overflow-x-auto pb-2 mb-6">
+        {categories.map(c => (
+          <button key={c} onClick={() => setActive(c)}
+            className={`flex-shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-all
+              ${active === c ? 'text-white border border-pi-500/40' : 'text-slate-400 border border-white/5 hover:text-white hover:border-white/10'}`}
+            style={active === c ? { background: 'rgba(20,184,166,0.15)' } : {}}>
+            {c}
+          </button>
+        ))}
+      </div>
+
+      <div className="p-4 rounded-2xl border border-pi-500/20 mb-6 flex items-center gap-3"
+        style={{ background: 'rgba(20,184,166,0.08)' }}>
+        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-pi-500 to-teal-600 flex items-center justify-center flex-shrink-0">
+          <Sparkles size={16} className="text-white" />
+        </div>
+        <p className="text-sm text-slate-300">
+          <span className="text-pi-300 font-semibold">Pi AI recommends:</span> Based on your interests, you'd thrive in{' '}
+          <span className="text-white font-semibold">AI Founders Hub</span> and <span className="text-white font-semibold">Creator Economy Lab</span>.
+        </p>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-16"><Loader2 size={32} className="animate-spin text-pi-400" /></div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-16">
+          <UsersRound size={40} className="text-slate-600 mx-auto mb-3" />
+          <p className="text-white font-bold mb-1">
+            {searchQuery ? `No communities found for "${searchQuery}"` : 'No communities yet'}
+          </p>
+          <p className="text-slate-500 text-sm">
+            {searchQuery ? 'Try a different search term or clear the filter.' : 'Check back soon!'}
+          </p>
+          {searchQuery && (
+            <button onClick={() => setSearchQuery('')}
+              className="mt-4 px-5 py-2 rounded-xl text-sm font-semibold text-pi-300 bg-pi-500/10 border border-pi-500/20 hover:bg-pi-500/15 transition-all">
+              Clear search
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-2 gap-4">
+          {filtered.map((c, idx) => {
+            // Merge AI reason from mock data by name match
+            const mockReason = mockCommunityReasons[c.name]
+            return (
+              <div key={c.id}
+                className="rounded-2xl border border-white/5 hover:border-pi-500/20 transition-all group"
+                style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.5), rgba(14,20,25,0.7))' }}>
+                <div className="p-5 cursor-pointer" onClick={() => setSelected(c)}>
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${c.category === 'Technology' ? 'from-pi-500 to-teal-600' : c.category === 'Business' ? 'from-blue-500 to-cyan-600' : c.category === 'Creator' ? 'from-pink-500 to-rose-600' : c.category === 'Design' ? 'from-amber-500 to-orange-600' : c.category === 'Finance' ? 'from-green-500 to-emerald-600' : c.category === 'Health' ? 'from-red-500 to-pink-600' : c.category === 'Music' ? 'from-teal-500 to-pi-600' : 'from-pi-500 to-teal-600'} flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform`}>
+                      <MockIcon name={(c as any).iconName || 'Globe2'} size={22} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-white">{c.name}</h3>
+                        {c.joined && (
+                          <span className="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">Joined</span>
+                        )}
+                      </div>
+                      <p className="text-slate-400 text-sm">{c.members_count.toLocaleString()} members · {c.category}</p>
+                    </div>
+                  </div>
+
+                  {/* AI Reason */}
+                  {mockReason && (
+                    <div className="mb-4 p-3 rounded-xl border border-pi-500/20" style={{ background: 'rgba(20,184,166,0.08)' }}>
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <Sparkles size={12} className="text-pi-400" />
+                        <p className="text-pi-300 text-xs font-bold uppercase tracking-wider">Pi Intelligence</p>
+                      </div>
+                      <p className="text-slate-300 text-xs leading-relaxed">{mockReason}</p>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={e => { e.stopPropagation(); setSelected(c) }}
+                    className="w-full py-2.5 rounded-xl font-semibold text-sm text-white transition-all hover:opacity-90"
+                    style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
+                    {c.joined ? 'View Community' : 'Join Community'}
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
