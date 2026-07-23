@@ -85,7 +85,7 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
         style={{ background: 'linear-gradient(180deg, #0d1224 0%, #080d1a 100%)' }}
       >
         <div className="flex items-center gap-3 px-6 py-5 border-b border-white/5 cursor-pointer hover:bg-white/5 transition-colors"
-          onClick={() => { navigate('/dashboard'); setSidebarOpen(false) }}>
+          onClick={() => { navigate('/'); setSidebarOpen(false) }}>
           <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-lg"
             style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
             π
