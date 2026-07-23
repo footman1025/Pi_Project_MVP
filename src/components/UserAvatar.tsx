@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { avatarGradient, avatarInitial } from '../lib/avatar'
 
 interface Props {
@@ -18,20 +19,18 @@ export default function UserAvatar({
   className = '',
   rounded = 'rounded-xl',
 }: Props) {
+  const [broken, setBroken] = useState(false)
   const letter = avatarInitial(name)
-  const style = {
-    width: size,
-    height: size,
-    background: url ? undefined : avatarGradient(id || name || letter),
-  }
+  const showImg = !!url && !broken
 
-  if (url) {
+  if (showImg) {
     return (
       <img
-        src={url}
+        src={url!}
         alt={name || 'Avatar'}
         className={`${rounded} object-cover flex-shrink-0 ${className}`}
         style={{ width: size, height: size }}
+        onError={() => setBroken(true)}
       />
     )
   }
@@ -39,7 +38,12 @@ export default function UserAvatar({
   return (
     <div
       className={`${rounded} flex items-center justify-center text-white font-bold flex-shrink-0 ${className}`}
-      style={{ ...style, fontSize: Math.max(12, size * 0.38) }}
+      style={{
+        width: size,
+        height: size,
+        background: avatarGradient(id || name || letter),
+        fontSize: Math.max(12, size * 0.38),
+      }}
     >
       {letter}
     </div>

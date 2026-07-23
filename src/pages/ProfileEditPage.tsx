@@ -115,23 +115,28 @@ export default function ProfileEditPage() {
       setSaving(false)
       return
     }
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        full_name: fullName,
-        username: nick,
-        bio,
-        role,
-        location,
-        website,
-        skills: skillsArr,
-        interests,
-        goals,
-        experience,
-        ai_summary: aiSummary,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', user.id)
+    const payload = {
+      full_name: fullName,
+      username: nick,
+      bio,
+      role,
+      location,
+      website,
+      skills: skillsArr,
+      interests,
+      goals,
+      experience,
+      ai_summary: aiSummary,
+      updated_at: new Date().toISOString(),
+    }
+    let { error } = await supabase.from('profiles').update(payload).eq('id', user.id)
+
+    // Older DBs may be missing the experience column — save the rest without it
+    if (error && /experience/i.test(error.message) && /schema cache|column/i.test(error.message)) {
+      const { experience: _omit, ...withoutExperience } = payload
+      ;({ error } = await supabase.from('profiles').update(withoutExperience).eq('id', user.id))
+    }
+
     setSaving(false)
     if (error) { setError(error.message); return }
     await refreshProfile()

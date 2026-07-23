@@ -16,6 +16,7 @@ create table if not exists public.profiles (
   skills text[],
   interests text[],
   goals text[],
+  experience jsonb default '[]'::jsonb,
   ai_summary text,
   followers_count int default 0,
   following_count int default 0,

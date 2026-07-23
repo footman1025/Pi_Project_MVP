@@ -6,6 +6,7 @@ import {
   MapPin, Tag, X, TrendingUp, UserCircle2, Globe2,
   FileText, Briefcase, CalendarDays, Flame
 } from 'lucide-react'
+import UserAvatar from '../components/UserAvatar'
 
 const searchTypes = ['All', 'People', 'Communities', 'Posts']
 
@@ -240,10 +241,13 @@ export default function SearchPage() {
                     onClick={() => p.username && navigate(`/p/${p.username}`)}
                     className="flex items-center gap-4 p-4 rounded-2xl border border-white/5 hover:border-pi-500/20 transition-all cursor-pointer group"
                     style={{ background: 'rgba(14,20,25,0.3)' }}>
-                    <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
-                      style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
-                      {p.full_name?.charAt(0).toUpperCase() || '?'}
-                    </div>
+                    <UserAvatar
+                      url={p.avatar_url}
+                      name={p.full_name}
+                      id={p.id}
+                      size={44}
+                      rounded="rounded-2xl"
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-white font-semibold text-sm">{p.full_name || 'Pi Member'}</p>
@@ -328,10 +332,12 @@ export default function SearchPage() {
                     className="p-4 rounded-2xl border border-white/5 hover:border-pi-500/20 transition-all cursor-pointer"
                     style={{ background: 'rgba(14,20,25,0.3)' }}>
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-bold text-xs flex-shrink-0"
-                        style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
-                        {p.profiles?.full_name?.charAt(0).toUpperCase() || '?'}
-                      </div>
+                      <UserAvatar
+                        url={p.profiles?.avatar_url}
+                        name={p.profiles?.full_name}
+                        id={p.author_id}
+                        size={32}
+                      />
                       <div>
                         <p className="text-white text-xs font-semibold">{p.profiles?.full_name || 'Pi Member'}</p>
                         <p className="text-slate-600 text-xs">{timeAgo(p.created_at)}</p>

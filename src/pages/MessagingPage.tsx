@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { supabase, Message, Profile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { notifyUserOfMessage } from '../lib/notifications'
-import { avatarGradient, avatarInitial } from '../lib/avatar'
 import { Send, Search, Loader2, MessageCircle } from 'lucide-react'
+import UserAvatar from '../components/UserAvatar'
 
 function timeAgo(date: string) {
   const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
@@ -182,10 +182,7 @@ export default function MessagingPage() {
                 searchResults.map(p => (
                   <button key={p.id} onClick={() => { setSearchQuery(''); selectConversation(p) }}
                     className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl hover:bg-white/5 transition-all text-left">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
-                      style={{ background: avatarGradient(p.id) }}>
-                      {avatarInitial(p.full_name)}
-                    </div>
+                    <UserAvatar url={p.avatar_url} name={p.full_name} id={p.id} size={36} />
                     <div className="flex-1 min-w-0">
                       <p className="text-white text-sm font-semibold truncate">{p.full_name}</p>
                       <p className="text-slate-500 text-xs truncate">{p.role || 'Pi Member'}</p>
@@ -209,10 +206,7 @@ export default function MessagingPage() {
             conversations.map(c => (
               <button key={c.id} onClick={() => selectConversation(c)}
                 className={`flex items-center gap-3 w-full px-4 py-3 transition-all text-left ${selectedUser?.id === c.id ? 'bg-pi-500/10 border-r-2 border-pi-500' : 'hover:bg-white/5'}`}>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold flex-shrink-0"
-                  style={{ background: avatarGradient(c.id) }}>
-                  {avatarInitial(c.full_name)}
-                </div>
+                <UserAvatar url={c.avatar_url} name={c.full_name} id={c.id} size={40} />
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-sm font-semibold truncate">{c.full_name}</p>
                   <p className="text-slate-500 text-xs truncate">{c.role || 'Pi Member'}</p>
@@ -237,10 +231,12 @@ export default function MessagingPage() {
             <div className="flex items-center gap-3 px-5 py-4 border-b border-white/5 flex-shrink-0"
               style={{ background: 'rgba(14,20,25,0.8)' }}>
               <button onClick={() => setSelectedUser(null)} className="md:hidden text-slate-400 hover:text-white mr-1">←</button>
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold"
-                style={{ background: avatarGradient(selectedUser.id) }}>
-                {avatarInitial(selectedUser.full_name)}
-              </div>
+              <UserAvatar
+                url={selectedUser.avatar_url}
+                name={selectedUser.full_name}
+                id={selectedUser.id}
+                size={36}
+              />
               <div>
                 <p className="text-white font-semibold text-sm">{selectedUser.full_name}</p>
                 <p className="text-slate-500 text-xs">{selectedUser.role || 'Pi Member'}</p>
@@ -261,14 +257,17 @@ export default function MessagingPage() {
               {messages.map(msg => {
                 const isMe = msg.sender_id === user.id
                 return (
-                  <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                  <div key={msg.id} className={`flex items-end gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
                     {!isMe && (
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold mr-2 flex-shrink-0 self-end"
-                        style={{ background: avatarGradient(selectedUser.id) }}>
-                        {avatarInitial(selectedUser.full_name)}
-                      </div>
+                      <UserAvatar
+                        url={selectedUser.avatar_url}
+                        name={selectedUser.full_name}
+                        id={selectedUser.id}
+                        size={28}
+                        rounded="rounded-lg"
+                      />
                     )}
-                    <div className={`max-w-[72%]`}>
+                    <div className="max-w-[72%]">
                       <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isMe
                         ? 'text-white rounded-br-sm'
                         : 'bg-white/5 border border-white/10 text-slate-200 rounded-bl-sm'}`}
@@ -277,6 +276,15 @@ export default function MessagingPage() {
                       </div>
                       <p className={`text-xs text-slate-600 mt-1 ${isMe ? 'text-right' : 'text-left'}`}>{timeAgo(msg.created_at)}</p>
                     </div>
+                    {isMe && (
+                      <UserAvatar
+                        url={profile?.avatar_url}
+                        name={profile?.full_name}
+                        id={user.id}
+                        size={28}
+                        rounded="rounded-lg"
+                      />
+                    )}
                   </div>
                 )
               })}
