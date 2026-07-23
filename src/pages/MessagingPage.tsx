@@ -419,7 +419,7 @@ export default function MessagingPage() {
       </div>
 
       {/* Right: Chat */}
-      <div className={`flex-1 flex flex-col min-w-0 overflow-hidden ${!selectedUser ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`flex-1 flex flex-col min-w-0 max-w-full overflow-hidden ${!selectedUser ? 'hidden md:flex' : 'flex'}`}>
         {!selectedUser ? (
           <div className="flex flex-col items-center justify-center flex-1">
             <MessageCircle size={48} className="text-slate-700 mb-4" />
@@ -562,7 +562,7 @@ export default function MessagingPage() {
             </div>
 
             {/* Input */}
-            <div className="px-3 sm:px-4 py-3 border-t border-white/5 flex-shrink-0 relative min-w-0" style={{ background: 'rgba(8,13,26,0.9)' }}>
+            <div className="px-2 sm:px-4 py-3 border-t border-white/5 flex-shrink-0 relative min-w-0 w-full max-w-full overflow-hidden box-border" style={{ background: 'rgba(8,13,26,0.9)' }}>
               <MessagePicker
                 open={pickerOpen}
                 onClose={() => setPickerOpen(false)}
@@ -575,9 +575,9 @@ export default function MessagingPage() {
                 </div>
               )}
               {replyTo && (
-                <div className="mb-2 flex items-start gap-2 px-3 py-2 rounded-xl border border-teal-500/25 bg-teal-500/10">
+                <div className="mb-2 flex items-start gap-2 px-3 py-2 rounded-xl border border-teal-500/25 bg-teal-500/10 min-w-0">
                   <div className="flex-1 min-w-0 border-l-2 border-teal-400 pl-2.5">
-                    <p className="text-teal-300 text-xs font-semibold">Replying to {replyTo.author}</p>
+                    <p className="text-teal-300 text-xs font-semibold truncate">Replying to {replyTo.author}</p>
                     <p className="text-slate-400 text-xs truncate mt-0.5">{replyTo.preview}</p>
                   </div>
                   <button
@@ -597,11 +597,11 @@ export default function MessagingPage() {
                 accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.json,audio/*,video/mp4,video/webm"
                 onChange={handleFilePick}
               />
-              <div className="flex gap-2 items-center">
+              <div className="flex gap-1.5 sm:gap-2 items-center w-full max-w-full min-w-0">
                 <button
                   type="button"
                   onClick={() => setPickerOpen(o => !o)}
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${
+                  className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 transition-all ${
                     pickerOpen ? 'bg-pi-500/20 text-pi-300' : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
                   }`}
                   title="Emoji & stickers"
@@ -612,12 +612,12 @@ export default function MessagingPage() {
                   type="button"
                   disabled={sending}
                   onClick={() => fileRef.current?.click()}
-                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all disabled:opacity-40"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all disabled:opacity-40"
                   title="Attach file"
                 >
                   <Paperclip size={18} />
                 </button>
-                <div className="flex-1 relative flex items-center bg-white/5 border border-white/10 rounded-xl focus-within:border-pi-500/50 transition-colors">
+                <div className="flex-1 min-w-0 relative flex items-center bg-white/5 border border-white/10 rounded-xl focus-within:border-pi-500/50 transition-colors overflow-hidden">
                   <input
                     ref={inputRef}
                     value={newMsg}
@@ -630,13 +630,18 @@ export default function MessagingPage() {
                       if (e.key === 'Escape' && replyTo) setReplyTo(null)
                     }}
                     onFocus={() => setPickerOpen(false)}
-                    placeholder={replyTo ? `Reply to ${replyTo.author}...` : `Message ${selectedUser.full_name}...`}
-                    className="flex-1 bg-transparent px-4 py-2.5 text-white placeholder-slate-600 text-sm focus:outline-none min-w-0"
+                    placeholder={replyTo ? `Reply…` : `Message…`}
+                    className="w-full min-w-0 bg-transparent px-3 sm:px-4 py-2.5 text-white placeholder-slate-600 text-sm focus:outline-none"
                   />
                 </div>
-                <button onClick={sendMessage} disabled={sending || !newMsg.trim()}
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white disabled:opacity-40 transition-all hover:scale-105 flex-shrink-0"
-                  style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
+                <button
+                  type="button"
+                  onClick={sendMessage}
+                  disabled={sending || !newMsg.trim()}
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-white disabled:opacity-40 transition-all shrink-0"
+                  style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+                  aria-label="Send message"
+                >
                   {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
                 </button>
               </div>
