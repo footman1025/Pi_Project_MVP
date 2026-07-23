@@ -379,20 +379,21 @@ export default function ProfilePage() {
             {seo && (
               <div className="rounded-2xl border border-pi-500/20 overflow-hidden bg-pi-500/[0.05]">
                 <button onClick={() => setShowSEO(o => !o)}
-                  className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-pi-500/5 transition-all">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl pi-mark flex items-center justify-center">
-                      <Code2 size={15} className="text-white" />
-                    </div>
-                    <div>
-                      <p className="text-white font-semibold text-sm">SEO Structure</p>
-                      <p className="text-slate-400 text-xs">Live meta tags & JSON-LD injected for this profile</p>
-                    </div>
+                  className="w-full flex items-center gap-3 px-4 sm:px-5 py-4 text-left hover:bg-pi-500/5 transition-all min-w-0">
+                  <div className="w-8 h-8 rounded-xl pi-mark flex items-center justify-center shrink-0">
+                    <Code2 size={15} className="text-white" />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-pi-300 bg-pi-500/10 border border-pi-500/20 px-2 py-0.5 rounded-full font-semibold">Live ✓</span>
-                    {showSEO ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-semibold text-sm">SEO Structure</p>
+                    <p className="text-slate-400 text-xs truncate">Live meta tags & JSON-LD for this profile</p>
                   </div>
+                  <span className="inline-flex items-center gap-1 shrink-0 whitespace-nowrap text-[11px] sm:text-xs text-pi-300 bg-pi-500/10 border border-pi-500/20 px-2.5 py-1 rounded-full font-semibold leading-none">
+                    Live
+                    <span aria-hidden="true">✓</span>
+                  </span>
+                  {showSEO
+                    ? <ChevronUp size={18} className="text-slate-400 shrink-0" />
+                    : <ChevronDown size={18} className="text-slate-400 shrink-0" />}
                 </button>
 
                 {showSEO && (
