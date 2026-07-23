@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { supabase, Message, Profile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { notifyUserOfMessage } from '../lib/notifications'
-import { Send, Search, Loader2, MessageCircle } from 'lucide-react'
+import { Send, Search, Loader2, MessageCircle, Smile, Sticker } from 'lucide-react'
 import UserAvatar from '../components/UserAvatar'
+import MessagePicker from '../components/MessagePicker'
+import { encodeSticker, parseSticker } from '../data/stickers'
 
 function timeAgo(date: string) {
   const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
@@ -26,7 +28,9 @@ export default function MessagingPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<Profile[]>([])
   const [searching, setSearching] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!user) return
@@ -67,6 +71,7 @@ export default function MessagingPage() {
 
   const selectConversation = async (p: Profile) => {
     setSelectedUser(p)
+    setPickerOpen(false)
     await fetchMessages(p.id)
     // Mark messages as read
     if (user) {
@@ -103,12 +108,10 @@ export default function MessagingPage() {
     return () => { supabase.removeChannel(channel) }
   }, [user, selectedUser])
 
-  const sendMessage = async () => {
-    if (!newMsg.trim() || !user || !selectedUser) return
+  const sendContent = async (content: string) => {
+    if (!content.trim() || !user || !selectedUser) return
     setSending(true)
-    const content = newMsg.trim()
-    setNewMsg('')
-    const msg = { sender_id: user.id, receiver_id: selectedUser.id, content }
+    const msg = { sender_id: user.id, receiver_id: selectedUser.id, content: content.trim() }
     const { data } = await supabase.from('messages').insert(msg).select().single()
     if (data) {
       setMessages(m => (m.some(x => x.id === data.id) ? m : [...m, data]))
@@ -119,6 +122,35 @@ export default function MessagingPage() {
     if (!conversations.find(c => c.id === selectedUser.id)) {
       setConversations(c => [selectedUser, ...c])
     }
+  }
+
+  const sendMessage = async () => {
+    if (!newMsg.trim()) return
+    const content = newMsg.trim()
+    setNewMsg('')
+    await sendContent(content)
+  }
+
+  const insertEmoji = (emoji: string) => {
+    const el = inputRef.current
+    if (el) {
+      const start = el.selectionStart ?? newMsg.length
+      const end = el.selectionEnd ?? newMsg.length
+      const next = newMsg.slice(0, start) + emoji + newMsg.slice(end)
+      setNewMsg(next)
+      requestAnimationFrame(() => {
+        el.focus()
+        const pos = start + emoji.length
+        el.setSelectionRange(pos, pos)
+      })
+    } else {
+      setNewMsg(m => m + emoji)
+    }
+  }
+
+  const sendSticker = async (emoji: string) => {
+    setPickerOpen(false)
+    await sendContent(encodeSticker(emoji))
   }
 
   const searchUsers = async (q: string) => {
@@ -256,6 +288,7 @@ export default function MessagingPage() {
               )}
               {messages.map(msg => {
                 const isMe = msg.sender_id === user.id
+                const sticker = parseSticker(msg.content)
                 return (
                   <div key={msg.id} className={`flex items-end gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
                     {!isMe && (
@@ -268,12 +301,18 @@ export default function MessagingPage() {
                       />
                     )}
                     <div className="max-w-[72%]">
-                      <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isMe
-                        ? 'text-white rounded-br-sm'
-                        : 'bg-white/5 border border-white/10 text-slate-200 rounded-bl-sm'}`}
-                        style={isMe ? { background: 'linear-gradient(135deg, #14b8a6, #0d9488)' } : {}}>
-                        {msg.content}
-                      </div>
+                      {sticker ? (
+                        <div className={`text-5xl leading-none select-none ${isMe ? 'text-right' : 'text-left'}`} title="Sticker">
+                          {sticker}
+                        </div>
+                      ) : (
+                        <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isMe
+                          ? 'text-white rounded-br-sm'
+                          : 'bg-white/5 border border-white/10 text-slate-200 rounded-bl-sm'}`}
+                          style={isMe ? { background: 'linear-gradient(135deg, #14b8a6, #0d9488)' } : {}}>
+                          {msg.content}
+                        </div>
+                      )}
                       <p className={`text-xs text-slate-600 mt-1 ${isMe ? 'text-right' : 'text-left'}`}>{timeAgo(msg.created_at)}</p>
                     </div>
                     {isMe && (
@@ -292,14 +331,48 @@ export default function MessagingPage() {
             </div>
 
             {/* Input */}
-            <div className="px-4 py-3 border-t border-white/5 flex-shrink-0" style={{ background: 'rgba(8,13,26,0.9)' }}>
-              <div className="flex gap-2">
-                <input
-                  value={newMsg} onChange={e => setNewMsg(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-                  placeholder={`Message ${selectedUser.full_name}...`}
-                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-pi-500/50 transition-colors"
-                />
+            <div className="px-4 py-3 border-t border-white/5 flex-shrink-0 relative" style={{ background: 'rgba(8,13,26,0.9)' }}>
+              <MessagePicker
+                open={pickerOpen}
+                onClose={() => setPickerOpen(false)}
+                onEmoji={insertEmoji}
+                onSticker={sendSticker}
+              />
+              <div className="flex gap-2 items-center">
+                <button
+                  type="button"
+                  onClick={() => setPickerOpen(o => !o)}
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${
+                    pickerOpen ? 'bg-pi-500/20 text-pi-300' : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                  }`}
+                  title="Emoji & stickers"
+                >
+                  <Smile size={18} />
+                </button>
+                <div className="flex-1 relative flex items-center bg-white/5 border border-white/10 rounded-xl focus-within:border-pi-500/50 transition-colors">
+                  <input
+                    ref={inputRef}
+                    value={newMsg}
+                    onChange={e => setNewMsg(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        sendMessage()
+                      }
+                    }}
+                    onFocus={() => setPickerOpen(false)}
+                    placeholder={`Message ${selectedUser.full_name}...`}
+                    className="flex-1 bg-transparent px-4 py-2.5 text-white placeholder-slate-600 text-sm focus:outline-none min-w-0"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setPickerOpen(o => !o)}
+                    className="px-3 text-slate-400 hover:text-pi-300 transition-colors flex-shrink-0"
+                    title="Stickers"
+                  >
+                    <Sticker size={18} />
+                  </button>
+                </div>
                 <button onClick={sendMessage} disabled={sending || !newMsg.trim()}
                   className="w-10 h-10 rounded-xl flex items-center justify-center text-white disabled:opacity-40 transition-all hover:scale-105 flex-shrink-0"
                   style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
