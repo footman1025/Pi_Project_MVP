@@ -6,7 +6,7 @@ import { notifyUserOfMessage } from '../lib/notifications'
 import { Send, Search, Loader2, MessageCircle, Smile, Paperclip, FileText, Download, ExternalLink } from 'lucide-react'
 import UserAvatar from '../components/UserAvatar'
 import MessagePicker from '../components/MessagePicker'
-import { encodeSticker, parseSticker } from '../data/stickers'
+import { encodeSticker, getLargeEmojiContent, isEmojiOnlyMessage } from '../data/stickers'
 import {
   uploadMessageFile,
   encodeFileMessage,
@@ -143,7 +143,11 @@ export default function MessagingPage() {
 
   const sendMessage = async () => {
     if (!newMsg.trim()) return
-    const content = newMsg.trim()
+    let content = newMsg.trim()
+    // Plain emoji-only sends render as large stickers
+    if (isEmojiOnlyMessage(content)) {
+      content = encodeSticker(content)
+    }
     setNewMsg('')
     await sendContent(content)
   }
@@ -322,7 +326,7 @@ export default function MessagingPage() {
               )}
               {messages.map(msg => {
                 const isMe = msg.sender_id === user.id
-                const sticker = parseSticker(msg.content)
+                const largeEmoji = getLargeEmojiContent(msg.content)
                 const file = parseFileMessage(msg.content)
                 return (
                   <div key={msg.id} className={`flex items-end gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
@@ -336,9 +340,13 @@ export default function MessagingPage() {
                       />
                     )}
                     <div className="max-w-[72%]">
-                      {sticker ? (
-                        <div className={`text-5xl leading-none select-none ${isMe ? 'text-right' : 'text-left'}`} title="Sticker">
-                          {sticker}
+                      {largeEmoji ? (
+                        <div
+                          className={`leading-none select-none ${isMe ? 'text-right' : 'text-left'}`}
+                          style={{ fontSize: '3.5rem' }}
+                          title="Sticker"
+                        >
+                          {largeEmoji}
                         </div>
                       ) : file ? (
                         <div className={`rounded-2xl overflow-hidden border ${isMe ? 'border-white/10' : 'border-white/10 bg-white/5'}`}

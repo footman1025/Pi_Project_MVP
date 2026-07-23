@@ -199,3 +199,24 @@ export function parseSticker(content: string): string | null {
 export function isStickerMessage(content: string) {
   return parseSticker(content) !== null
 }
+
+/** True when the message is only emoji (no letters/numbers) — show large like a sticker */
+export function isEmojiOnlyMessage(content: string): boolean {
+  const trimmed = content.trim()
+  if (!trimmed || trimmed.length > 48) return false
+  if (parseSticker(trimmed) || trimmed.startsWith('[[file:')) return false
+  const leftover = trimmed
+    .replace(/\p{Extended_Pictographic}/gu, '')
+    .replace(/[\uFE0F\u200D\u20E3\uFE0E]/g, '')
+    .replace(/\p{Emoji_Modifier}/gu, '')
+    .replace(/\s/g, '')
+  return leftover.length === 0
+}
+
+/** Returns display emoji for sticker-encoded or emoji-only messages */
+export function getLargeEmojiContent(content: string): string | null {
+  const sticker = parseSticker(content)
+  if (sticker) return sticker
+  if (isEmojiOnlyMessage(content)) return content.trim()
+  return null
+}
