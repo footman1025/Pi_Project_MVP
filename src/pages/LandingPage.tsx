@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, Sparkles, UsersRound, Globe2, BadgeCheck, ShieldCheck, TrendingUp, UserCog, LogOut, ChevronDown, Bell, LayoutGrid, UserCircle2, Bot, SearchCheck, Link2, Rocket } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import UserAvatar from '../components/UserAvatar'
 
 const features = [
   { icon: Sparkles, title: 'AI-Powered Matching', desc: 'Our intelligent engine connects you with the right people, communities and opportunities — automatically.', color: 'text-indigo-400' },
@@ -25,7 +26,6 @@ export default function LandingPage() {
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
   const isLoggedIn = !!session
-  const avatarLetter = profile?.full_name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || '?'
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'You'
 
   const handleSignOut = async () => {
@@ -61,10 +61,13 @@ export default function LandingPage() {
                 onClick={() => setDropdownOpen(o => !o)}
                 className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all"
               >
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-xs"
-                  style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
-                  {avatarLetter}
-                </div>
+                <UserAvatar
+                  url={profile?.avatar_url}
+                  name={displayName}
+                  id={user?.id}
+                  size={28}
+                  rounded="rounded-lg"
+                />
                 <span className="text-white text-sm font-medium hidden sm:inline max-w-[120px] truncate">{displayName}</span>
                 <ChevronDown size={14} className={`text-slate-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
               </button>
@@ -81,10 +84,12 @@ export default function LandingPage() {
                     {/* User info header */}
                     <div className="px-4 py-3 border-b border-white/5">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold"
-                          style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
-                          {avatarLetter}
-                        </div>
+                        <UserAvatar
+                          url={profile?.avatar_url}
+                          name={displayName}
+                          id={user?.id}
+                          size={40}
+                        />
                         <div className="flex-1 min-w-0">
                           <p className="text-white font-semibold text-sm truncate">{displayName}</p>
                           <p className="text-slate-500 text-xs truncate">{user?.email}</p>
