@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase, Message, Profile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { notifyUserOfMessage } from '../lib/notifications'
@@ -26,6 +26,7 @@ function timeAgo(date: string) {
 export default function MessagingPage() {
   const { user, profile } = useAuth()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [conversations, setConversations] = useState<Profile[]>([])
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -40,6 +41,7 @@ export default function MessagingPage() {
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const openedFromQuery = useRef<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -49,6 +51,33 @@ export default function MessagingPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Deep-link: /messages?u=<userId> opens that chat (from notifications / Message shortcuts)
+  useEffect(() => {
+    if (!user || loading) return
+    const targetId = searchParams.get('u')
+    if (!targetId || targetId === user.id) return
+    if (openedFromQuery.current === targetId && selectedUser?.id === targetId) return
+
+    let cancelled = false
+    const open = async () => {
+      const existing = conversations.find(c => c.id === targetId)
+      let profileToOpen: Profile | null = existing || null
+      if (!profileToOpen) {
+        const { data } = await supabase.from('profiles').select('*').eq('id', targetId).maybeSingle()
+        if (cancelled || !data) return
+        profileToOpen = data
+      }
+      if (!profileToOpen || cancelled) return
+      openedFromQuery.current = targetId
+      await selectConversation(profileToOpen)
+      // Clear query so back/refresh doesn't re-force the same open awkwardly
+      setSearchParams({}, { replace: true })
+    }
+    open()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, loading, searchParams, conversations])
 
   const fetchConversations = async () => {
     if (!user) return
@@ -74,8 +103,22 @@ export default function MessagingPage() {
         .select('*')
         .in('id', Array.from(ids))
       setConversations(data || [])
+    } else {
+      setConversations([])
     }
     setLoading(false)
+  }
+
+  const markMessageNotificationsRead = async (fromUserId: string) => {
+    if (!user) return
+    await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('user_id', user.id)
+      .eq('actor_id', fromUserId)
+      .eq('type', 'message')
+      .eq('is_read', false)
+    window.dispatchEvent(new CustomEvent('pi:notifications-read'))
   }
 
   const selectConversation = async (p: Profile) => {
@@ -88,6 +131,7 @@ export default function MessagingPage() {
         .update({ is_read: true })
         .eq('sender_id', p.id)
         .eq('receiver_id', user.id)
+      await markMessageNotificationsRead(p.id)
     }
   }
 

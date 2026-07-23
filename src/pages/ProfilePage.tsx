@@ -358,7 +358,7 @@ export default function ProfilePage() {
                         : <><UserPlus size={15} /> Follow</>}
                     </button>
                     <button
-                      onClick={() => isLoggedIn ? navigate('/messages') : navigate('/signup')}
+                      onClick={() => isLoggedIn ? navigate(`/messages?u=${profile.id}`) : navigate('/signup')}
                       className="px-4 py-3 rounded-xl border border-white/10 text-slate-300 text-sm font-medium hover:border-white/20 flex items-center gap-2">
                       <MessageCircle size={15} /> Message
                     </button>

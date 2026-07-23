@@ -65,12 +65,20 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
     }
     fetchCount()
 
+    const onRead = () => fetchCount()
+    window.addEventListener('pi:notifications-read', onRead)
+
     const channel = supabase
       .channel(`notif-count:${user.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
         () => setUnreadNotifs(c => c + 1))
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+        () => fetchCount())
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    return () => {
+      window.removeEventListener('pi:notifications-read', onRead)
+      supabase.removeChannel(channel)
+    }
   }, [user])
 
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'User'
