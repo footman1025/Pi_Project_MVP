@@ -6,6 +6,7 @@ import { UsersRound, Sparkles, Loader2, Send, MessageCircle, Search as SearchIco
 import { mockCommunities as mockCommData } from '../data/mockData'
 import MockIcon from '../components/MockIcon'
 import { avatarGradient, avatarInitial } from '../lib/avatar'
+import { displayName } from '../lib/posts'
 
 const mockCommunityReasons: Record<string, string> = Object.fromEntries(
   mockCommData.map(c => [c.name, c.aiReason])
@@ -42,9 +43,11 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
 
   const fetchPosts = async () => {
     setLoading(true)
+    let list: Post[] = []
+
     const withProfiles = await supabase
       .from('posts')
-      .select('*, profiles(full_name, role)')
+      .select('*, profiles!posts_author_id_fkey(full_name, username, role, avatar_url)')
       .eq('community_id', community.id)
       .order('created_at', { ascending: false })
       .limit(40)
@@ -57,10 +60,14 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
         .order('created_at', { ascending: false })
         .limit(40)
       if (plain.error) setError(plain.error.message)
-      setPosts((plain.data as Post[]) || [])
+      list = (plain.data as Post[]) || []
     } else {
-      setPosts((withProfiles.data as Post[]) || [])
+      list = (withProfiles.data as Post[]) || []
     }
+
+    const { enrichPostsWithAuthors } = await import('../lib/posts')
+    list = await enrichPostsWithAuthors(list)
+    setPosts(list)
     setLoading(false)
   }
 
@@ -239,10 +246,13 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-bold text-xs"
                   style={{ background: avatarGradient(post.author_id) }}>
-                  {avatarInitial(post.profiles?.full_name)}
+                  {avatarInitial(displayName(post.profiles))}
                 </div>
                 <div>
-                  <p className="text-white text-sm font-semibold">{post.profiles?.full_name || 'Anonymous'}</p>
+                  <p className="text-white text-sm font-semibold">{displayName(post.profiles)}</p>
+                  {post.profiles?.username && post.profiles?.full_name && (
+                    <p className="text-slate-500 text-xs">@{post.profiles.username}</p>
+                  )}
                   <p className="text-slate-500 text-xs">{timeAgo(post.created_at)}</p>
                 </div>
               </div>

@@ -7,6 +7,7 @@ import {
   Plus, Trash2, Building2, CalendarDays
 } from 'lucide-react'
 import { onboardingRoles, onboardingInterests, onboardingGoals } from '../data/mockData'
+import { normalizeUsername } from '../lib/posts'
 
 const emptyExp = (): Experience => ({
   id: crypto.randomUUID(),
@@ -22,6 +23,7 @@ export default function ProfileEditPage() {
   const navigate = useNavigate()
 
   const [fullName, setFullName] = useState('')
+  const [username, setUsername] = useState('')
   const [bio, setBio] = useState('')
   const [role, setRole] = useState('')
   const [location, setLocation] = useState('')
@@ -39,6 +41,7 @@ export default function ProfileEditPage() {
   useEffect(() => {
     if (profile) {
       setFullName(profile.full_name || '')
+      setUsername(profile.username || '')
       setBio(profile.bio || '')
       setRole(profile.role || '')
       setLocation(profile.location || '')
@@ -78,10 +81,17 @@ export default function ProfileEditPage() {
     setError('')
     setSaving(true)
     const skillsArr = skills.split(',').map(s => s.trim()).filter(Boolean)
+    const nick = normalizeUsername(username)
+    if (!nick) {
+      setError('Please choose a nickname (letters, numbers, underscore).')
+      setSaving(false)
+      return
+    }
     const { error } = await supabase
       .from('profiles')
       .update({
         full_name: fullName,
+        username: nick,
         bio,
         role,
         location,
@@ -131,6 +141,19 @@ export default function ProfileEditPage() {
               <input value={fullName} onChange={e => setFullName(e.target.value)}
                 placeholder="Your full name"
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-pi-500/50 transition-colors" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Nickname</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm">@</span>
+                <input
+                  value={username}
+                  onChange={e => setUsername(normalizeUsername(e.target.value))}
+                  placeholder="your_nickname"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-pi-500/50 transition-colors"
+                />
+              </div>
+              <p className="text-slate-600 text-xs mt-1">Shown on posts and your public profile URL: /p/{username || 'nickname'}</p>
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Role</label>

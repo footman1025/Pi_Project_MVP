@@ -4,6 +4,7 @@ import { supabase, Post, Comment, Profile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { notifyPostAuthorOfLike, notifyPostAuthorOfComment } from '../lib/notifications'
 import { avatarGradient, avatarInitial } from '../lib/avatar'
+import { displayName } from '../lib/posts'
 import { Heart, MessageCircle, Share2, Send, Image, Loader2, Sparkles } from 'lucide-react'
 
 function timeAgo(date: string) {
@@ -27,7 +28,7 @@ function PostCard({ post, onLike, onComment, actorName }: {
   const [submitting, setSubmitting] = useState(false)
   const [loadingComments, setLoadingComments] = useState(false)
 
-  const name = post.profiles?.full_name || 'Anonymous'
+  const name = displayName(post.profiles)
   const role = post.profiles?.role || ''
   const authorKey = post.author_id || name
 
@@ -157,7 +158,7 @@ export default function FeedPage() {
 
     const withProfiles = await supabase
       .from('posts')
-      .select('*, profiles(full_name, role, avatar_url)')
+      .select('*, profiles!posts_author_id_fkey(full_name, username, role, avatar_url)')
       .order('created_at', { ascending: false })
       .limit(80)
 
@@ -173,7 +174,6 @@ export default function FeedPage() {
       list = (withProfiles.data as Post[] | null) || []
     }
 
-    // Main feed = posts not tied to a community
     list = list.filter(p => !p.community_id)
 
     if (fetchError) {
@@ -181,6 +181,9 @@ export default function FeedPage() {
       setLoading(false)
       return
     }
+
+    const { enrichPostsWithAuthors } = await import('../lib/posts')
+    list = await enrichPostsWithAuthors(list)
 
     if (user && list.length > 0) {
       const { data: likes } = await supabase
