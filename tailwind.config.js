@@ -6,17 +6,17 @@ export default {
     extend: {
       colors: {
         pi: {
-          50:  '#f0f4ff',
-          100: '#e0e9ff',
-          200: '#c7d6fe',
-          300: '#a5b8fc',
-          400: '#818cf8',
-          500: '#6366f1',
-          600: '#4f46e5',
-          700: '#4338ca',
-          800: '#3730a3',
-          900: '#312e81',
-          950: '#1e1b4b',
+          50:  '#f0fdfa',
+          100: '#ccfbf1',
+          200: '#99f6e4',
+          300: '#5eead4',
+          400: '#2dd4bf',
+          500: '#14b8a6',
+          600: '#0d9488',
+          700: '#0f766e',
+          800: '#115e59',
+          900: '#134e4a',
+          950: '#042f2e',
         },
         dark: {
           50:  '#f8fafc',
@@ -44,8 +44,8 @@ export default {
           '50%': { transform: 'translateY(-10px)' },
         },
         glow: {
-          '0%': { boxShadow: '0 0 20px rgba(99,102,241,0.3)' },
-          '100%': { boxShadow: '0 0 40px rgba(99,102,241,0.7)' },
+          '0%': { boxShadow: '0 0 20px rgba(20,184,166,0.3)' },
+          '100%': { boxShadow: '0 0 40px rgba(20,184,166,0.7)' },
         },
         shimmer: {
           '0%': { backgroundPosition: '-200% 0' },
@@ -61,9 +61,9 @@ export default {
         },
       },
       backgroundImage: {
-        'pi-gradient': 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%)',
-        'pi-gradient-dark': 'linear-gradient(135deg, #312e81 0%, #1e1b4b 100%)',
-        'card-gradient': 'linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(139,92,246,0.05) 100%)',
+        'pi-gradient': 'linear-gradient(135deg, #14b8a6 0%, #0d9488 50%, #0f766e 100%)',
+        'pi-gradient-dark': 'linear-gradient(135deg, #134e4a 0%, #042f2e 100%)',
+        'card-gradient': 'linear-gradient(135deg, rgba(20,184,166,0.1) 0%, rgba(13,148,136,0.05) 100%)',
       }
     },
   },

@@ -36,13 +36,13 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center px-6 py-12 relative overflow-hidden" style={{ background: '#080d1a' }}>
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[500px] h-[500px] rounded-full opacity-15"
-          style={{ background: 'radial-gradient(circle, #6366f1 0%, transparent 70%)' }} />
+          style={{ background: 'radial-gradient(circle, #14b8a6 0%, transparent 70%)' }} />
       </div>
 
       <div className="w-full max-w-md relative">
         <div className="flex items-center justify-center gap-2 mb-8 cursor-pointer" onClick={() => navigate('/')}>
           <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-xl"
-            style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>π</div>
+            style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>π</div>
           <span className="text-white font-bold text-2xl">Pi</span>
         </div>
 
@@ -85,7 +85,7 @@ export default function LoginPage() {
 
             <button type="submit" disabled={loading}
               className="w-full py-3.5 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-              style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+              style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (

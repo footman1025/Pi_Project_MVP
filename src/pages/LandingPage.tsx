@@ -68,7 +68,7 @@ export default function LandingPage() {
         style={{ background: 'rgba(8,13,26,0.9)', backdropFilter: 'blur(16px)' }}>
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
           <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-black text-lg"
-            style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+            style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
             π
           </div>
           <span className="text-white font-bold text-xl">Pi</span>
@@ -184,7 +184,7 @@ export default function LandingPage() {
             <button
               onClick={() => navigate('/signup')}
               className="px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
-              style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
+              style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
             >
               Get Started
             </button>
@@ -197,14 +197,14 @@ export default function LandingPage() {
         {/* Background glow */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full opacity-20"
-            style={{ background: 'radial-gradient(circle, #6366f1 0%, transparent 70%)' }} />
+            style={{ background: 'radial-gradient(circle, #14b8a6 0%, transparent 70%)' }} />
           <div className="absolute top-1/3 left-1/4 w-[300px] h-[300px] rounded-full opacity-10"
-            style={{ background: 'radial-gradient(circle, #8b5cf6 0%, transparent 70%)' }} />
+            style={{ background: 'radial-gradient(circle, #0d9488 0%, transparent 70%)' }} />
           <div className="absolute top-1/3 right-1/4 w-[300px] h-[300px] rounded-full opacity-10"
-            style={{ background: 'radial-gradient(circle, #a855f7 0%, transparent 70%)' }} />
+            style={{ background: 'radial-gradient(circle, #0f766e 0%, transparent 70%)' }} />
           {/* Grid */}
           <div className="absolute inset-0 opacity-5"
-            style={{ backgroundImage: 'linear-gradient(rgba(99,102,241,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.5) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
+            style={{ backgroundImage: 'linear-gradient(rgba(20,184,166,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(20,184,166,0.5) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
         </div>
 
         <div className="relative max-w-4xl mx-auto text-center">
@@ -215,7 +215,7 @@ export default function LandingPage() {
 
           <h1 className="text-5xl md:text-7xl font-black text-white leading-tight mb-6 animate-slide-up">
             One Platform.{' '}
-            <span className="block" style={{ background: 'linear-gradient(135deg, #818cf8, #a78bfa, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            <span className="block" style={{ background: 'linear-gradient(135deg, #5eead4, #2dd4bf, #99f6e4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               Infinite Opportunities.
             </span>
           </h1>
@@ -228,7 +228,7 @@ export default function LandingPage() {
             <button
               onClick={() => navigate('/signup')}
               className="flex items-center gap-2 px-8 py-4 rounded-2xl font-bold text-white text-lg transition-all hover:scale-105 active:scale-95 shadow-2xl"
-              style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', boxShadow: '0 0 40px rgba(99,102,241,0.4)' }}
+              style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)', boxShadow: '0 0 40px rgba(20,184,166,0.4)' }}
             >
               Get Started Free
               <ArrowRight size={20} />
@@ -245,13 +245,13 @@ export default function LandingPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
             {stats.map((s, i) => (
               <div key={i} className="text-center p-4 rounded-2xl border border-white/5 relative"
-                style={{ background: 'rgba(99,102,241,0.05)' }}>
+                style={{ background: 'rgba(20,184,166,0.05)' }}>
                 {s.demo && (
                   <span className="absolute top-2 right-2 text-xs px-1.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/25 text-amber-400 font-semibold">
                     Demo
                   </span>
                 )}
-                <p className="text-2xl font-black" style={{ background: 'linear-gradient(135deg, #818cf8, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{s.value}</p>
+                <p className="text-2xl font-black" style={{ background: 'linear-gradient(135deg, #5eead4, #99f6e4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{s.value}</p>
                 <p className="text-xs text-slate-400 mt-1">{s.label}</p>
               </div>
             ))}
@@ -263,7 +263,7 @@ export default function LandingPage() {
       <section id="why" className="py-24 px-6">
         <div className="max-w-4xl mx-auto text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-black text-white mb-4">
-            Why <span style={{ background: 'linear-gradient(135deg, #818cf8, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Pi</span>?
+            Why <span style={{ background: 'linear-gradient(135deg, #5eead4, #99f6e4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Pi</span>?
           </h2>
           <p className="text-lg text-slate-400 max-w-2xl mx-auto">
             The internet fragmented our digital lives. We use different apps for every part of who we are. Pi unifies them with intelligence at the core.
@@ -277,7 +277,7 @@ export default function LandingPage() {
             { emoji: 'π', title: 'With Pi', items: ['One intelligent profile', 'AI-powered matching', 'Unified communities', 'Creator monetization', 'Professional growth', 'Organic SEO discovery'], bad: false },
           ].map((col, i) => (
             <div key={i} className={`p-6 rounded-2xl border ${col.bad ? 'border-white/5' : 'border-pi-500/30'}`}
-              style={{ background: col.bad ? 'rgba(255,255,255,0.02)' : 'rgba(99,102,241,0.08)' }}>
+              style={{ background: col.bad ? 'rgba(255,255,255,0.02)' : 'rgba(20,184,166,0.08)' }}>
               <div className="text-3xl mb-4">{col.emoji}</div>
               <h3 className={`font-bold text-lg mb-4 ${col.bad ? 'text-slate-400' : 'text-white'}`}>{col.title}</h3>
               <ul className="space-y-2">
@@ -294,7 +294,7 @@ export default function LandingPage() {
       </section>
 
       {/* Features */}
-      <section id="features" className="py-24 px-6" style={{ background: 'rgba(99,102,241,0.03)' }}>
+      <section id="features" className="py-24 px-6" style={{ background: 'rgba(20,184,166,0.03)' }}>
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-black text-white mb-4">Everything in One Ecosystem</h2>
@@ -319,11 +319,11 @@ export default function LandingPage() {
       <section id="seo" className="py-24 px-6">
         <div className="max-w-4xl mx-auto">
           <div className="p-8 md:p-12 rounded-3xl border border-pi-500/20"
-            style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.1), rgba(139,92,246,0.05))' }}>
+            style={{ background: 'linear-gradient(135deg, rgba(20,184,166,0.1), rgba(13,148,136,0.05))' }}>
             <div className="text-center mb-10">
               {/* Modern icon instead of emoji */}
               <div className="w-16 h-16 rounded-2xl mx-auto mb-6 flex items-center justify-center"
-                style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', boxShadow: '0 0 40px rgba(99,102,241,0.4)' }}>
+                style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)', boxShadow: '0 0 40px rgba(20,184,166,0.4)' }}>
                 <TrendingUp size={30} className="text-white" />
               </div>
               <h2 className="text-4xl font-black text-white mb-4">Grow Organically with SEO</h2>
@@ -383,7 +383,7 @@ export default function LandingPage() {
             </div>
             <h2 className="text-4xl md:text-5xl font-black text-white mb-4">
               Intelligence That Creates{' '}
-              <span style={{ background: 'linear-gradient(135deg, #818cf8, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              <span style={{ background: 'linear-gradient(135deg, #5eead4, #99f6e4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                 Real Value
               </span>
             </h2>
@@ -416,7 +416,7 @@ export default function LandingPage() {
       </section>
 
       {/* Long-Term Roadmap */}
-      <section className="py-24 px-6" style={{ background: 'rgba(99,102,241,0.03)' }}>
+      <section className="py-24 px-6" style={{ background: 'rgba(20,184,166,0.03)' }}>
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-pi-500/30 bg-pi-500/10 text-pi-300 text-sm font-medium mb-6">
@@ -437,7 +437,7 @@ export default function LandingPage() {
                 title: 'Foundation',
                 color: 'from-indigo-500 to-violet-600',
                 border: 'border-pi-500/30',
-                bg: 'rgba(99,102,241,0.08)',
+                bg: 'rgba(20,184,166,0.08)',
                 active: true,
                 items: ['AI-native social experience', 'User experience & personalization', 'Community building', 'Early adoption & feedback'],
               },
@@ -540,7 +540,7 @@ export default function LandingPage() {
           <button
             onClick={() => navigate('/signup')}
             className="inline-flex items-center gap-3 px-10 py-5 rounded-2xl font-bold text-white text-xl transition-all hover:scale-105 active:scale-95 shadow-2xl"
-            style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', boxShadow: '0 0 60px rgba(99,102,241,0.5)' }}
+            style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)', boxShadow: '0 0 60px rgba(20,184,166,0.5)' }}
           >
             Join Pi Now
             <ArrowRight size={22} />
