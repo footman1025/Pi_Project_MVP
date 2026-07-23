@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { Eye, EyeOff, ArrowRight } from 'lucide-react'
+import { isValidEmail } from '../../lib/validation'
+import { track } from '../../lib/analytics'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -15,10 +17,18 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    const trimmed = email.trim()
+    if (!isValidEmail(trimmed)) { setError('Please enter a valid email address.'); return }
+    if (!password) { setError('Please enter your password.'); return }
     setLoading(true)
-    const { error } = await signIn(email, password)
+    const { error } = await signIn(trimmed, password)
     setLoading(false)
-    if (error) { setError(error.message); return }
+    if (error) {
+      setError(error.message)
+      track('login_failed')
+      return
+    }
+    track('login_success')
     navigate('/dashboard')
   }
 

@@ -14,8 +14,15 @@ export default function ProfessionalPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="mb-8">
-        <h1 className="font-display text-3xl font-extrabold text-white mb-2">Professional Hub</h1>
-        <p className="text-slate-400">Discover professionals, book sessions, and collaborate across borders with AI-powered matching.</p>
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
+          <h1 className="font-display text-3xl font-extrabold text-white">Professional Hub</h1>
+          <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/25 text-amber-400 font-semibold">
+            Preview
+          </span>
+        </div>
+        <p className="text-slate-400">
+          Concept marketplace for booking experts across borders. Booking and portfolios are coming — use Search, Matching, and Messages to connect with real members today.
+        </p>
       </div>
 
       {/* Category grid */}

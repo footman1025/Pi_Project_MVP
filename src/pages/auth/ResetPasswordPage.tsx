@@ -60,8 +60,12 @@ export default function ResetPasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters.')
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.')
+      return
+    }
+    if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+      setError('Password should include letters and numbers.')
       return
     }
     if (password !== confirm) {
@@ -141,7 +145,7 @@ export default function ResetPasswordPage() {
                     onChange={e => setPassword(e.target.value)}
                     required
                     minLength={6}
-                    placeholder="At least 6 characters"
+                    placeholder="At least 8 characters"
                     className="pi-input"
                   />
                 </div>

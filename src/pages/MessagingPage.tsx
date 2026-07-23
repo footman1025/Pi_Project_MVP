@@ -219,7 +219,7 @@ export default function MessagingPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-64px)] overflow-hidden">
+    <div className="flex overflow-hidden h-[calc(100dvh-8.5rem)] lg:h-[calc(100vh-4rem)]">
       {/* Left: Conversations */}
       <div className={`flex flex-col border-r border-white/5 ${selectedUser ? 'hidden md:flex' : 'flex'} w-full md:w-80 flex-shrink-0`}
         style={{ background: 'rgba(8,13,26,0.8)' }}>

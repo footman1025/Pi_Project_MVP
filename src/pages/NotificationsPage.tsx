@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { supabase, Notification } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { Bell, Heart, MessageCircle, UserPlus, Loader2, CheckCheck } from 'lucide-react'
+import LoadingSpinner from '../components/LoadingSpinner'
+import StateMessage from '../components/StateMessage'
 
 function timeAgo(date: string) {
   const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
@@ -109,13 +111,14 @@ export default function NotificationsPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16"><Loader2 size={32} className="animate-spin text-pi-400" /></div>
+        <LoadingSpinner className="py-16" label="Loading notifications…" />
       ) : notifications.length === 0 ? (
-        <div className="text-center py-16">
-          <Bell size={48} className="text-slate-700 mx-auto mb-4" />
-          <h3 className="text-white font-bold mb-2">No notifications yet</h3>
-          <p className="text-slate-400 text-sm">When people like your posts, comment, or follow you, you'll see it here.</p>
-        </div>
+        <StateMessage
+          variant="empty"
+          title="No notifications yet"
+          description="When people like your posts, comment, or follow you, you’ll see it here."
+          icon={Bell}
+        />
       ) : (
         <div className="space-y-2">
           {notifications.map(n => {

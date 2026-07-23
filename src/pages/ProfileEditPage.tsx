@@ -10,6 +10,9 @@ import { onboardingRoles, onboardingInterests, onboardingGoals } from '../data/m
 import { normalizeUsername } from '../lib/posts'
 import { uploadAvatar } from '../lib/avatarUpload'
 import UserAvatar from '../components/UserAvatar'
+import { buildProfileSummary } from '../lib/aiSummary'
+import { isValidWebsite, normalizeWebsite } from '../lib/validation'
+import { track } from '../lib/analytics'
 
 const emptyExp = (): Experience => ({
   id: crypto.randomUUID(),
@@ -94,14 +97,19 @@ export default function ProfileEditPage() {
 
   const generateAISummary = async () => {
     setGeneratingAI(true)
-    await new Promise(r => setTimeout(r, 1800))
+    await new Promise(r => setTimeout(r, 1200))
     const skillsList = skills.split(',').map(s => s.trim()).filter(Boolean)
-    const expLine = experience.length > 0
-      ? ` Previously worked at ${experience.map(e => e.company).filter(Boolean).join(', ')}.`
-      : ''
-    const summary = `${fullName || 'This user'} is ${role ? `an ambitious ${role}` : 'a driven professional'} focused on ${interests.slice(0, 2).join(' and ') || 'innovation and technology'}.${expLine} ${skillsList.length ? `Key strengths include ${skillsList.slice(0, 3).join(', ')}.` : ''} ${goals.length ? `Currently pursuing goals to ${goals[0].toLowerCase()}.` : ''} Pi recommends connecting with like-minded professionals, investors, and collaborators.`
+    const summary = buildProfileSummary({
+      fullName,
+      role,
+      interests,
+      goals,
+      skills: skillsList,
+      experience,
+    })
     setAiSummary(summary)
     setGeneratingAI(false)
+    track('ai_summary_generated', { role: role || undefined, skills: skillsList.length })
   }
 
   const handleSave = async () => {
@@ -115,13 +123,18 @@ export default function ProfileEditPage() {
       setSaving(false)
       return
     }
+    if (!isValidWebsite(website)) {
+      setError('Please enter a valid website URL (e.g. yoursite.com).')
+      setSaving(false)
+      return
+    }
     const payload = {
-      full_name: fullName,
+      full_name: fullName.trim(),
       username: nick,
       bio,
       role,
       location,
-      website,
+      website: website.trim() ? normalizeWebsite(website) : '',
       skills: skillsArr,
       interests,
       goals,
@@ -140,6 +153,7 @@ export default function ProfileEditPage() {
     setSaving(false)
     if (error) { setError(error.message); return }
     await refreshProfile()
+    track('profile_saved', { has_summary: !!aiSummary, skills: skillsArr.length })
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
   }

@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { Eye, EyeOff, Sparkles, ArrowRight } from 'lucide-react'
+import { isValidEmail, validatePassword } from '../../lib/validation'
+import { track } from '../../lib/analytics'
 
 export default function SignUpPage() {
   const navigate = useNavigate()
@@ -17,11 +19,21 @@ export default function SignUpPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    if (password.length < 6) { setError('Password must be at least 6 characters.'); return }
+    const name = fullName.trim()
+    const trimmedEmail = email.trim()
+    if (name.length < 2) { setError('Please enter your full name.'); return }
+    if (!isValidEmail(trimmedEmail)) { setError('Please enter a valid email address.'); return }
+    const passErr = validatePassword(password)
+    if (passErr) { setError(passErr); return }
     setLoading(true)
-    const { error } = await signUp(email, password, fullName)
+    const { error } = await signUp(trimmedEmail, password, name)
     setLoading(false)
-    if (error) { setError(error.message); return }
+    if (error) {
+      setError(error.message)
+      track('signup_failed')
+      return
+    }
+    track('signup_success')
     setSuccess(true)
   }
 
@@ -90,7 +102,7 @@ export default function SignUpPage() {
                   <div className="relative">
                     <input
                       type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} required
-                      placeholder="At least 6 characters"
+                      placeholder="At least 8 characters"
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 pr-11 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-pi-500/50 transition-colors"
                     />
                     <button type="button" onClick={() => setShowPass(v => !v)}

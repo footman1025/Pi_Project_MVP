@@ -6,6 +6,8 @@ import { notifyPostAuthorOfLike, notifyPostAuthorOfComment } from '../lib/notifi
 import { displayName } from '../lib/posts'
 import { Heart, MessageCircle, Share2, Send, Image, Loader2, Sparkles } from 'lucide-react'
 import UserAvatar from '../components/UserAvatar'
+import LoadingSpinner from '../components/LoadingSpinner'
+import StateMessage from '../components/StateMessage'
 
 function timeAgo(date: string) {
   const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
@@ -374,18 +376,14 @@ export default function FeedPage() {
       )}
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-16">
-          <Loader2 size={32} className="animate-spin text-pi-400 mb-3" />
-          <p className="text-slate-400 text-sm">Loading feed...</p>
-        </div>
+        <LoadingSpinner className="py-16" label="Loading feed…" />
       ) : posts.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="w-14 h-14 rounded-2xl pi-mark flex items-center justify-center mx-auto mb-4">
-            <Sparkles size={26} className="text-white" />
-          </div>
-          <h3 className="text-white font-bold mb-2">No posts yet</h3>
-          <p className="text-slate-400 text-sm">Be the first to post on Pi!</p>
-        </div>
+        <StateMessage
+          variant="empty"
+          title="No posts yet"
+          description="Be the first to share something with the Pi community."
+          icon={Sparkles}
+        />
       ) : (
         <div className="space-y-4">
           {posts.map(post => (

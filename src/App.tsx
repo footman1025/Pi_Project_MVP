@@ -1,6 +1,8 @@
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { useAuth } from './contexts/AuthContext'
+import { trackPageView } from './lib/analytics'
+import LoadingSpinner from './components/LoadingSpinner'
 
 import LandingPage from './pages/LandingPage'
 import OnboardingPage from './pages/OnboardingPage'
@@ -28,14 +30,13 @@ import ProfileEditPage from './pages/ProfileEditPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth()
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center pi-atmosphere">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-display font-extrabold text-xl animate-pulse pi-mark">π</div>
-        <div className="w-5 h-5 border-2 border-pi-500/30 border-t-pi-500 rounded-full animate-spin" />
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#080d1a' }}>
+        <LoadingSpinner size="lg" label="Loading Pi…" />
       </div>
-    </div>
-  )
+    )
+  }
   if (!session) return <Navigate to="/login" replace />
   return <>{children}</>
 }
@@ -48,6 +49,7 @@ export default function App() {
     || location.pathname.startsWith('/p/')
 
   useEffect(() => { window.scrollTo(0, 0) }, [location.pathname])
+  useEffect(() => { trackPageView(location.pathname) }, [location.pathname])
 
   return (
     <div className="min-h-screen bg-dark-950 text-white">

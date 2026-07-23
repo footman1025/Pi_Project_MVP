@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutGrid, Sparkles, Briefcase, Rocket,
   UsersRound, Building2, SearchCheck, Telescope,
@@ -9,18 +9,27 @@ import {
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import UserAvatar from './UserAvatar'
+import { track } from '../lib/analytics'
 
 const navItems = [
   { to: '/dashboard', icon: LayoutGrid, label: 'Dashboard' },
   { to: '/feed', icon: Newspaper, label: 'Feed' },
-  { to: '/match', icon: Sparkles, label: 'AI Matching' },
+  { to: '/match', icon: Sparkles, label: 'Matching' },
   { to: '/opportunities', icon: Briefcase, label: 'Opportunities' },
-  { to: '/creators', icon: Rocket, label: 'Creator Hub' },
+  { to: '/creators', icon: Rocket, label: 'Creators' },
   { to: '/professionals', icon: Building2, label: 'Professionals' },
   { to: '/communities', icon: UsersRound, label: 'Communities' },
   { to: '/messages', icon: MessageCircle, label: 'Messages' },
   { to: '/search', icon: SearchCheck, label: 'Search' },
-  { to: '/vision', icon: Telescope, label: 'Pi Vision' },
+  { to: '/vision', icon: Telescope, label: 'Vision' },
+]
+
+const mobileTabs = [
+  { to: '/feed', icon: Newspaper, label: 'Feed' },
+  { to: '/match', icon: Sparkles, label: 'Match' },
+  { to: '/messages', icon: MessageCircle, label: 'Chat' },
+  { to: '/search', icon: SearchCheck, label: 'Search' },
+  { to: '/dashboard', icon: LayoutGrid, label: 'Home' },
 ]
 
 interface Props {
@@ -32,14 +41,17 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [unreadNotifs, setUnreadNotifs] = useState(0)
   const navigate = useNavigate()
+  const location = useLocation()
   const { profile, user, signOut } = useAuth()
 
+  useEffect(() => { setSidebarOpen(false) }, [location.pathname])
+
   const handleSignOut = async () => {
+    track('sign_out')
     await signOut()
     navigate('/')
   }
 
-  // Fetch unread notification count
   useEffect(() => {
     if (!user) return
     const fetchCount = async () => {
@@ -64,7 +76,6 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* Sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 w-64 flex flex-col
           border-r border-white/5
@@ -73,18 +84,16 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
           lg:relative lg:translate-x-0`}
         style={{ background: 'linear-gradient(180deg, #0d1224 0%, #080d1a 100%)' }}
       >
-        {/* Logo */}
         <div className="flex items-center gap-3 px-6 py-5 border-b border-white/5 cursor-pointer hover:bg-white/5 transition-colors"
-          onClick={() => { navigate('/'); setSidebarOpen(false) }}>
+          onClick={() => { navigate('/dashboard'); setSidebarOpen(false) }}>
           <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-lg"
-            style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+            style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
             π
           </div>
           <span className="text-white font-bold text-xl tracking-tight">Pi</span>
-          <span className="ml-auto text-xs text-pi-400 bg-pi-500/10 px-2 py-0.5 rounded-full border border-pi-500/20">Beta</span>
+          <span className="ml-auto text-xs text-teal-300 bg-teal-500/10 px-2 py-0.5 rounded-full border border-teal-500/20">Beta</span>
         </div>
 
-        {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {navItems.map(({ to, icon: Icon, label }) => (
             <NavLink
@@ -94,7 +103,7 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
                 ${isActive
-                  ? 'bg-pi-500/15 text-pi-300 border border-pi-500/20'
+                  ? 'bg-teal-500/15 text-teal-200 border border-teal-500/20'
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
                 }`
               }
@@ -105,16 +114,15 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
           ))}
         </nav>
 
-        {/* User footer */}
         <div className="px-3 py-4 border-t border-white/5 space-y-0.5">
           <button onClick={onAssistantToggle}
             className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200">
-            <BotMessageSquare size={18} className="text-pi-400" />
+            <BotMessageSquare size={18} className="text-teal-400" />
             AI Assistant
             <span className="ml-auto w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
           </button>
           <NavLink to="/profile/edit" onClick={() => setSidebarOpen(false)}
-            className={({ isActive }) => `flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive ? 'bg-pi-500/15 text-pi-300' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
+            className={({ isActive }) => `flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive ? 'bg-teal-500/15 text-teal-200' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
             <UserCog size={18} />
             Edit Profile
           </NavLink>
@@ -124,14 +132,8 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
             Sign Out
           </button>
 
-          {/* User info */}
           <div className="flex items-center gap-3 px-3 py-3 mt-2 rounded-xl bg-white/3">
-            <UserAvatar
-              url={profile?.avatar_url}
-              name={displayName}
-              id={user?.id}
-              size={32}
-            />
+            <UserAvatar url={profile?.avatar_url} name={displayName} id={user?.id} size={32} />
             <div className="flex-1 min-w-0">
               <p className="text-white text-xs font-semibold truncate">{displayName}</p>
               <p className="text-slate-500 text-xs truncate">{profile?.role || 'Pi Member'}</p>
@@ -140,55 +142,71 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
         </div>
       </aside>
 
-      {/* Overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Topbar */}
-        <header className="flex items-center gap-4 px-4 lg:px-6 h-16 border-b border-white/5 flex-shrink-0"
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <header className="flex items-center gap-3 px-4 lg:px-6 h-14 sm:h-16 border-b border-white/5 flex-shrink-0"
           style={{ background: 'rgba(8,13,26,0.95)', backdropFilter: 'blur(12px)' }}>
-          <button className="lg:hidden text-slate-400 hover:text-white"
-            onClick={() => setSidebarOpen(o => !o)}>
+          <button className="lg:hidden text-slate-400 hover:text-white p-1"
+            onClick={() => setSidebarOpen(o => !o)} aria-label="Open menu">
             {sidebarOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
 
-          <div className="flex-1" />
+          <div className="flex-1 min-w-0">
+            <p className="lg:hidden text-white text-sm font-semibold truncate">
+              {navItems.find(n => location.pathname.startsWith(n.to))?.label || 'Pi'}
+            </p>
+          </div>
 
           <button onClick={onAssistantToggle}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-pi-500/10 border border-pi-500/20 text-pi-300 text-sm font-medium hover:bg-pi-500/20 transition-all">
+            className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-200 text-sm font-medium hover:bg-teal-500/20 transition-all">
             <ScanFace size={16} />
             <span className="hidden sm:inline">Ask AI</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
           </button>
 
           <NavLink to="/notifications" className="relative text-slate-400 hover:text-white transition-colors p-2">
             <Bell size={20} />
             {unreadNotifs > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-pi-500 text-white text-xs flex items-center justify-center font-bold">
+              <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-teal-500 text-white text-xs flex items-center justify-center font-bold">
                 {unreadNotifs > 9 ? '9+' : unreadNotifs}
               </span>
             )}
           </NavLink>
 
-          <NavLink to="/profile/edit" className="hover:opacity-80 transition-opacity">
-            <UserAvatar
-              url={profile?.avatar_url}
-              name={displayName}
-              id={user?.id}
-              size={36}
-            />
+          <NavLink to="/profile/edit" className="hover:opacity-80 transition-opacity hidden sm:block">
+            <UserAvatar url={profile?.avatar_url} name={displayName} id={user?.id} size={36} />
           </NavLink>
         </header>
 
-        {/* Page content */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="animate-fade-in">
-            {children}
-          </div>
+        <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
+          <div className="animate-fade-in">{children}</div>
         </main>
+
+        <nav
+          className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-white/10 flex items-stretch justify-around px-1 pt-1"
+          style={{
+            background: 'rgba(8,13,26,0.96)',
+            backdropFilter: 'blur(16px)',
+            paddingBottom: 'max(0.35rem, env(safe-area-inset-bottom))',
+          }}
+        >
+          {mobileTabs.map(({ to, icon: Icon, label }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                `flex flex-col items-center justify-center gap-0.5 flex-1 py-2 text-[10px] font-semibold transition-colors ${
+                  isActive ? 'text-teal-300' : 'text-slate-500'
+                }`
+              }
+            >
+              <Icon size={20} />
+              {label}
+            </NavLink>
+          ))}
+        </nav>
       </div>
     </div>
   )
