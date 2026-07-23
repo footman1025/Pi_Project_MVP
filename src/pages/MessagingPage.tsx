@@ -3,10 +3,17 @@ import { useNavigate } from 'react-router-dom'
 import { supabase, Message, Profile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { notifyUserOfMessage } from '../lib/notifications'
-import { Send, Search, Loader2, MessageCircle, Smile, Sticker } from 'lucide-react'
+import { Send, Search, Loader2, MessageCircle, Smile, Sticker, Paperclip, FileText, Download, ExternalLink } from 'lucide-react'
 import UserAvatar from '../components/UserAvatar'
 import MessagePicker from '../components/MessagePicker'
 import { encodeSticker, parseSticker } from '../data/stickers'
+import {
+  uploadMessageFile,
+  encodeFileMessage,
+  parseFileMessage,
+  formatFileSize,
+  isImageFile,
+} from '../lib/messageFiles'
 
 function timeAgo(date: string) {
   const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
@@ -29,8 +36,10 @@ export default function MessagingPage() {
   const [searchResults, setSearchResults] = useState<Profile[]>([])
   const [searching, setSearching] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [uploadError, setUploadError] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!user) return
@@ -108,9 +117,8 @@ export default function MessagingPage() {
     return () => { supabase.removeChannel(channel) }
   }, [user, selectedUser])
 
-  const sendContent = async (content: string) => {
+  const insertMessage = async (content: string) => {
     if (!content.trim() || !user || !selectedUser) return
-    setSending(true)
     const msg = { sender_id: user.id, receiver_id: selectedUser.id, content: content.trim() }
     const { data } = await supabase.from('messages').insert(msg).select().single()
     if (data) {
@@ -118,9 +126,18 @@ export default function MessagingPage() {
       const actorName = profile?.full_name || user.email?.split('@')[0] || 'Someone'
       await notifyUserOfMessage(selectedUser.id, user.id, actorName)
     }
-    setSending(false)
     if (!conversations.find(c => c.id === selectedUser.id)) {
       setConversations(c => [selectedUser, ...c])
+    }
+  }
+
+  const sendContent = async (content: string) => {
+    if (!content.trim()) return
+    setSending(true)
+    try {
+      await insertMessage(content)
+    } finally {
+      setSending(false)
     }
   }
 
@@ -151,6 +168,23 @@ export default function MessagingPage() {
   const sendSticker = async (emoji: string) => {
     setPickerOpen(false)
     await sendContent(encodeSticker(emoji))
+  }
+
+  const handleFilePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !user || !selectedUser) return
+    setUploadError('')
+    setPickerOpen(false)
+    setSending(true)
+    try {
+      const attached = await uploadMessageFile(user.id, selectedUser.id, file)
+      await insertMessage(encodeFileMessage(attached))
+    } catch (err: any) {
+      setUploadError(err?.message || 'Failed to send file')
+    } finally {
+      setSending(false)
+    }
   }
 
   const searchUsers = async (q: string) => {
@@ -289,6 +323,7 @@ export default function MessagingPage() {
               {messages.map(msg => {
                 const isMe = msg.sender_id === user.id
                 const sticker = parseSticker(msg.content)
+                const file = parseFileMessage(msg.content)
                 return (
                   <div key={msg.id} className={`flex items-end gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
                     {!isMe && (
@@ -304,6 +339,40 @@ export default function MessagingPage() {
                       {sticker ? (
                         <div className={`text-5xl leading-none select-none ${isMe ? 'text-right' : 'text-left'}`} title="Sticker">
                           {sticker}
+                        </div>
+                      ) : file ? (
+                        <div className={`rounded-2xl overflow-hidden border ${isMe ? 'border-white/10' : 'border-white/10 bg-white/5'}`}
+                          style={isMe && !isImageFile(file.type) ? { background: 'linear-gradient(135deg, #14b8a6, #0d9488)' } : {}}>
+                          {isImageFile(file.type) ? (
+                            <a href={file.url} target="_blank" rel="noreferrer" className="block">
+                              <img
+                                src={file.url}
+                                alt={file.name}
+                                className="max-w-full max-h-64 object-cover block"
+                              />
+                              <div className={`flex items-center gap-2 px-3 py-2 text-xs ${isMe ? 'bg-teal-700/80 text-white' : 'bg-white/5 text-slate-300'}`}>
+                                <ExternalLink size={12} />
+                                <span className="truncate">{file.name}</span>
+                              </div>
+                            </a>
+                          ) : (
+                            <a
+                              href={file.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              download={file.name}
+                              className={`flex items-center gap-3 px-4 py-3 ${isMe ? 'text-white' : 'text-slate-200'}`}
+                            >
+                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isMe ? 'bg-white/20' : 'bg-white/10'}`}>
+                                <FileText size={18} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold truncate">{file.name}</p>
+                                <p className={`text-xs ${isMe ? 'text-white/70' : 'text-slate-500'}`}>{formatFileSize(file.size)}</p>
+                              </div>
+                              <Download size={16} className="flex-shrink-0 opacity-80" />
+                            </a>
+                          )}
                         </div>
                       ) : (
                         <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isMe
@@ -338,6 +407,18 @@ export default function MessagingPage() {
                 onEmoji={insertEmoji}
                 onSticker={sendSticker}
               />
+              {uploadError && (
+                <div className="mb-2 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+                  {uploadError}
+                </div>
+              )}
+              <input
+                ref={fileRef}
+                type="file"
+                className="hidden"
+                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.json,audio/*,video/mp4,video/webm"
+                onChange={handleFilePick}
+              />
               <div className="flex gap-2 items-center">
                 <button
                   type="button"
@@ -348,6 +429,15 @@ export default function MessagingPage() {
                   title="Emoji & stickers"
                 >
                   <Smile size={18} />
+                </button>
+                <button
+                  type="button"
+                  disabled={sending}
+                  onClick={() => fileRef.current?.click()}
+                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all disabled:opacity-40"
+                  title="Attach file"
+                >
+                  <Paperclip size={18} />
                 </button>
                 <div className="flex-1 relative flex items-center bg-white/5 border border-white/10 rounded-xl focus-within:border-pi-500/50 transition-colors">
                   <input
