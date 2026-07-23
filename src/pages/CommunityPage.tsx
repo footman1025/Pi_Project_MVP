@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { UsersRound, Sparkles, Loader2, Send, MessageCircle, Search as SearchIcon } from 'lucide-react'
 import { mockCommunities as mockCommData } from '../data/mockData'
 import MockIcon from '../components/MockIcon'
-import { avatarGradient, avatarInitial } from '../lib/avatar'
+import UserAvatar from '../components/UserAvatar'
 import { displayName } from '../lib/posts'
 
 const mockCommunityReasons: Record<string, string> = Object.fromEntries(
@@ -244,10 +244,12 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
             <div key={post.id} className="p-4 rounded-2xl border border-white/5 hover:border-white/10 transition-all"
               style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.4), rgba(14,20,25,0.6))' }}>
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-bold text-xs"
-                  style={{ background: avatarGradient(post.author_id) }}>
-                  {avatarInitial(displayName(post.profiles))}
-                </div>
+                <UserAvatar
+                  url={post.profiles?.avatar_url}
+                  name={displayName(post.profiles)}
+                  id={post.author_id}
+                  size={32}
+                />
                 <div>
                   <p className="text-white text-sm font-semibold">{displayName(post.profiles)}</p>
                   {post.profiles?.username && post.profiles?.full_name && (

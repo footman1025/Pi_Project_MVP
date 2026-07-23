@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+import UserAvatar from './UserAvatar'
 
 const navItems = [
   { to: '/dashboard', icon: LayoutGrid, label: 'Dashboard' },
@@ -59,7 +60,6 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
     return () => { supabase.removeChannel(channel) }
   }, [user])
 
-  const avatarLetter = profile?.full_name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || '?'
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'User'
 
   return (
@@ -126,10 +126,12 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
 
           {/* User info */}
           <div className="flex items-center gap-3 px-3 py-3 mt-2 rounded-xl bg-white/3">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
-              {avatarLetter}
-            </div>
+            <UserAvatar
+              url={profile?.avatar_url}
+              name={displayName}
+              id={user?.id}
+              size={32}
+            />
             <div className="flex-1 min-w-0">
               <p className="text-white text-xs font-semibold truncate">{displayName}</p>
               <p className="text-slate-500 text-xs truncate">{profile?.role || 'Pi Member'}</p>
@@ -171,10 +173,13 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
             )}
           </NavLink>
 
-          <NavLink to="/profile/edit"
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm hover:opacity-80 transition-opacity"
-            style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
-            {avatarLetter}
+          <NavLink to="/profile/edit" className="hover:opacity-80 transition-opacity">
+            <UserAvatar
+              url={profile?.avatar_url}
+              name={displayName}
+              id={user?.id}
+              size={36}
+            />
           </NavLink>
         </header>
 

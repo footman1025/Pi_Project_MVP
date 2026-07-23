@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase, Experience } from '../lib/supabase'
 import {
   Check, Sparkles, User, MapPin, Globe2, Briefcase,
-  Plus, Trash2, Building2, CalendarDays
+  Plus, Trash2, Building2, CalendarDays, Camera, Loader2
 } from 'lucide-react'
 import { onboardingRoles, onboardingInterests, onboardingGoals } from '../data/mockData'
 import { normalizeUsername } from '../lib/posts'
+import { uploadAvatar } from '../lib/avatarUpload'
+import UserAvatar from '../components/UserAvatar'
 
 const emptyExp = (): Experience => ({
   id: crypto.randomUUID(),
@@ -37,6 +39,9 @@ export default function ProfileEditPage() {
   const [error, setError] = useState('')
   const [generatingAI, setGeneratingAI] = useState(false)
   const [aiSummary, setAiSummary] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (profile) {
@@ -51,8 +56,31 @@ export default function ProfileEditPage() {
       setGoals(profile.goals || [])
       setExperience(profile.experience || [])
       setAiSummary(profile.ai_summary || '')
+      setAvatarUrl(profile.avatar_url || null)
     }
   }, [profile])
+
+  const handleAvatarPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !user) return
+    setError('')
+    setUploadingAvatar(true)
+    try {
+      const url = await uploadAvatar(user.id, file)
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: url, updated_at: new Date().toISOString() })
+        .eq('id', user.id)
+      if (updateError) throw new Error(updateError.message)
+      setAvatarUrl(url)
+      await refreshProfile()
+    } catch (err: any) {
+      setError(err?.message || 'Failed to upload avatar')
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
 
   const toggleItem = (arr: string[], setArr: (v: string[]) => void, val: string) => {
     setArr(arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val])
@@ -135,6 +163,46 @@ export default function ProfileEditPage() {
           <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
             <User size={18} className="text-pi-400" /> Basic Info
           </h2>
+
+          {/* Avatar upload */}
+          <div className="flex items-center gap-4 mb-6 pb-6 border-b border-white/5">
+            <div className="relative">
+              <UserAvatar
+                url={avatarUrl}
+                name={fullName || username}
+                id={user?.id}
+                size={80}
+                rounded="rounded-2xl"
+              />
+              {uploadingAvatar && (
+                <div className="absolute inset-0 rounded-2xl bg-black/50 flex items-center justify-center">
+                  <Loader2 size={22} className="animate-spin text-white" />
+                </div>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-white font-semibold text-sm mb-1">Profile photo</p>
+              <p className="text-slate-500 text-xs mb-3">JPG, PNG, WEBP or GIF · max 2 MB</p>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                onChange={handleAvatarPick}
+              />
+              <button
+                type="button"
+                disabled={uploadingAvatar || !user}
+                onClick={() => fileRef.current?.click()}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50 transition-all hover:opacity-90"
+                style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+              >
+                <Camera size={15} />
+                {uploadingAvatar ? 'Uploading…' : avatarUrl ? 'Change photo' : 'Upload photo'}
+              </button>
+            </div>
+          </div>
+
           <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Full Name</label>

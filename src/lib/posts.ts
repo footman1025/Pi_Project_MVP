@@ -48,6 +48,7 @@ export function normalizeUsername(raw: string): string {
   return raw
     .trim()
     .toLowerCase()
+    .replace(/^@+/, '')
     .replace(/\s+/g, '_')
     .replace(/[^a-z0-9_]/g, '')
     .slice(0, 30)

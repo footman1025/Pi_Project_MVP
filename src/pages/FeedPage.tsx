@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { supabase, Post, Comment, Profile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { notifyPostAuthorOfLike, notifyPostAuthorOfComment } from '../lib/notifications'
-import { avatarGradient, avatarInitial } from '../lib/avatar'
 import { displayName } from '../lib/posts'
 import { Heart, MessageCircle, Share2, Send, Image, Loader2, Sparkles } from 'lucide-react'
+import UserAvatar from '../components/UserAvatar'
 
 function timeAgo(date: string) {
   const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
@@ -30,7 +30,6 @@ function PostCard({ post, onLike, onComment, actorName }: {
 
   const name = displayName(post.profiles)
   const role = post.profiles?.role || ''
-  const authorKey = post.author_id || name
 
   const loadComments = async () => {
     setLoadingComments(true)
@@ -69,10 +68,12 @@ function PostCard({ post, onLike, onComment, actorName }: {
     <div className="p-5 rounded-2xl border border-white/5 hover:border-white/10 transition-all"
       style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.4), rgba(14,20,25,0.6))' }}>
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold flex-shrink-0"
-          style={{ background: avatarGradient(authorKey) }}>
-          {avatarInitial(name)}
-        </div>
+        <UserAvatar
+          url={post.profiles?.avatar_url}
+          name={name}
+          id={post.author_id}
+          size={40}
+        />
         <div className="flex-1">
           <p className="text-white font-semibold text-sm">{name}</p>
           <div className="flex items-center gap-2 text-xs text-slate-500">
@@ -110,10 +111,13 @@ function PostCard({ post, onLike, onComment, actorName }: {
               {comments.length === 0 && <p className="text-slate-500 text-xs text-center py-2">No comments yet. Be the first!</p>}
               {comments.map(c => (
                 <div key={c.id} className="flex gap-2">
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                    style={{ background: avatarGradient(c.author_id) }}>
-                    {avatarInitial(c.profiles?.full_name)}
-                  </div>
+                  <UserAvatar
+                    url={c.profiles?.avatar_url}
+                    name={c.profiles?.full_name}
+                    id={c.author_id}
+                    size={28}
+                    rounded="rounded-lg"
+                  />
                   <div className="flex-1 bg-white/5 rounded-xl px-3 py-2">
                     <span className="text-white text-xs font-semibold">{c.profiles?.full_name || 'Member'} </span>
                     <span className="text-slate-300 text-xs">{c.content}</span>

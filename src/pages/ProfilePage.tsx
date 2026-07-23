@@ -7,6 +7,7 @@ import {
 import { useAuth } from '../contexts/AuthContext'
 import { supabase, Profile } from '../lib/supabase'
 import { notifyUserOfFollow } from '../lib/notifications'
+import UserAvatar from '../components/UserAvatar'
 
 function applySeo(profile: Profile, username: string) {
   const title = `${profile.full_name || username} — ${profile.role || 'Pi Member'} | Pi`
@@ -98,7 +99,6 @@ export default function ProfilePage() {
 
   const isLoggedIn = !!session
   const isOwn = !!(user && profile && user.id === profile.id)
-  const avatarLetter = authProfile?.full_name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || '?'
   const displayName = authProfile?.full_name || user?.email?.split('@')[0] || 'You'
 
   useEffect(() => {
@@ -196,7 +196,13 @@ export default function ProfilePage() {
             <div className="relative">
               <button onClick={() => setDropdownOpen(o => !o)}
                 className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.07] transition-all">
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-xs pi-mark">{avatarLetter}</div>
+                <UserAvatar
+                  url={authProfile?.avatar_url}
+                  name={displayName}
+                  id={user?.id}
+                  size={28}
+                  rounded="rounded-lg"
+                />
                 <span className="text-white text-sm font-medium hidden sm:inline max-w-[100px] truncate">{displayName}</span>
                 <ChevronDown size={14} className={`text-slate-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
               </button>
@@ -261,9 +267,14 @@ export default function ProfilePage() {
           <>
             <div className="p-6 rounded-3xl border border-white/[0.06] mb-6 pi-card">
               <div className="flex items-start gap-5">
-                <div className="w-20 h-20 rounded-3xl pi-mark flex items-center justify-center text-white font-display font-extrabold text-4xl flex-shrink-0 shadow-lg shadow-pi-500/20">
-                  {(profile.full_name || profile.username || '?').charAt(0).toUpperCase()}
-                </div>
+                <UserAvatar
+                  url={profile.avatar_url}
+                  name={profile.full_name || profile.username}
+                  id={profile.id}
+                  size={80}
+                  rounded="rounded-3xl"
+                  className="shadow-lg shadow-pi-500/20"
+                />
                 <div className="flex-1 min-w-0">
                   <h1 className="font-display text-2xl font-extrabold text-white mb-1">
                     {profile.full_name || profile.username}
