@@ -216,3 +216,6 @@ alter publication supabase_realtime add table public.notifications;
 alter publication supabase_realtime add table public.posts;
 alter publication supabase_realtime add table public.likes;
 alter publication supabase_realtime add table public.comments;
+
+-- Followers / notifications: also run supabase_triggers.sql for DB-side
+-- notification creation and follower count updates.

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase, Message, Profile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { notifyUserOfMessage } from '../lib/notifications'
 import { Send, Search, Loader2, MessageCircle } from 'lucide-react'
 
 function timeAgo(date: string) {
@@ -106,7 +107,11 @@ export default function MessagingPage() {
     setSending(true)
     const msg = { sender_id: user.id, receiver_id: selectedUser.id, content: newMsg.trim() }
     const { data } = await supabase.from('messages').insert(msg).select().single()
-    if (data) setMessages(m => [...m, data])
+    if (data) {
+      setMessages(m => [...m, data])
+      const actorName = profile?.full_name || user.email?.split('@')[0] || 'Someone'
+      await notifyUserOfMessage(selectedUser.id, user.id, actorName)
+    }
     setNewMsg('')
     setSending(false)
     // Add to conversations if not there

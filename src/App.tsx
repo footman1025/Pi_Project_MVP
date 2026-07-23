@@ -8,6 +8,7 @@ import ProfilePage from './pages/ProfilePage'
 import SignUpPage from './pages/auth/SignUpPage'
 import LoginPage from './pages/auth/LoginPage'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
+import ResetPasswordPage from './pages/auth/ResetPasswordPage'
 
 import AppShell from './components/AppShell'
 import AiAssistant from './components/AiAssistant'
@@ -28,10 +29,9 @@ import ProfileEditPage from './pages/ProfileEditPage'
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth()
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: '#080d1a' }}>
+    <div className="min-h-screen flex items-center justify-center pi-atmosphere">
       <div className="flex flex-col items-center gap-3">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-xl animate-pulse"
-          style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>π</div>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-display font-extrabold text-xl animate-pulse pi-mark">π</div>
         <div className="w-5 h-5 border-2 border-pi-500/30 border-t-pi-500 rounded-full animate-spin" />
       </div>
     </div>
@@ -44,7 +44,7 @@ export default function App() {
   const location = useLocation()
   const [assistantOpen, setAssistantOpen] = useState(false)
 
-  const isPublic = ['/', '/onboarding', '/login', '/signup', '/forgot-password'].includes(location.pathname)
+  const isPublic = ['/', '/onboarding', '/login', '/signup', '/forgot-password', '/reset-password'].includes(location.pathname)
     || location.pathname.startsWith('/p/')
 
   useEffect(() => { window.scrollTo(0, 0) }, [location.pathname])
@@ -58,6 +58,7 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/p/:username" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

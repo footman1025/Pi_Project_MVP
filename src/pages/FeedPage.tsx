@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase, Post, Comment } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { Heart, MessageCircle, Share2, Send, Image, X, Loader2 } from 'lucide-react'
+import { notifyPostAuthorOfLike, notifyPostAuthorOfComment } from '../lib/notifications'
+import { Heart, MessageCircle, Share2, Send, Image, X, Loader2, Sparkles } from 'lucide-react'
 
 function timeAgo(date: string) {
   const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
@@ -12,7 +13,12 @@ function timeAgo(date: string) {
   return `${Math.floor(s / 86400)}d ago`
 }
 
-function PostCard({ post, onLike, onComment }: { post: Post, onLike: (id: string, liked: boolean) => void, onComment: (id: string) => void }) {
+function PostCard({ post, onLike, onComment, actorName }: {
+  post: Post
+  onLike: (id: string, liked: boolean) => void
+  onComment: (id: string) => void
+  actorName: string
+}) {
   const { user } = useAuth()
   const [comments, setComments] = useState<Comment[]>([])
   const [showComments, setShowComments] = useState(false)
@@ -44,6 +50,7 @@ function PostCard({ post, onLike, onComment }: { post: Post, onLike: (id: string
     if (!commentText.trim() || !user) return
     setSubmitting(true)
     await supabase.from('comments').insert({ post_id: post.id, author_id: user.id, content: commentText.trim() })
+    await notifyPostAuthorOfComment(post.id, user.id, actorName)
     setCommentText('')
     await loadComments()
     setSubmitting(false)
@@ -132,12 +139,13 @@ function PostCard({ post, onLike, onComment }: { post: Post, onLike: (id: string
 }
 
 export default function FeedPage() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const navigate = useNavigate()
   const [posts, setPosts] = useState<Post[]>([])
   const [newPost, setNewPost] = useState('')
   const [loading, setLoading] = useState(true)
   const [posting, setPosting] = useState(false)
+  const actorName = profile?.full_name || user?.email?.split('@')[0] || 'Someone'
 
   const fetchPosts = async () => {
     const { data } = await supabase
@@ -188,6 +196,7 @@ export default function FeedPage() {
       await supabase.from('likes').delete().eq('post_id', postId).eq('user_id', user.id)
     } else {
       await supabase.from('likes').insert({ post_id: postId, user_id: user.id })
+      await notifyPostAuthorOfLike(postId, user.id, actorName)
     }
     setPosts(ps => ps.map(p => p.id === postId ? { ...p, liked: !liked, likes_count: liked ? p.likes_count - 1 : p.likes_count + 1 } : p))
   }
@@ -243,14 +252,16 @@ export default function FeedPage() {
         </div>
       ) : posts.length === 0 ? (
         <div className="text-center py-16">
-          <div className="text-5xl mb-4">✨</div>
+          <div className="w-14 h-14 rounded-2xl pi-mark flex items-center justify-center mx-auto mb-4">
+            <Sparkles size={26} className="text-white" />
+          </div>
           <h3 className="text-white font-bold mb-2">No posts yet</h3>
           <p className="text-slate-400 text-sm">Be the first to post on Pi!</p>
         </div>
       ) : (
         <div className="space-y-4">
           {posts.map(post => (
-            <PostCard key={post.id} post={post} onLike={handleLike} onComment={handleComment} />
+            <PostCard key={post.id} post={post} onLike={handleLike} onComment={handleComment} actorName={actorName} />
           ))}
         </div>
       )}

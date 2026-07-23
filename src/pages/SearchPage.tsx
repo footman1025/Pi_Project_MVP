@@ -237,6 +237,7 @@ export default function SearchPage() {
               <div className="space-y-3">
                 {people.map(p => (
                   <div key={p.id}
+                    onClick={() => p.username && navigate(`/p/${p.username}`)}
                     className="flex items-center gap-4 p-4 rounded-2xl border border-white/5 hover:border-pi-500/20 transition-all cursor-pointer group"
                     style={{ background: 'rgba(14,20,25,0.3)' }}>
                     <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
@@ -248,6 +249,9 @@ export default function SearchPage() {
                         <p className="text-white font-semibold text-sm">{p.full_name || 'Pi Member'}</p>
                         {p.role && (
                           <span className="text-xs text-slate-500 bg-white/5 px-2 py-0.5 rounded-full">{p.role}</span>
+                        )}
+                        {p.username && (
+                          <span className="text-xs text-slate-600">@{p.username}</span>
                         )}
                       </div>
                       {p.bio && <p className="text-slate-500 text-xs truncate mt-0.5">{p.bio}</p>}
@@ -267,9 +271,10 @@ export default function SearchPage() {
                       )}
                     </div>
                     <button
+                      onClick={(e) => { e.stopPropagation(); p.username && navigate(`/p/${p.username}`) }}
                       className="flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition-all"
                       style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
-                      Connect
+                      View
                     </button>
                   </div>
                 ))}

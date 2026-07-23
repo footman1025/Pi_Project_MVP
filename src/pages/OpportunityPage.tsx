@@ -1,15 +1,28 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Briefcase, Sparkles, Clock4, ChevronDown, ChevronUp } from 'lucide-react'
 import { mockOpportunities } from '../data/mockData'
 import MockIcon from '../components/MockIcon'
+import { useAuth } from '../contexts/AuthContext'
+import { opportunityReasonForUser } from '../lib/matching'
 
 const categories = ['All', 'Competition', 'Funding', 'Community', 'Co-founder', 'Talent', 'Accelerator']
 
 export default function OpportunityPage() {
+  const { profile } = useAuth()
   const [active, setActive] = useState('All')
   const [expandedId, setExpandedId] = useState<number | null>(null)
 
   const filtered = active === 'All' ? mockOpportunities : mockOpportunities.filter(o => o.category === active)
+
+  const withReasons = useMemo(() =>
+    filtered.map(o => ({
+      ...o,
+      personalizedReason: opportunityReasonForUser(profile, o.aiReason, o.title),
+      personalizedMatch: profile
+        ? Math.min(99, o.match - 4 + (profile.goals?.length ? 3 : 0) + (profile.interests?.length ? 2 : 0) + (profile.role ? 2 : 0))
+        : o.match,
+    })),
+  [filtered, profile])
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -19,12 +32,13 @@ export default function OpportunityPage() {
           <h1 className="font-display text-3xl font-extrabold text-white">Opportunity Hub</h1>
         </div>
         <p className="text-slate-400">
-          Pi Intelligence curates opportunities matched to your profile and goals.{' '}
-          <span className="text-amber-400 text-xs font-semibold border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 rounded-full ml-1">Demo data</span>
+          Curated opportunities with reasons tailored to your Pi profile.{' '}
+          <span className="text-amber-400 text-xs font-semibold border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 rounded-full ml-1">
+            Catalog demo · reasons personalized
+          </span>
         </p>
       </div>
 
-      {/* Category filter */}
       <div className="flex gap-2 overflow-x-auto pb-2 mb-8">
         {categories.map(c => (
           <button key={c} onClick={() => setActive(c)}
@@ -36,14 +50,11 @@ export default function OpportunityPage() {
         ))}
       </div>
 
-      {/* Opportunity grid */}
       <div className="grid md:grid-cols-2 gap-4">
-        {filtered.map((o, i) => (
+        {withReasons.map((o, i) => (
           <div key={o.id}
             className={`rounded-2xl border bg-gradient-to-br ${o.color} ${o.border} transition-all duration-300 animate-fade-in`}
             style={{ animationDelay: `${i * 80}ms` }}>
-
-            {/* Main content */}
             <div className="p-5">
               <div className="flex items-start gap-4">
                 <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${o.iconColor} flex items-center justify-center flex-shrink-0`}>
@@ -58,13 +69,12 @@ export default function OpportunityPage() {
                       <Clock4 size={11} />{o.deadline}
                     </span>
                     <span className="flex items-center gap-1 text-xs text-emerald-400 font-semibold ml-auto">
-                      <Sparkles size={11} />{o.match}% match
+                      <Sparkles size={11} />{o.personalizedMatch}% match
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Why button */}
               <button
                 onClick={() => setExpandedId(expandedId === o.id ? null : o.id)}
                 className="mt-4 w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-pi-300 bg-black/20 border border-pi-500/20 hover:bg-pi-500/10 transition-all">
@@ -76,7 +86,6 @@ export default function OpportunityPage() {
               </button>
             </div>
 
-            {/* AI Reasoning panel */}
             {expandedId === o.id && (
               <div className="px-5 pb-5 animate-fade-in">
                 <div className="p-4 rounded-xl border border-pi-500/20 bg-black/20">
@@ -84,7 +93,7 @@ export default function OpportunityPage() {
                     <Sparkles size={13} className="text-pi-400" />
                     <p className="text-pi-300 text-xs font-bold uppercase tracking-wider">Pi Intelligence</p>
                   </div>
-                  <p className="text-slate-300 text-sm leading-relaxed">{o.aiReason}</p>
+                  <p className="text-slate-300 text-sm leading-relaxed">{o.personalizedReason}</p>
                 </div>
               </div>
             )}
