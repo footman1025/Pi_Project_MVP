@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   MapPin, Globe2, Star, Code2, ChevronDown, ChevronUp, ExternalLink,
   LayoutGrid, UserCog, LogOut, Bell, UserPlus, UserCheck, Loader2, MessageCircle, Sparkles
@@ -96,10 +96,25 @@ export default function ProfilePage() {
   const [following, setFollowing] = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
   const [seo, setSeo] = useState<ReturnType<typeof applySeo> | null>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const isLoggedIn = !!session
   const isOwn = !!(user && profile && user.id === profile.id)
   const displayName = authProfile?.full_name || user?.email?.split('@')[0] || 'You'
+
+  useEffect(() => {
+    if (!dropdownOpen) return
+    const onPointerDown = (e: MouseEvent | TouchEvent) => {
+      const el = dropdownRef.current
+      if (el && !el.contains(e.target as Node)) setDropdownOpen(false)
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('touchstart', onPointerDown)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('touchstart', onPointerDown)
+    }
+  }, [dropdownOpen])
 
   useEffect(() => {
     let cancelled = false
@@ -193,7 +208,7 @@ export default function ProfilePage() {
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white pi-mark">
               <LayoutGrid size={15} /> Dashboard
             </button>
-            <div className="relative">
+            <div className="relative" ref={dropdownRef}>
               <button onClick={() => setDropdownOpen(o => !o)}
                 className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.07] transition-all">
                 <UserAvatar
@@ -207,8 +222,6 @@ export default function ProfilePage() {
                 <ChevronDown size={14} className={`text-slate-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
               </button>
               {dropdownOpen && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
                   <div className="absolute right-0 top-full mt-2 w-52 rounded-2xl border border-white/10 shadow-2xl z-20 overflow-hidden pi-panel">
                     <div className="px-4 py-3 border-b border-white/[0.06]">
                       <p className="text-white font-semibold text-sm truncate">{displayName}</p>
@@ -234,7 +247,6 @@ export default function ProfilePage() {
                       </button>
                     </div>
                   </div>
-                </>
               )}
             </div>
           </div>

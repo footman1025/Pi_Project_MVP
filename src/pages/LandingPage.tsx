@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, Sparkles, UsersRound, Globe2, BadgeCheck, ShieldCheck, TrendingUp, UserCog, LogOut, ChevronDown, Bell, LayoutGrid, UserCircle2, Bot, SearchCheck, Link2, Rocket } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
@@ -26,10 +26,26 @@ export default function LandingPage() {
   const { session, profile, user, signOut } = useAuth()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const isLoggedIn = !!session
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'You'
   const resolvedAvatar = avatarUrl || profile?.avatar_url || null
+
+  // Close account menu when clicking anywhere outside it
+  useEffect(() => {
+    if (!dropdownOpen) return
+    const onPointerDown = (e: MouseEvent | TouchEvent) => {
+      const el = dropdownRef.current
+      if (el && !el.contains(e.target as Node)) setDropdownOpen(false)
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('touchstart', onPointerDown)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('touchstart', onPointerDown)
+    }
+  }, [dropdownOpen])
 
   // Keep local avatar in sync when AuthContext profile updates
   useEffect(() => {
@@ -83,7 +99,7 @@ export default function LandingPage() {
         {isLoggedIn ? (
           /* ── Logged-in state — avatar dropdown only ── */
           <div className="flex items-center gap-2">
-            <div className="relative">
+            <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen(o => !o)}
                 className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all"
@@ -102,10 +118,6 @@ export default function LandingPage() {
 
               {/* Dropdown menu */}
               {dropdownOpen && (
-                <>
-                  {/* Backdrop */}
-                  <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
-
                   <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl border border-white/10 shadow-2xl z-20 overflow-hidden animate-slide-up"
                     style={{ background: 'linear-gradient(135deg, #0d1224, #080d1a)' }}>
 
@@ -168,7 +180,6 @@ export default function LandingPage() {
                       </button>
                     </div>
                   </div>
-                </>
               )}
             </div>
           </div>
