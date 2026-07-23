@@ -562,7 +562,7 @@ export default function MessagingPage() {
             </div>
 
             {/* Input */}
-            <div className="px-2 sm:px-4 py-3 border-t border-white/5 flex-shrink-0 relative min-w-0 w-full max-w-full overflow-hidden box-border" style={{ background: 'rgba(8,13,26,0.9)' }}>
+            <div className="px-2 sm:px-4 py-3 border-t border-white/5 flex-shrink-0 relative min-w-0 w-full max-w-full box-border" style={{ background: 'rgba(8,13,26,0.9)' }}>
               <MessagePicker
                 open={pickerOpen}
                 onClose={() => setPickerOpen(false)}
@@ -600,11 +600,14 @@ export default function MessagingPage() {
               <div className="flex gap-1.5 sm:gap-2 items-center w-full max-w-full min-w-0">
                 <button
                   type="button"
+                  onMouseDown={e => e.preventDefault()}
                   onClick={() => setPickerOpen(o => !o)}
                   className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 transition-all ${
                     pickerOpen ? 'bg-pi-500/20 text-pi-300' : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
                   }`}
                   title="Emoji & stickers"
+                  aria-expanded={pickerOpen}
+                  aria-label="Emoji and stickers"
                 >
                   <Smile size={18} />
                 </button>

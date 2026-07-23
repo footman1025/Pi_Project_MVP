@@ -26,9 +26,13 @@ export default function MessagePicker({ open, onClose, onEmoji, onSticker }: Pro
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
-    document.addEventListener('mousedown', onDoc)
-    document.addEventListener('keydown', onKey)
+    // Defer so the click that opened the picker doesn't immediately close it
+    const t = window.setTimeout(() => {
+      document.addEventListener('mousedown', onDoc)
+      document.addEventListener('keydown', onKey)
+    }, 0)
     return () => {
+      window.clearTimeout(t)
       document.removeEventListener('mousedown', onDoc)
       document.removeEventListener('keydown', onKey)
     }
@@ -61,7 +65,7 @@ export default function MessagePicker({ open, onClose, onEmoji, onSticker }: Pro
   return (
     <div
       ref={rootRef}
-      className="absolute bottom-full left-0 mb-2 w-[min(100vw-2rem,340px)] rounded-2xl border border-white/10 shadow-2xl overflow-hidden z-50 flex flex-col"
+      className="absolute bottom-full left-0 mb-2 w-[min(100%-0.5rem,340px)] max-w-[calc(100vw-1rem)] rounded-2xl border border-white/10 shadow-2xl overflow-hidden z-50 flex flex-col"
       style={{ height: 380, background: 'linear-gradient(180deg, #121a28 0%, #0c121c 100%)' }}
     >
       {/* Tabs */}
