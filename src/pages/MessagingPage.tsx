@@ -86,7 +86,7 @@ export default function MessagingPage() {
     setMessages(data || [])
   }
 
-  // Realtime messages
+  // Realtime messages — dedupe by id so own sends aren't shown twice
   useEffect(() => {
     if (!user || !selectedUser) return
     const channel = supabase
@@ -95,7 +95,7 @@ export default function MessagingPage() {
         const msg = payload.new as Message
         if ((msg.sender_id === user.id && msg.receiver_id === selectedUser.id) ||
             (msg.sender_id === selectedUser.id && msg.receiver_id === user.id)) {
-          setMessages(m => [...m, msg])
+          setMessages(m => (m.some(x => x.id === msg.id) ? m : [...m, msg]))
         }
       })
       .subscribe()
@@ -105,16 +105,16 @@ export default function MessagingPage() {
   const sendMessage = async () => {
     if (!newMsg.trim() || !user || !selectedUser) return
     setSending(true)
-    const msg = { sender_id: user.id, receiver_id: selectedUser.id, content: newMsg.trim() }
+    const content = newMsg.trim()
+    setNewMsg('')
+    const msg = { sender_id: user.id, receiver_id: selectedUser.id, content }
     const { data } = await supabase.from('messages').insert(msg).select().single()
     if (data) {
-      setMessages(m => [...m, data])
+      setMessages(m => (m.some(x => x.id === data.id) ? m : [...m, data]))
       const actorName = profile?.full_name || user.email?.split('@')[0] || 'Someone'
       await notifyUserOfMessage(selectedUser.id, user.id, actorName)
     }
-    setNewMsg('')
     setSending(false)
-    // Add to conversations if not there
     if (!conversations.find(c => c.id === selectedUser.id)) {
       setConversations(c => [selectedUser, ...c])
     }
