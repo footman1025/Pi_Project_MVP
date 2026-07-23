@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase, Post, Comment } from '../lib/supabase'
+import { supabase, Post, Comment, Profile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { notifyPostAuthorOfLike, notifyPostAuthorOfComment } from '../lib/notifications'
-import { Heart, MessageCircle, Share2, Send, Image, X, Loader2, Sparkles } from 'lucide-react'
+import { avatarGradient, avatarInitial } from '../lib/avatar'
+import { Heart, MessageCircle, Share2, Send, Image, Loader2, Sparkles } from 'lucide-react'
 
 function timeAgo(date: string) {
   const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
@@ -26,9 +27,9 @@ function PostCard({ post, onLike, onComment, actorName }: {
   const [submitting, setSubmitting] = useState(false)
   const [loadingComments, setLoadingComments] = useState(false)
 
-  const avatar = post.profiles?.full_name?.charAt(0).toUpperCase() || '?'
   const name = post.profiles?.full_name || 'Anonymous'
   const role = post.profiles?.role || ''
+  const authorKey = post.author_id || name
 
   const loadComments = async () => {
     setLoadingComments(true)
@@ -49,22 +50,27 @@ function PostCard({ post, onLike, onComment, actorName }: {
   const submitComment = async () => {
     if (!commentText.trim() || !user) return
     setSubmitting(true)
-    await supabase.from('comments').insert({ post_id: post.id, author_id: user.id, content: commentText.trim() })
-    await notifyPostAuthorOfComment(post.id, user.id, actorName)
-    setCommentText('')
-    await loadComments()
+    const { error } = await supabase.from('comments').insert({
+      post_id: post.id,
+      author_id: user.id,
+      content: commentText.trim(),
+    })
+    if (!error) {
+      await notifyPostAuthorOfComment(post.id, user.id, actorName)
+      setCommentText('')
+      await loadComments()
+      onComment(post.id)
+    }
     setSubmitting(false)
-    onComment(post.id)
   }
 
   return (
     <div className="p-5 rounded-2xl border border-white/5 hover:border-white/10 transition-all"
       style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.4), rgba(14,20,25,0.6))' }}>
-      {/* Author */}
       <div className="flex items-center gap-3 mb-4">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold flex-shrink-0"
-          style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
-          {avatar}
+          style={{ background: avatarGradient(authorKey) }}>
+          {avatarInitial(name)}
         </div>
         <div className="flex-1">
           <p className="text-white font-semibold text-sm">{name}</p>
@@ -76,10 +82,8 @@ function PostCard({ post, onLike, onComment, actorName }: {
         </div>
       </div>
 
-      {/* Content */}
       <p className="text-slate-200 text-sm leading-relaxed mb-4 whitespace-pre-wrap">{post.content}</p>
 
-      {/* Actions */}
       <div className="flex items-center gap-1 pt-3 border-t border-white/5">
         <button onClick={() => onLike(post.id, !!post.liked)}
           className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all hover:scale-105 ${post.liked ? 'text-pink-400 bg-pink-500/10' : 'text-slate-400 hover:text-pink-400 hover:bg-pink-500/10'}`}>
@@ -96,7 +100,6 @@ function PostCard({ post, onLike, onComment, actorName }: {
         </button>
       </div>
 
-      {/* Comments section */}
       {showComments && (
         <div className="mt-4 pt-4 border-t border-white/5">
           {loadingComments ? (
@@ -107,11 +110,11 @@ function PostCard({ post, onLike, onComment, actorName }: {
               {comments.map(c => (
                 <div key={c.id} className="flex gap-2">
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                    style={{ background: 'linear-gradient(135deg, #0d9488, #2dd4bf)' }}>
-                    {c.profiles?.full_name?.charAt(0).toUpperCase() || '?'}
+                    style={{ background: avatarGradient(c.author_id) }}>
+                    {avatarInitial(c.profiles?.full_name)}
                   </div>
                   <div className="flex-1 bg-white/5 rounded-xl px-3 py-2">
-                    <span className="text-white text-xs font-semibold">{c.profiles?.full_name} </span>
+                    <span className="text-white text-xs font-semibold">{c.profiles?.full_name || 'Member'} </span>
                     <span className="text-slate-300 text-xs">{c.content}</span>
                     <p className="text-slate-600 text-xs mt-0.5">{timeAgo(c.created_at)}</p>
                   </div>
@@ -139,55 +142,169 @@ function PostCard({ post, onLike, onComment, actorName }: {
 }
 
 export default function FeedPage() {
-  const { user, profile } = useAuth()
+  const { user, profile, refreshProfile } = useAuth()
   const navigate = useNavigate()
   const [posts, setPosts] = useState<Post[]>([])
   const [newPost, setNewPost] = useState('')
   const [loading, setLoading] = useState(true)
   const [posting, setPosting] = useState(false)
+  const [error, setError] = useState('')
   const actorName = profile?.full_name || user?.email?.split('@')[0] || 'Someone'
 
-  const fetchPosts = async () => {
-    const { data } = await supabase
+  const fetchPosts = useCallback(async () => {
+    let list: Post[] = []
+    let fetchError: { message: string } | null = null
+
+    const withProfiles = await supabase
       .from('posts')
       .select('*, profiles(full_name, role, avatar_url)')
-      .is('community_id', null)
       .order('created_at', { ascending: false })
-      .limit(30)
+      .limit(80)
 
-    if (!data) { setLoading(false); return }
+    if (withProfiles.error) {
+      const plain = await supabase
+        .from('posts')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(80)
+      list = (plain.data as Post[] | null) || []
+      fetchError = plain.error
+    } else {
+      list = (withProfiles.data as Post[] | null) || []
+    }
 
-    if (user) {
+    // Main feed = posts not tied to a community
+    list = list.filter(p => !p.community_id)
+
+    if (fetchError) {
+      setError(fetchError.message)
+      setLoading(false)
+      return
+    }
+
+    if (user && list.length > 0) {
       const { data: likes } = await supabase
         .from('likes')
         .select('post_id')
         .eq('user_id', user.id)
       const likedIds = new Set((likes || []).map(l => l.post_id))
-      setPosts(data.map(p => ({ ...p, liked: likedIds.has(p.id) })))
+      setPosts(list.map(p => ({ ...p, liked: likedIds.has(p.id) })))
     } else {
-      setPosts(data)
+      setPosts(list)
     }
     setLoading(false)
-  }
+  }, [user])
 
-  useEffect(() => { fetchPosts() }, [user])
+  useEffect(() => {
+    setLoading(true)
+    fetchPosts()
+  }, [fetchPosts])
 
-  // Realtime subscription
   useEffect(() => {
     const channel = supabase
       .channel('public:posts')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, () => fetchPosts())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, () => {
+        fetchPosts()
+      })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [])
+  }, [fetchPosts])
+
+  const ensureProfile = async (): Promise<Profile | null> => {
+    if (!user) return null
+    if (profile) return profile
+
+    const { data: existing } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (existing) {
+      await refreshProfile()
+      return existing
+    }
+
+    const fullName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Pi Member'
+    const username = String(fullName).toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') || `user_${user.id.slice(0, 8)}`
+    const { data: created, error: createErr } = await supabase
+      .from('profiles')
+      .insert({
+        id: user.id,
+        full_name: fullName,
+        username,
+      })
+      .select()
+      .single()
+
+    if (createErr) {
+      // Race: profile may have been created by trigger
+      const { data: again } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
+      if (again) {
+        await refreshProfile()
+        return again
+      }
+      throw new Error(createErr.message)
+    }
+    await refreshProfile()
+    return created
+  }
 
   const handlePost = async () => {
     if (!newPost.trim() || !user) return
     setPosting(true)
-    await supabase.from('posts').insert({ author_id: user.id, content: newPost.trim() })
-    setNewPost('')
-    await fetchPosts()
-    setPosting(false)
+    setError('')
+    const content = newPost.trim()
+
+    try {
+      const me = await ensureProfile()
+      if (!me) throw new Error('Could not load your profile. Try signing out and back in.')
+
+      const { data, error: insertError } = await supabase
+        .from('posts')
+        .insert({ author_id: user.id, content })
+        .select('*')
+        .single()
+
+      if (insertError || !data) {
+        throw new Error(insertError?.message || 'Failed to create post')
+      }
+
+      const newItem: Post = {
+        ...(data as Post),
+        profiles: {
+          id: me.id,
+          username: me.username,
+          full_name: me.full_name,
+          avatar_url: me.avatar_url,
+          bio: me.bio,
+          role: me.role,
+          location: me.location,
+          website: me.website,
+          skills: me.skills,
+          interests: me.interests,
+          goals: me.goals,
+          ai_summary: me.ai_summary,
+          experience: me.experience,
+          followers_count: me.followers_count,
+          following_count: me.following_count,
+          posts_count: me.posts_count,
+          created_at: me.created_at,
+        },
+        liked: false,
+        likes_count: data.likes_count ?? 0,
+        comments_count: data.comments_count ?? 0,
+        shares_count: data.shares_count ?? 0,
+      }
+
+      setNewPost('')
+      setPosts(ps => [newItem, ...ps.filter(p => p.id !== newItem.id)])
+      await fetchPosts()
+    } catch (e: any) {
+      setError(e?.message || 'Failed to create post')
+    } finally {
+      setPosting(false)
+    }
   }
 
   const handleLike = async (postId: string, liked: boolean) => {
@@ -212,7 +329,12 @@ export default function FeedPage() {
         <p className="text-slate-400 text-sm">Share your thoughts with the Pi community.</p>
       </div>
 
-      {/* Create post */}
+      {error && (
+        <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+          {error}
+        </div>
+      )}
+
       {user ? (
         <div className="p-4 rounded-2xl border border-white/5 mb-6" style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.5), rgba(14,20,25,0.7))' }}>
           <textarea
@@ -223,11 +345,11 @@ export default function FeedPage() {
           />
           <div className="flex items-center justify-between">
             <div className="flex gap-2">
-              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-400 hover:text-white text-xs transition-colors">
+              <button type="button" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-400 hover:text-white text-xs transition-colors">
                 <Image size={14} /> Photo
               </button>
             </div>
-            <button onClick={handlePost} disabled={posting || !newPost.trim()}
+            <button type="button" onClick={handlePost} disabled={posting || !newPost.trim()}
               className="flex items-center gap-2 px-5 py-2 rounded-xl font-semibold text-white text-sm disabled:opacity-40 transition-all hover:scale-105 active:scale-95"
               style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
               {posting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
@@ -244,7 +366,6 @@ export default function FeedPage() {
         </div>
       )}
 
-      {/* Posts */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-16">
           <Loader2 size={32} className="animate-spin text-pi-400 mb-3" />
