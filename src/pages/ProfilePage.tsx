@@ -263,7 +263,7 @@ export default function ProfilePage() {
         )}
       </nav>
 
-      <div className="px-6 pt-24 pb-12 max-w-3xl mx-auto">
+      <div className="px-4 sm:px-6 pt-24 pb-12 max-w-3xl mx-auto overflow-x-hidden">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24">
             <Loader2 size={32} className="animate-spin text-pi-400 mb-3" />
@@ -277,7 +277,7 @@ export default function ProfilePage() {
           </div>
         ) : (
           <>
-            <div className="p-6 rounded-3xl border border-white/[0.06] mb-6 pi-card">
+            <div className="p-4 sm:p-6 rounded-3xl border border-white/[0.06] mb-6 pi-card overflow-hidden">
               <div className="flex items-start gap-5">
                 <UserAvatar
                   url={profile.avatar_url}
@@ -340,27 +340,28 @@ export default function ProfilePage() {
                 ))}
               </div>
 
-              <div className="flex gap-3 mt-5">
+              <div className={`grid gap-2 mt-5 w-full min-w-0 ${isOwn ? 'grid-cols-2' : 'grid-cols-3'}`}>
                 {isOwn ? (
                   <button onClick={() => navigate('/profile/edit')}
-                    className="flex-1 py-3 rounded-xl font-bold text-white text-sm pi-mark">
+                    className="w-full min-w-0 py-3 px-2 rounded-xl font-bold text-white text-sm pi-mark">
                     Edit Profile
                   </button>
                 ) : (
                   <>
                     <button onClick={toggleFollow} disabled={followLoading}
-                      className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all
+                      className={`w-full min-w-0 py-3 px-1.5 sm:px-2 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-2 transition-all
                         ${following
                           ? 'border border-pi-500/40 text-pi-300 bg-pi-500/10'
                           : 'text-white pi-mark'}`}>
                       {followLoading ? <Loader2 size={15} className="animate-spin" />
-                        : following ? <><UserCheck size={15} /> Following</>
-                        : <><UserPlus size={15} /> Follow</>}
+                        : following ? <><UserCheck size={14} className="shrink-0" /> <span className="truncate">Following</span></>
+                        : <><UserPlus size={14} className="shrink-0" /> <span className="truncate">Follow</span></>}
                     </button>
                     <button
                       onClick={() => isLoggedIn ? navigate(`/messages?u=${profile.id}`) : navigate('/signup')}
-                      className="px-4 py-3 rounded-xl border border-white/10 text-slate-300 text-sm font-medium hover:border-white/20 flex items-center gap-2">
-                      <MessageCircle size={15} /> Message
+                      className="w-full min-w-0 py-3 px-1.5 sm:px-2 rounded-xl border border-white/10 text-slate-300 text-xs sm:text-sm font-medium hover:border-white/20 flex items-center justify-center gap-1 sm:gap-2">
+                      <MessageCircle size={14} className="shrink-0" />
+                      <span className="truncate">Message</span>
                     </button>
                   </>
                 )}
@@ -368,8 +369,9 @@ export default function ProfilePage() {
                   onClick={() => {
                     navigator.clipboard?.writeText(window.location.href)
                   }}
-                  className="px-4 py-3 rounded-xl border border-white/10 text-slate-300 text-sm font-medium hover:border-white/20 flex items-center gap-2">
-                  <ExternalLink size={15} /> Share
+                  className="w-full min-w-0 py-3 px-1.5 sm:px-2 rounded-xl border border-white/10 text-slate-300 text-xs sm:text-sm font-medium hover:border-white/20 flex items-center justify-center gap-1 sm:gap-2">
+                  <ExternalLink size={14} className="shrink-0" />
+                  <span className="truncate">Share</span>
                 </button>
               </div>
             </div>
