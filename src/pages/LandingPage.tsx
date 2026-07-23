@@ -77,7 +77,7 @@ export default function LandingPage() {
         <div className="hidden md:flex items-center gap-6 text-sm text-slate-400 mr-8">
           <a href="#why" className="hover:text-white transition-colors">Why Pi</a>
           <a href="#features" className="hover:text-white transition-colors">Features</a>
-          <a href="#seo" className="hover:text-white transition-colors">Discoverability</a>
+          <button onClick={() => navigate('/demo')} className="hover:text-teal-300 transition-colors text-teal-400/90 font-medium">Investor Demo</button>
         </div>
 
         {isLoggedIn ? (
@@ -221,7 +221,7 @@ export default function LandingPage() {
           </h1>
 
           <p className="text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed animate-fade-in">
-            Pi connects people, creators, professionals, communities, and opportunities through intelligent AI matchmaking. Stop juggling apps — start experiencing the future of human connection.
+            Pi is an AI-native human opportunity operating system — identity, matching, and opportunity intelligence in one layer.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
@@ -232,6 +232,12 @@ export default function LandingPage() {
             >
               Get Started Free
               <ArrowRight size={20} />
+            </button>
+            <button
+              onClick={() => navigate('/demo')}
+              className="flex items-center gap-2 px-8 py-4 rounded-2xl font-bold text-teal-200 text-lg border border-teal-500/30 hover:bg-teal-500/10 transition-all"
+            >
+              <Sparkles size={18} /> Investor Demo Mode
             </button>
           </div>
 

@@ -74,19 +74,23 @@ export default function MatchmakingPage() {
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-2">
           <Sparkles size={22} className="text-pi-400" />
-          <h1 className="font-display text-3xl font-extrabold text-white">AI Matching</h1>
+          <h1 className="font-display text-3xl font-extrabold text-white">Pi Intelligence Engine</h1>
           <span className={`ml-2 text-xs px-2.5 py-1 rounded-full font-semibold border ${
             usingLive
               ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
               : 'bg-amber-500/15 border-amber-500/30 text-amber-400'
           }`}>
-            {usingLive ? 'Live profiles' : 'Demo data'}
+            {usingLive ? 'Live graph' : 'Demo'}
           </span>
         </div>
-        <p className="text-slate-400">
-          {usingLive
-            ? 'Pi scored real members against your role, skills, interests, and goals.'
-            : 'Complete your profile and invite teammates — live matches appear when other Pi members exist. Showing sample matches meanwhile.'}
+        <p className="text-slate-400 text-sm max-w-2xl leading-relaxed">
+          Not “people you may like.” Pi ranks who can <span className="text-teal-300 font-semibold">accelerate your goals</span> —
+          with transparent reasons across skills, interests, roles, and geography.
+          {!usingLive && (
+            <span className="block mt-1 text-slate-500">
+              Complete your profile and invite teammates for live graph matches — sample matches shown meanwhile.
+            </span>
+          )}
         </p>
       </div>
 

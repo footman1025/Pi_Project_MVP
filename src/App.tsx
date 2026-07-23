@@ -27,6 +27,9 @@ import VisionPage from './pages/VisionPage'
 import MessagingPage from './pages/MessagingPage'
 import NotificationsPage from './pages/NotificationsPage'
 import ProfileEditPage from './pages/ProfileEditPage'
+import InvestorDemoPage from './pages/InvestorDemoPage'
+import InvestorDashboardPage from './pages/InvestorDashboardPage'
+import DigitalTwinPage from './pages/DigitalTwinPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth()
@@ -45,7 +48,7 @@ export default function App() {
   const location = useLocation()
   const [assistantOpen, setAssistantOpen] = useState(false)
 
-  const isPublic = ['/', '/onboarding', '/login', '/signup', '/forgot-password', '/reset-password'].includes(location.pathname)
+  const isPublic = ['/', '/onboarding', '/login', '/signup', '/forgot-password', '/reset-password', '/demo', '/investor'].includes(location.pathname)
     || location.pathname.startsWith('/p/')
 
   useEffect(() => { window.scrollTo(0, 0) }, [location.pathname])
@@ -61,6 +64,8 @@ export default function App() {
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/demo" element={<InvestorDemoPage />} />
+          <Route path="/investor" element={<InvestorDashboardPage />} />
           <Route path="/p/:username" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
@@ -80,6 +85,7 @@ export default function App() {
               <Route path="/messages" element={<MessagingPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/profile/edit" element={<ProfileEditPage />} />
+              <Route path="/twin" element={<DigitalTwinPage />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </AppShell>

@@ -29,10 +29,11 @@ export default function OpportunityPage() {
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-2">
           <Briefcase size={22} className="text-amber-400" />
-          <h1 className="font-display text-3xl font-extrabold text-white">Opportunity Hub</h1>
+          <h1 className="font-display text-3xl font-extrabold text-white">Opportunity Intelligence Hub</h1>
         </div>
         <p className="text-slate-400">
-          Curated opportunities with reasons tailored to your Pi profile.{' '}
+          Discover funding, jobs, grants, accelerators, and partnerships — with{' '}
+          <span className="text-teal-300 font-semibold">why each opportunity fits you</span>.{' '}
           <span className="text-amber-400 text-xs font-semibold border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 rounded-full ml-1">
             Catalog demo · reasons personalized
           </span>

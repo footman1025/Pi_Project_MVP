@@ -13,6 +13,7 @@ import { track } from '../lib/analytics'
 
 const navItems = [
   { to: '/dashboard', icon: LayoutGrid, label: 'Dashboard' },
+  { to: '/twin', icon: BotMessageSquare, label: 'AI Twin' },
   { to: '/feed', icon: Newspaper, label: 'Feed' },
   { to: '/match', icon: Sparkles, label: 'Matching' },
   { to: '/opportunities', icon: Briefcase, label: 'Opportunities' },
@@ -120,6 +121,11 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
             <BotMessageSquare size={18} className="text-teal-400" />
             AI Assistant
             <span className="ml-auto w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          </button>
+          <button onClick={() => { navigate('/demo'); setSidebarOpen(false) }}
+            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-teal-300/90 hover:text-teal-200 hover:bg-teal-500/10 transition-all duration-200">
+            <Sparkles size={18} />
+            Investor Demo
           </button>
           <NavLink to="/profile/edit" onClick={() => setSidebarOpen(false)}
             className={({ isActive }) => `flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive ? 'bg-teal-500/15 text-teal-200' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>

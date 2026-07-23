@@ -3,6 +3,9 @@ import { Sparkles, UsersRound, Briefcase, Bot, CalendarDays, TrendingUp, ArrowRi
 import { mockMatches, mockOpportunities, mockCommunities } from '../data/mockData'
 import { useAuth } from '../contexts/AuthContext'
 import MockIcon from '../components/MockIcon'
+import UserAvatar from '../components/UserAvatar'
+import { buildDigitalTwin } from '../lib/digitalTwin'
+import DigitalTwinCard from '../components/DigitalTwinCard'
 
 const dashCards = [
   { icon: Sparkles, label: 'AI Recommendations', value: '12 new', color: 'from-pi-500 to-teal-600', to: '/match', demo: true },
@@ -17,23 +20,43 @@ export default function DashboardPage() {
   const navigate = useNavigate()
   const { profile, user } = useAuth()
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'there'
-  const avatarLetter = profile?.full_name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || '?'
+  const twin = buildDigitalTwin(profile)
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-12 h-12 rounded-2xl text-xl font-extrabold text-white flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
-            {avatarLetter}
-          </div>
+          <UserAvatar
+            url={profile?.avatar_url}
+            name={displayName}
+            id={user?.id}
+            size={48}
+            rounded="rounded-2xl"
+          />
           <div>
-            <h1 className="text-2xl font-extrabold text-white">Good morning, {displayName} 👋</h1>
-            <p className="text-slate-400 text-sm">Your AI has found <span className="text-pi-300 font-semibold">12 new matches</span> since yesterday</p>
+            <h1 className="text-2xl font-extrabold text-white">Good morning, {displayName}</h1>
+            <p className="text-slate-400 text-sm">
+              Your AI Twin is mapping who and what can accelerate your goals.{' '}
+              <button onClick={() => navigate('/demo')} className="text-teal-300 font-semibold hover:underline">
+                Open Investor Demo
+              </button>
+            </p>
           </div>
         </div>
       </div>
+
+      {twin && (
+        <div className="mb-8">
+          <DigitalTwinCard twin={twin} name={displayName} compact />
+          <button
+            onClick={() => navigate('/twin')}
+            className="mt-3 text-sm text-teal-300 font-semibold hover:text-teal-200 inline-flex items-center gap-1"
+          >
+            Open full Digital Twin <ArrowRight size={14} />
+          </button>
+        </div>
+      )}
 
       {/* Quick stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">

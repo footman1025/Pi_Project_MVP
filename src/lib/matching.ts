@@ -62,7 +62,7 @@ export function scoreMatch(me: Profile, other: Profile): MatchResult {
   const sharedGoals = overlap(me.goals, other.goals)
   if (sharedGoals.length) {
     score += Math.min(14, sharedGoals.length * 7)
-    reasons.push(`Aligned goals: ${sharedGoals.slice(0, 2).join(', ')}`)
+    reasons.push(`Can accelerate your goal: ${sharedGoals.slice(0, 2).join(', ')}`)
   }
 
   const roleReason = complementaryRole(me.role, other.role)
@@ -85,9 +85,14 @@ export function scoreMatch(me: Profile, other: Profile): MatchResult {
   }
 
   if (!reasons.length) {
-    reasons.push('Active on Pi and open to new connections')
-    reasons.push(other.role ? `Works as ${other.role}` : 'Building their network on Pi')
-    if (other.bio) reasons.push('Profile includes a bio — good signal for collaboration')
+    reasons.push('Active on Pi and open to high-signal collaboration')
+    reasons.push(other.role ? `Role fit: ${other.role} can complement your path` : 'Building their opportunity graph on Pi')
+    if (other.bio) reasons.push('Complete bio — stronger twin signal for introductions')
+  }
+
+  // Prefer goal-acceleration framing when user has goals
+  if (me.goals?.[0] && reasons.length < 3) {
+    reasons.push(`Ranked for advancing: ${me.goals[0]}`)
   }
 
   score = Math.min(99, Math.max(55, Math.round(score)))
