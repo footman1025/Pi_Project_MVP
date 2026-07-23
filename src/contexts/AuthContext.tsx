@@ -23,16 +23,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
-      .single()
+      .maybeSingle()
+    if (error) {
+      console.warn('[auth] profile fetch failed', error.message)
+      return
+    }
     if (data) setProfile(data)
   }
 
+  const refreshProfile = async () => {
+    if (user) await fetchProfile(user.id)
+  }
+
   useEffect(() => {
+    let mounted = true
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) fetchProfile(session.user.id)
@@ -46,7 +56,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       else setProfile(null)
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   const signUp = async (email: string, password: string, fullName: string) => {
@@ -72,10 +85,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       redirectTo: `${window.location.origin}/reset-password`
     })
     return { error }
-  }
-
-  const refreshProfile = async () => {
-    if (user) await fetchProfile(user.id)
   }
 
   return (

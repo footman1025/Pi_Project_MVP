@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { avatarGradient, avatarInitial } from '../lib/avatar'
 
 interface Props {
@@ -21,15 +21,23 @@ export default function UserAvatar({
 }: Props) {
   const [broken, setBroken] = useState(false)
   const letter = avatarInitial(name)
+
+  // Reset error state whenever the photo URL changes
+  useEffect(() => {
+    setBroken(false)
+  }, [url])
+
   const showImg = !!url && !broken
 
   if (showImg) {
     return (
       <img
+        key={url!}
         src={url!}
         alt={name || 'Avatar'}
-        className={`${rounded} object-cover flex-shrink-0 ${className}`}
-        style={{ width: size, height: size }}
+        className={`${rounded} object-cover flex-shrink-0 bg-white/5 ${className}`}
+        style={{ width: size, height: size, minWidth: size, minHeight: size }}
+        referrerPolicy="no-referrer"
         onError={() => setBroken(true)}
       />
     )
@@ -41,6 +49,8 @@ export default function UserAvatar({
       style={{
         width: size,
         height: size,
+        minWidth: size,
+        minHeight: size,
         background: avatarGradient(id || name || letter),
         fontSize: Math.max(12, size * 0.38),
       }}

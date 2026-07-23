@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, Sparkles, UsersRound, Globe2, BadgeCheck, ShieldCheck, TrendingUp, UserCog, LogOut, ChevronDown, Bell, LayoutGrid, UserCircle2, Bot, SearchCheck, Link2, Rocket } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import UserAvatar from '../components/UserAvatar'
+import { supabase } from '../lib/supabase'
 
 const features = [
   { icon: Sparkles, title: 'AI-Powered Matching', desc: 'Our intelligent engine connects you with the right people, communities and opportunities — automatically.', color: 'text-indigo-400' },
@@ -24,13 +25,39 @@ export default function LandingPage() {
   const navigate = useNavigate()
   const { session, profile, user, signOut } = useAuth()
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
 
   const isLoggedIn = !!session
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'You'
+  const resolvedAvatar = avatarUrl || profile?.avatar_url || null
+
+  // Keep local avatar in sync when AuthContext profile updates
+  useEffect(() => {
+    if (profile?.avatar_url) setAvatarUrl(profile.avatar_url)
+  }, [profile?.avatar_url])
+
+  // Ensure latest avatar is loaded on the public landing header
+  useEffect(() => {
+    if (!user?.id) {
+      setAvatarUrl(null)
+      return
+    }
+    let cancelled = false
+    supabase
+      .from('profiles')
+      .select('avatar_url')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled && data?.avatar_url) setAvatarUrl(data.avatar_url)
+      })
+    return () => { cancelled = true }
+  }, [user?.id])
 
   const handleSignOut = async () => {
     await signOut()
     setDropdownOpen(false)
+    setAvatarUrl(null)
     navigate('/')
   }
 
@@ -62,7 +89,8 @@ export default function LandingPage() {
                 className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all"
               >
                 <UserAvatar
-                  url={profile?.avatar_url}
+                  key={resolvedAvatar || user?.id || 'nav'}
+                  url={resolvedAvatar}
                   name={displayName}
                   id={user?.id}
                   size={28}
@@ -85,7 +113,8 @@ export default function LandingPage() {
                     <div className="px-4 py-3 border-b border-white/5">
                       <div className="flex items-center gap-3">
                         <UserAvatar
-                          url={profile?.avatar_url}
+                          key={`dd-${resolvedAvatar || user?.id || 'x'}`}
+                          url={resolvedAvatar}
                           name={displayName}
                           id={user?.id}
                           size={40}
