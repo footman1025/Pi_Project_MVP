@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase, Community } from '../lib/supabase'
+import { supabase, Community, Post } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { UsersRound, Sparkles, Loader2, Send, MessageCircle, Search as SearchIcon } from 'lucide-react'
-import { Post } from '../lib/supabase'
 import { mockCommunities as mockCommData } from '../data/mockData'
 import MockIcon from '../components/MockIcon'
+import { avatarGradient, avatarInitial } from '../lib/avatar'
 
-// Map community name → AI reason from mock data
 const mockCommunityReasons: Record<string, string> = Object.fromEntries(
   mockCommData.map(c => [c.name, c.aiReason])
 )
@@ -15,18 +14,20 @@ const mockCommunityReasons: Record<string, string> = Object.fromEntries(
 const categories = ['All', 'Technology', 'Business', 'Creator', 'Design', 'Finance', 'Health', 'Music']
 
 function CommunityDetail({ community, onBack }: { community: Community, onBack: () => void }) {
-  const { user } = useAuth()
+  const { user, profile, refreshProfile } = useAuth()
   const [posts, setPosts] = useState<Post[]>([])
   const [newPost, setNewPost] = useState('')
   const [loading, setLoading] = useState(true)
   const [posting, setPosting] = useState(false)
   const [joined, setJoined] = useState(community.joined || false)
   const [joiningLoading, setJoiningLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [membersCount, setMembersCount] = useState(community.members_count)
 
   useEffect(() => {
     fetchPosts()
     if (user) checkMembership()
-  }, [community.id])
+  }, [community.id, user])
 
   const checkMembership = async () => {
     if (!user) return
@@ -35,43 +36,129 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
       .select('user_id')
       .eq('community_id', community.id)
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
     setJoined(!!data)
   }
 
   const fetchPosts = async () => {
-    const { data } = await supabase
+    setLoading(true)
+    const withProfiles = await supabase
       .from('posts')
       .select('*, profiles(full_name, role)')
       .eq('community_id', community.id)
       .order('created_at', { ascending: false })
-      .limit(20)
-    setPosts(data || [])
+      .limit(40)
+
+    if (withProfiles.error) {
+      const plain = await supabase
+        .from('posts')
+        .select('*')
+        .eq('community_id', community.id)
+        .order('created_at', { ascending: false })
+        .limit(40)
+      if (plain.error) setError(plain.error.message)
+      setPosts((plain.data as Post[]) || [])
+    } else {
+      setPosts((withProfiles.data as Post[]) || [])
+    }
     setLoading(false)
+  }
+
+  const ensureProfile = async () => {
+    if (!user) return null
+    if (profile) return profile
+    const { data: existing } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
+    if (existing) {
+      await refreshProfile()
+      return existing
+    }
+    const fullName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Pi Member'
+    const username = String(fullName).toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') || `user_${user.id.slice(0, 8)}`
+    const { data: created, error: createErr } = await supabase
+      .from('profiles')
+      .insert({ id: user.id, full_name: fullName, username })
+      .select()
+      .single()
+    if (createErr) {
+      const { data: again } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
+      if (again) { await refreshProfile(); return again }
+      throw new Error(createErr.message)
+    }
+    await refreshProfile()
+    return created
   }
 
   const toggleJoin = async () => {
     if (!user) return
     setJoiningLoading(true)
-    if (joined) {
-      await supabase.from('community_members').delete()
-        .eq('community_id', community.id).eq('user_id', user.id)
-      await supabase.from('communities').update({ members_count: community.members_count - 1 }).eq('id', community.id)
-    } else {
-      await supabase.from('community_members').insert({ community_id: community.id, user_id: user.id })
-      await supabase.from('communities').update({ members_count: community.members_count + 1 }).eq('id', community.id)
+    setError('')
+    try {
+      await ensureProfile()
+      if (joined) {
+        await supabase.from('community_members').delete()
+          .eq('community_id', community.id).eq('user_id', user.id)
+        const next = Math.max(0, membersCount - 1)
+        await supabase.from('communities').update({ members_count: next }).eq('id', community.id)
+        setMembersCount(next)
+        setJoined(false)
+      } else {
+        const { error: joinErr } = await supabase
+          .from('community_members')
+          .insert({ community_id: community.id, user_id: user.id })
+        if (joinErr && !joinErr.message.toLowerCase().includes('duplicate')) {
+          throw new Error(joinErr.message)
+        }
+        const next = membersCount + 1
+        await supabase.from('communities').update({ members_count: next }).eq('id', community.id)
+        setMembersCount(next)
+        setJoined(true)
+      }
+    } catch (e: any) {
+      setError(e?.message || 'Could not update membership')
+    } finally {
+      setJoiningLoading(false)
     }
-    setJoined(v => !v)
-    setJoiningLoading(false)
   }
 
   const handlePost = async () => {
     if (!newPost.trim() || !user) return
     setPosting(true)
-    await supabase.from('posts').insert({ author_id: user.id, community_id: community.id, content: newPost.trim() })
-    setNewPost('')
-    await fetchPosts()
-    setPosting(false)
+    setError('')
+    const content = newPost.trim()
+    try {
+      const me = await ensureProfile()
+      if (!me) throw new Error('Could not load your profile. Sign out and back in.')
+
+      // Auto-join so posting always works
+      if (!joined) {
+        await supabase.from('community_members')
+          .insert({ community_id: community.id, user_id: user.id })
+        setJoined(true)
+        setMembersCount(c => c + 1)
+      }
+
+      const { data, error: insertError } = await supabase
+        .from('posts')
+        .insert({ author_id: user.id, community_id: community.id, content })
+        .select('*')
+        .single()
+
+      if (insertError || !data) throw new Error(insertError?.message || 'Failed to create post')
+
+      const newItem: Post = {
+        ...(data as Post),
+        profiles: {
+          ...me,
+        },
+      }
+      setNewPost('')
+      setPosts(ps => [newItem, ...ps.filter(p => p.id !== newItem.id)])
+      await fetchPosts()
+    } catch (e: any) {
+      setError(e?.message || 'Failed to create post')
+    } finally {
+      setPosting(false)
+    }
   }
 
   const timeAgo = (date: string) => {
@@ -84,7 +171,6 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
 
   return (
     <div className="animate-fade-in">
-      {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <button onClick={onBack} className="text-slate-400 hover:text-white transition-colors text-sm">← Back</button>
       </div>
@@ -97,7 +183,7 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
           </div>
           <div className="flex-1">
             <h2 className="font-display text-2xl font-extrabold text-white">{community.name}</h2>
-            <p className="text-slate-400 text-sm">{community.members_count.toLocaleString()} members · {community.category}</p>
+            <p className="text-slate-400 text-sm">{membersCount.toLocaleString()} members · {community.category}</p>
           </div>
           {user && (
             <button onClick={toggleJoin} disabled={joiningLoading}
@@ -108,11 +194,21 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
           )}
         </div>
         {community.description && <p className="text-slate-400 text-sm mt-3">{community.description}</p>}
+        <p className="text-slate-500 text-xs mt-3">
+          This is a topic space: join, post, and discuss with people who share this interest.
+          Member counts from seed data may look large — real discussion lives in the posts below.
+        </p>
       </div>
 
-      {/* Post box */}
-      {user && joined && (
+      {error && (
+        <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">{error}</div>
+      )}
+
+      {user && (
         <div className="p-4 rounded-2xl border border-white/5 mb-6" style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.4), rgba(14,20,25,0.6))' }}>
+          {!joined && (
+            <p className="text-xs text-amber-400/90 mb-2">You will be joined automatically when you post.</p>
+          )}
           <textarea value={newPost} onChange={e => setNewPost(e.target.value)}
             placeholder={`Share something with ${community.name}...`} rows={3}
             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-pi-500/50 transition-colors resize-none mb-3" />
@@ -127,14 +223,13 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
         </div>
       )}
 
-      {/* Posts */}
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 size={28} className="animate-spin text-pi-400" /></div>
       ) : posts.length === 0 ? (
         <div className="text-center py-12">
           <MessageCircle size={36} className="text-slate-600 mx-auto mb-3" />
           <p className="text-slate-400 text-sm">No posts yet in this community.</p>
-          {!joined && user && <p className="text-slate-600 text-xs mt-1">Join to start posting!</p>}
+          <p className="text-slate-600 text-xs mt-1">Be the first to start the conversation.</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -143,18 +238,18 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
               style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.4), rgba(14,20,25,0.6))' }}>
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-bold text-xs"
-                  style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
-                  {post.profiles?.full_name?.charAt(0).toUpperCase() || '?'}
+                  style={{ background: avatarGradient(post.author_id) }}>
+                  {avatarInitial(post.profiles?.full_name)}
                 </div>
                 <div>
                   <p className="text-white text-sm font-semibold">{post.profiles?.full_name || 'Anonymous'}</p>
                   <p className="text-slate-500 text-xs">{timeAgo(post.created_at)}</p>
                 </div>
               </div>
-              <p className="text-slate-200 text-sm leading-relaxed">{post.content}</p>
+              <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-wrap">{post.content}</p>
               <div className="flex items-center gap-4 mt-3 pt-3 border-t border-white/5 text-xs text-slate-500">
-                <span className="flex items-center gap-1">❤️ {post.likes_count}</span>
-                <span className="flex items-center gap-1">💬 {post.comments_count}</span>
+                <span>{post.likes_count || 0} likes</span>
+                <span>{post.comments_count || 0} comments</span>
               </div>
             </div>
           ))}
@@ -242,7 +337,10 @@ export default function CommunityPage() {
           <UsersRound size={22} className="text-emerald-400" />
           <h1 className="font-display text-3xl font-extrabold text-white">Communities</h1>
         </div>
-        <p className="text-slate-400">Join communities that match your interests. Discuss, share, and grow together.</p>
+        <p className="text-slate-400">
+          Topic groups where people with shared interests join, post, and discuss.
+          Unlike the main Feed (everyone), community posts stay inside that group.
+        </p>
       </div>
 
       {/* Search bar */}
