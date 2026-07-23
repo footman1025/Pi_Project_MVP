@@ -1,11 +1,12 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase, Message, Profile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { notifyUserOfMessage } from '../lib/notifications'
-import { Send, Search, Loader2, MessageCircle, Smile, Paperclip, FileText, Download, ExternalLink } from 'lucide-react'
+import { Send, Search, Loader2, MessageCircle, Smile, Paperclip, FileText, Download, ExternalLink, X } from 'lucide-react'
 import UserAvatar from '../components/UserAvatar'
 import MessagePicker from '../components/MessagePicker'
+import MessageContextMenu, { CopiedToast, type MessageMenuAction } from '../components/MessageContextMenu'
 import { encodeSticker, getLargeEmojiContent, isEmojiOnlyMessage } from '../data/stickers'
 import {
   uploadMessageFile,
@@ -14,6 +15,13 @@ import {
   formatFileSize,
   isImageFile,
 } from '../lib/messageFiles'
+import {
+  encodeReply,
+  parseReply,
+  getMessagePlainText,
+  truncatePreview,
+  type ReplyMeta,
+} from '../lib/messageReply'
 
 function timeAgo(date: string) {
   const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
@@ -38,10 +46,14 @@ export default function MessagingPage() {
   const [searching, setSearching] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [uploadError, setUploadError] = useState('')
+  const [replyTo, setReplyTo] = useState<(ReplyMeta & { senderId: string }) | null>(null)
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; msg: Message } | null>(null)
+  const [copiedToast, setCopiedToast] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const openedFromQuery = useRef<string | null>(null)
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -124,6 +136,8 @@ export default function MessagingPage() {
   const selectConversation = async (p: Profile) => {
     setSelectedUser(p)
     setPickerOpen(false)
+    setReplyTo(null)
+    setCtxMenu(null)
     await fetchMessages(p.id)
     // Mark messages as read
     if (user) {
@@ -175,11 +189,21 @@ export default function MessagingPage() {
     }
   }
 
+  const withReply = (content: string) => {
+    if (!replyTo) return content
+    const wrapped = encodeReply(
+      { id: replyTo.id, author: replyTo.author, preview: replyTo.preview },
+      content,
+    )
+    setReplyTo(null)
+    return wrapped
+  }
+
   const sendContent = async (content: string) => {
     if (!content.trim()) return
     setSending(true)
     try {
-      await insertMessage(content)
+      await insertMessage(withReply(content))
     } finally {
       setSending(false)
     }
@@ -194,6 +218,69 @@ export default function MessagingPage() {
     }
     setNewMsg('')
     await sendContent(content)
+  }
+
+  const startReply = useCallback((msg: Message) => {
+    if (!user || !selectedUser) return
+    const isMe = msg.sender_id === user.id
+    const author = isMe
+      ? (profile?.full_name || 'You')
+      : (selectedUser.full_name || 'User')
+    setReplyTo({
+      id: msg.id,
+      author,
+      preview: truncatePreview(getMessagePlainText(msg.content)),
+      senderId: msg.sender_id,
+    })
+    setCtxMenu(null)
+    requestAnimationFrame(() => inputRef.current?.focus())
+  }, [user, selectedUser, profile])
+
+  const showCopied = () => {
+    setCopiedToast(true)
+    setTimeout(() => setCopiedToast(false), 1400)
+  }
+
+  const openContextMenu = (e: { clientX: number; clientY: number; preventDefault: () => void }, msg: Message) => {
+    e.preventDefault()
+    setPickerOpen(false)
+    setCtxMenu({ x: e.clientX, y: e.clientY, msg })
+  }
+
+  const handleMenuAction = async (action: MessageMenuAction) => {
+    if (!ctxMenu) return
+    const msg = ctxMenu.msg
+    if (action === 'reply') {
+      startReply(msg)
+      return
+    }
+    if (action === 'copy') {
+      try {
+        await navigator.clipboard.writeText(getMessagePlainText(msg.content))
+        showCopied()
+      } catch { /* ignore */ }
+      setCtxMenu(null)
+      return
+    }
+    if (action === 'copyLink') {
+      const file = parseFileMessage(parseReply(msg.content)?.body ?? msg.content)
+      if (file?.url) {
+        try {
+          await navigator.clipboard.writeText(file.url)
+          showCopied()
+        } catch { /* ignore */ }
+      }
+      setCtxMenu(null)
+      return
+    }
+    setCtxMenu(null)
+  }
+
+  const clearLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
   }
 
   const insertEmoji = (emoji: string) => {
@@ -227,7 +314,7 @@ export default function MessagingPage() {
     setSending(true)
     try {
       const attached = await uploadMessageFile(user.id, selectedUser.id, file)
-      await insertMessage(encodeFileMessage(attached))
+      await insertMessage(withReply(encodeFileMessage(attached)))
     } catch (err: any) {
       setUploadError(err?.message || 'Failed to send file')
     } finally {
@@ -370,12 +457,27 @@ export default function MessagingPage() {
               )}
               {messages.map(msg => {
                 const isMe = msg.sender_id === user.id
-                const largeEmoji = getLargeEmojiContent(msg.content)
-                const file = parseFileMessage(msg.content)
+                const replyParsed = parseReply(msg.content)
+                const body = replyParsed?.body ?? msg.content
+                const largeEmoji = getLargeEmojiContent(body)
+                const file = parseFileMessage(body)
                 return (
                   <div
                     key={msg.id}
                     className={`flex items-end gap-1.5 w-full max-w-full min-w-0 box-border ${isMe ? 'flex-row-reverse' : 'flex-row'}`}
+                    onContextMenu={e => openContextMenu(e, msg)}
+                    onTouchStart={e => {
+                      const touch = e.touches[0]
+                      clearLongPress()
+                      longPressTimer.current = setTimeout(() => {
+                        openContextMenu(
+                          { clientX: touch.clientX, clientY: touch.clientY, preventDefault: () => {} },
+                          msg,
+                        )
+                      }, 480)
+                    }}
+                    onTouchEnd={clearLongPress}
+                    onTouchMove={clearLongPress}
                   >
                     <div className="shrink-0 self-end">
                       <UserAvatar
@@ -387,6 +489,20 @@ export default function MessagingPage() {
                       />
                     </div>
                     <div className="min-w-0 max-w-[calc(100%-2.75rem)] sm:max-w-[72%] overflow-hidden">
+                      {replyParsed && (
+                        <div
+                          className={`mb-1 px-2.5 py-1.5 rounded-xl border-l-2 text-[11px] leading-snug ${
+                            isMe
+                              ? 'border-white/50 bg-black/20 text-white/80'
+                              : 'border-teal-400/60 bg-white/5 text-slate-400'
+                          }`}
+                        >
+                          <p className={`font-semibold mb-0.5 ${isMe ? 'text-white' : 'text-teal-300'}`}>
+                            {replyParsed.meta.author}
+                          </p>
+                          <p className="truncate">{replyParsed.meta.preview}</p>
+                        </div>
+                      )}
                       {largeEmoji ? (
                         <div
                           className={`leading-none select-none ${isMe ? 'text-right' : 'text-left'}`}
@@ -434,7 +550,7 @@ export default function MessagingPage() {
                           ? 'text-white rounded-br-sm'
                           : 'bg-white/5 border border-white/10 text-slate-200 rounded-bl-sm'}`}
                           style={isMe ? { background: 'linear-gradient(135deg, #14b8a6, #0d9488)' } : {}}>
-                          {msg.content}
+                          {body}
                         </div>
                       )}
                       <p className={`text-xs text-slate-600 mt-1 ${isMe ? 'text-right' : 'text-left'}`}>{timeAgo(msg.created_at)}</p>
@@ -456,6 +572,22 @@ export default function MessagingPage() {
               {uploadError && (
                 <div className="mb-2 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
                   {uploadError}
+                </div>
+              )}
+              {replyTo && (
+                <div className="mb-2 flex items-start gap-2 px-3 py-2 rounded-xl border border-teal-500/25 bg-teal-500/10">
+                  <div className="flex-1 min-w-0 border-l-2 border-teal-400 pl-2.5">
+                    <p className="text-teal-300 text-xs font-semibold">Replying to {replyTo.author}</p>
+                    <p className="text-slate-400 text-xs truncate mt-0.5">{replyTo.preview}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setReplyTo(null)}
+                    className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-white/10 flex-shrink-0"
+                    aria-label="Cancel reply"
+                  >
+                    <X size={14} />
+                  </button>
                 </div>
               )}
               <input
@@ -495,9 +627,10 @@ export default function MessagingPage() {
                         e.preventDefault()
                         sendMessage()
                       }
+                      if (e.key === 'Escape' && replyTo) setReplyTo(null)
                     }}
                     onFocus={() => setPickerOpen(false)}
-                    placeholder={`Message ${selectedUser.full_name}...`}
+                    placeholder={replyTo ? `Reply to ${replyTo.author}...` : `Message ${selectedUser.full_name}...`}
                     className="flex-1 bg-transparent px-4 py-2.5 text-white placeholder-slate-600 text-sm focus:outline-none min-w-0"
                   />
                 </div>
@@ -508,6 +641,17 @@ export default function MessagingPage() {
                 </button>
               </div>
             </div>
+
+            {ctxMenu && (
+              <MessageContextMenu
+                x={ctxMenu.x}
+                y={ctxMenu.y}
+                canCopyLink={!!parseFileMessage(parseReply(ctxMenu.msg.content)?.body ?? ctxMenu.msg.content)}
+                onAction={handleMenuAction}
+                onClose={() => setCtxMenu(null)}
+              />
+            )}
+            <CopiedToast show={copiedToast} />
           </>
         )}
       </div>
