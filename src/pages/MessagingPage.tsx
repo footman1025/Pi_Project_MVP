@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase, Message, Profile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { notifyUserOfMessage } from '../lib/notifications'
-import { Send, Search, Loader2, MessageCircle, Smile, Sticker, Paperclip, FileText, Download, ExternalLink } from 'lucide-react'
+import { Send, Search, Loader2, MessageCircle, Smile, Paperclip, FileText, Download, ExternalLink } from 'lucide-react'
 import UserAvatar from '../components/UserAvatar'
 import MessagePicker from '../components/MessagePicker'
 import { encodeSticker, parseSticker } from '../data/stickers'
@@ -454,14 +454,6 @@ export default function MessagingPage() {
                     placeholder={`Message ${selectedUser.full_name}...`}
                     className="flex-1 bg-transparent px-4 py-2.5 text-white placeholder-slate-600 text-sm focus:outline-none min-w-0"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setPickerOpen(o => !o)}
-                    className="px-3 text-slate-400 hover:text-pi-300 transition-colors flex-shrink-0"
-                    title="Stickers"
-                  >
-                    <Sticker size={18} />
-                  </button>
                 </div>
                 <button onClick={sendMessage} disabled={sending || !newMsg.trim()}
                   className="w-10 h-10 rounded-xl flex items-center justify-center text-white disabled:opacity-40 transition-all hover:scale-105 flex-shrink-0"
