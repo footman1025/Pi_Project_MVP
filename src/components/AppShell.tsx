@@ -186,8 +186,8 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
           </NavLink>
         </header>
 
-        <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
-          <div className="animate-fade-in">{children}</div>
+        <main className="flex-1 overflow-y-auto overflow-x-hidden pb-20 lg:pb-0 min-w-0">
+          <div className="animate-fade-in min-w-0">{children}</div>
         </main>
 
         <nav

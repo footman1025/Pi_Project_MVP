@@ -223,9 +223,9 @@ export default function MessagingPage() {
   }
 
   return (
-    <div className="flex overflow-hidden h-[calc(100dvh-8.5rem)] lg:h-[calc(100vh-4rem)]">
+    <div className="flex overflow-hidden min-w-0 w-full max-w-full h-[calc(100dvh-8.5rem)] lg:h-[calc(100vh-4rem)]">
       {/* Left: Conversations */}
-      <div className={`flex flex-col border-r border-white/5 ${selectedUser ? 'hidden md:flex' : 'flex'} w-full md:w-80 flex-shrink-0`}
+      <div className={`flex flex-col border-r border-white/5 min-w-0 ${selectedUser ? 'hidden md:flex' : 'flex'} w-full md:w-80 flex-shrink-0`}
         style={{ background: 'rgba(8,13,26,0.8)' }}>
         <div className="p-4 border-b border-white/5">
           <h2 className="text-lg font-bold text-white mb-3">Messages</h2>
@@ -288,7 +288,7 @@ export default function MessagingPage() {
       </div>
 
       {/* Right: Chat */}
-      <div className={`flex-1 flex flex-col ${!selectedUser ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`flex-1 flex flex-col min-w-0 overflow-hidden ${!selectedUser ? 'hidden md:flex' : 'flex'}`}>
         {!selectedUser ? (
           <div className="flex flex-col items-center justify-center flex-1">
             <MessageCircle size={48} className="text-slate-700 mb-4" />
@@ -298,27 +298,27 @@ export default function MessagingPage() {
         ) : (
           <>
             {/* Chat header */}
-            <div className="flex items-center gap-3 px-5 py-4 border-b border-white/5 flex-shrink-0"
+            <div className="flex items-center gap-3 px-3 sm:px-5 py-3 sm:py-4 border-b border-white/5 flex-shrink-0 min-w-0"
               style={{ background: 'rgba(14,20,25,0.8)' }}>
-              <button onClick={() => setSelectedUser(null)} className="md:hidden text-slate-400 hover:text-white mr-1">←</button>
+              <button onClick={() => setSelectedUser(null)} className="md:hidden text-slate-400 hover:text-white mr-1 flex-shrink-0">←</button>
               <UserAvatar
                 url={selectedUser.avatar_url}
                 name={selectedUser.full_name}
                 id={selectedUser.id}
                 size={36}
               />
-              <div>
-                <p className="text-white font-semibold text-sm">{selectedUser.full_name}</p>
-                <p className="text-slate-500 text-xs">{selectedUser.role || 'Pi Member'}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-white font-semibold text-sm truncate">{selectedUser.full_name}</p>
+                <p className="text-slate-500 text-xs truncate">{selectedUser.role || 'Pi Member'}</p>
               </div>
-              <div className="ml-auto flex items-center gap-1.5">
+              <div className="ml-auto flex items-center gap-1.5 flex-shrink-0">
                 <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                <span className="text-xs text-emerald-400">Online</span>
+                <span className="text-xs text-emerald-400 hidden xs:inline sm:inline">Online</span>
               </div>
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-3">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden px-2.5 sm:px-5 py-4 space-y-3 min-w-0 w-full box-border">
               {messages.length === 0 && (
                 <div className="text-center py-8">
                   <p className="text-slate-500 text-sm">No messages yet. Say hello! 👋</p>
@@ -329,21 +329,24 @@ export default function MessagingPage() {
                 const largeEmoji = getLargeEmojiContent(msg.content)
                 const file = parseFileMessage(msg.content)
                 return (
-                  <div key={msg.id} className={`flex items-end gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
-                    {!isMe && (
+                  <div
+                    key={msg.id}
+                    className={`flex items-end gap-1.5 w-full max-w-full min-w-0 box-border ${isMe ? 'flex-row-reverse' : 'flex-row'}`}
+                  >
+                    <div className="shrink-0 self-end">
                       <UserAvatar
-                        url={selectedUser.avatar_url}
-                        name={selectedUser.full_name}
-                        id={selectedUser.id}
-                        size={28}
+                        url={isMe ? profile?.avatar_url : selectedUser.avatar_url}
+                        name={isMe ? profile?.full_name : selectedUser.full_name}
+                        id={isMe ? user.id : selectedUser.id}
+                        size={24}
                         rounded="rounded-lg"
                       />
-                    )}
-                    <div className="max-w-[72%]">
+                    </div>
+                    <div className="min-w-0 max-w-[calc(100%-2.75rem)] sm:max-w-[72%] overflow-hidden">
                       {largeEmoji ? (
                         <div
                           className={`leading-none select-none ${isMe ? 'text-right' : 'text-left'}`}
-                          style={{ fontSize: '3.5rem' }}
+                          style={{ fontSize: 'clamp(2rem, 10vw, 3.5rem)' }}
                           title="Sticker"
                         >
                           {largeEmoji}
@@ -369,9 +372,9 @@ export default function MessagingPage() {
                               target="_blank"
                               rel="noreferrer"
                               download={file.name}
-                              className={`flex items-center gap-3 px-4 py-3 ${isMe ? 'text-white' : 'text-slate-200'}`}
+                              className={`flex items-center gap-3 px-3 sm:px-4 py-3 ${isMe ? 'text-white' : 'text-slate-200'}`}
                             >
-                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isMe ? 'bg-white/20' : 'bg-white/10'}`}>
+                              <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isMe ? 'bg-white/20' : 'bg-white/10'}`}>
                                 <FileText size={18} />
                               </div>
                               <div className="flex-1 min-w-0">
@@ -383,7 +386,7 @@ export default function MessagingPage() {
                           )}
                         </div>
                       ) : (
-                        <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isMe
+                        <div className={`px-3 sm:px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words [overflow-wrap:anywhere] ${isMe
                           ? 'text-white rounded-br-sm'
                           : 'bg-white/5 border border-white/10 text-slate-200 rounded-bl-sm'}`}
                           style={isMe ? { background: 'linear-gradient(135deg, #14b8a6, #0d9488)' } : {}}>
@@ -392,15 +395,6 @@ export default function MessagingPage() {
                       )}
                       <p className={`text-xs text-slate-600 mt-1 ${isMe ? 'text-right' : 'text-left'}`}>{timeAgo(msg.created_at)}</p>
                     </div>
-                    {isMe && (
-                      <UserAvatar
-                        url={profile?.avatar_url}
-                        name={profile?.full_name}
-                        id={user.id}
-                        size={28}
-                        rounded="rounded-lg"
-                      />
-                    )}
                   </div>
                 )
               })}
@@ -408,7 +402,7 @@ export default function MessagingPage() {
             </div>
 
             {/* Input */}
-            <div className="px-4 py-3 border-t border-white/5 flex-shrink-0 relative" style={{ background: 'rgba(8,13,26,0.9)' }}>
+            <div className="px-3 sm:px-4 py-3 border-t border-white/5 flex-shrink-0 relative min-w-0" style={{ background: 'rgba(8,13,26,0.9)' }}>
               <MessagePicker
                 open={pickerOpen}
                 onClose={() => setPickerOpen(false)}

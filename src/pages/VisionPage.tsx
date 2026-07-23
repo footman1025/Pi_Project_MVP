@@ -7,13 +7,13 @@ import {
 } from 'lucide-react'
 
 const nodes = [
-  { label: 'People', Icon: UserCircle2, color: 'from-pi-500 to-teal-600', x: 50, y: 8 },
-  { label: 'AI Layer', icon: 'π', color: 'from-teal-500 to-pi-600', x: 50, y: 30, center: true },
-  { label: 'Communities', Icon: UsersRound, color: 'from-emerald-500 to-teal-600', x: 15, y: 52 },
-  { label: 'Creators', Icon: Sparkles, color: 'from-pink-500 to-rose-600', x: 38, y: 62 },
-  { label: 'Professionals', Icon: Building2, color: 'from-amber-500 to-orange-600', x: 62, y: 62 },
-  { label: 'Companies', Icon: Globe2, color: 'from-cyan-500 to-blue-600', x: 85, y: 52 },
-  { label: 'Opportunities', Icon: Rocket, color: 'from-rose-500 to-red-600', x: 50, y: 82 },
+  { label: 'People', Icon: UserCircle2, color: 'from-pi-500 to-teal-600', x: 50, y: 6 },
+  { label: 'AI Layer', icon: 'π', color: 'from-teal-500 to-pi-600', x: 50, y: 28, center: true },
+  { label: 'Communities', Icon: UsersRound, color: 'from-emerald-500 to-teal-600', x: 12, y: 48 },
+  { label: 'Creators', Icon: Sparkles, color: 'from-pink-500 to-rose-600', x: 28, y: 68 },
+  { label: 'Professionals', Icon: Building2, color: 'from-amber-500 to-orange-600', x: 72, y: 68 },
+  { label: 'Companies', Icon: Globe2, color: 'from-cyan-500 to-blue-600', x: 88, y: 48 },
+  { label: 'Opportunities', Icon: Rocket, color: 'from-rose-500 to-red-600', x: 50, y: 88 },
 ]
 
 const pillars = [
@@ -35,55 +35,75 @@ export default function VisionPage() {
   }, [])
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-5xl mx-auto overflow-x-hidden">
       <div className="mb-8 text-center">
-        <h1 className="font-display text-4xl font-extrabold text-white mb-2">Pi Vision Dashboard</h1>
-        <p className="text-slate-400 max-w-xl mx-auto">
+        <h1 className="font-display text-3xl sm:text-4xl font-extrabold text-white mb-2">Pi Vision Dashboard</h1>
+        <p className="text-slate-400 max-w-xl mx-auto text-sm sm:text-base">
           Pi is more than a social network. It is an AI-powered opportunity ecosystem where every interaction creates value.
         </p>
       </div>
 
       {/* Ecosystem diagram */}
-      <div className="p-8 rounded-3xl border border-pi-500/20 mb-10 relative overflow-hidden"
+      <div className="p-4 sm:p-8 rounded-3xl border border-pi-500/20 mb-10 relative overflow-hidden"
         style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.95), rgba(8,13,26,0.98))' }}>
-        {/* Background grid */}
-        <div className="absolute inset-0 opacity-5"
+        <div className="absolute inset-0 opacity-5 pointer-events-none"
           style={{ backgroundImage: 'radial-gradient(rgba(20,184,166,0.8) 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
-        <div className="absolute inset-0 opacity-20"
+        <div className="absolute inset-0 opacity-20 pointer-events-none"
           style={{ background: 'radial-gradient(circle at 50% 30%, rgba(20,184,166,0.3) 0%, transparent 60%)' }} />
 
-        <h2 className="text-center text-lg font-bold text-white mb-8 relative z-10">
+        <h2 className="text-center text-base sm:text-lg font-bold text-white mb-6 sm:mb-8 relative z-10 px-2">
           The Pi Ecosystem — Everything Connected Through AI
         </h2>
 
-        <div className="relative" style={{ height: '340px' }}>
-          {/* Connection lines */}
+        {/* Mobile: clean grid (no overlapping labels) */}
+        <div className="sm:hidden relative z-10 grid grid-cols-2 gap-3 mb-4">
+          {nodes.filter(n => !n.center).map((node, i) => (
+            <div key={node.label}
+              className="flex flex-col items-center gap-2 p-3 rounded-2xl border border-white/5 bg-white/[0.03]"
+              style={{ opacity: animated ? 1 : 0, transition: `opacity 0.4s ease ${i * 80}ms` }}>
+              <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${node.color} flex items-center justify-center text-white`}>
+                {node.Icon && <node.Icon size={18} className="text-white" />}
+              </div>
+              <span className="text-xs font-semibold text-slate-300 text-center leading-tight">{node.label}</span>
+            </div>
+          ))}
+          <div className="col-span-2 flex flex-col items-center gap-2 py-2">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-500 to-pi-600 flex items-center justify-center text-white font-extrabold text-2xl"
+              style={{ boxShadow: '0 0 30px rgba(20,184,166,0.5)' }}>π</div>
+            <span className="text-xs font-semibold text-teal-300">AI Layer</span>
+          </div>
+        </div>
+
+        {/* Desktop / tablet: radial diagram */}
+        <div className="relative hidden sm:block" style={{ height: '380px' }}>
           <svg className="absolute inset-0 w-full h-full" style={{ zIndex: 1 }}>
             {nodes.slice(2).map((n, i) => (
               <line key={i}
-                x1="50%" y1="33%"
-                x2={`${n.x}%`} y2={`${n.y + 5}%`}
+                x1="50%" y1="30%"
+                x2={`${n.x}%`} y2={`${n.y}%`}
                 stroke="rgba(20,184,166,0.3)"
                 strokeWidth="1.5"
                 strokeDasharray="4 4"
                 style={{ opacity: animated ? 1 : 0, transition: `opacity 0.5s ease ${i * 150 + 300}ms` }}
               />
             ))}
-            <line x1="50%" y1="14%" x2="50%" y2="30%"
+            <line x1="50%" y1="10%" x2="50%" y2="26%"
               stroke="rgba(20,184,166,0.5)" strokeWidth="2" strokeDasharray="4 4"
               style={{ opacity: animated ? 1 : 0, transition: 'opacity 0.5s ease 100ms' }} />
           </svg>
 
-          {/* Nodes */}
           {nodes.map((node, i) => (
             <div key={i}
-              className="absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2"
+              className="absolute flex flex-col items-center gap-1.5"
               style={{
                 left: `${node.x}%`,
                 top: `${node.y}%`,
                 zIndex: 2,
+                width: node.center ? 88 : 108,
+                marginLeft: node.center ? -44 : -54,
+                marginTop: node.center ? -44 : -40,
                 opacity: animated ? 1 : 0,
-                transform: `translate(-50%, -50%) scale(${animated ? 1 : 0.5})`,
+                transform: `scale(${animated ? 1 : 0.5})`,
                 transition: `opacity 0.5s ease ${i * 150}ms, transform 0.5s cubic-bezier(0.34,1.56,0.64,1) ${i * 150}ms`,
               }}>
               <div
@@ -91,18 +111,18 @@ export default function VisionPage() {
                 style={node.center ? { boxShadow: '0 0 30px rgba(20,184,166,0.6)' } : {}}>
                 {node.center
                   ? <span className="font-extrabold text-2xl">π</span>
-                  : node.Icon && <node.Icon size={node.center ? 28 : 20} className="text-white" />
+                  : node.Icon && <node.Icon size={20} className="text-white" />
                 }
               </div>
-              <span className={`text-xs font-semibold text-center whitespace-nowrap ${node.center ? 'text-pi-300' : 'text-slate-300'}`}>
+              <span className={`text-[11px] font-semibold text-center leading-tight px-1 ${node.center ? 'text-teal-300' : 'text-slate-300'}`}>
                 {node.label}
               </span>
             </div>
           ))}
         </div>
 
-        <div className="text-center mt-4 relative z-10">
-          <p className="text-slate-400 text-sm">Connect · Learn · Build · Create · Earn · Grow</p>
+        <div className="text-center mt-2 sm:mt-4 relative z-10">
+          <p className="text-slate-400 text-xs sm:text-sm">Connect · Learn · Build · Create · Earn · Grow</p>
         </div>
       </div>
 
