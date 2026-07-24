@@ -69,6 +69,7 @@ export default function MessagingPage() {
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const pasteLockRef = useRef(false)
   const openedFromQuery = useRef<string | null>(null)
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -189,12 +190,12 @@ export default function MessagingPage() {
 
   /** Ctrl/Cmd+V image from clipboard → upload & send like an attachment */
   const handlePasteImage = async (e: React.ClipboardEvent) => {
-    if (!user || !selectedUser || sending) return
+    if (!user || !selectedUser || sending || pasteLockRef.current) return
     const items = e.clipboardData?.items
-    if (!items?.length) return
+    if (!items?.length && !e.clipboardData?.files?.length) return
 
     let imageFile: File | null = null
-    for (const item of Array.from(items)) {
+    for (const item of Array.from(items || [])) {
       if (item.kind === 'file' && item.type.startsWith('image/')) {
         const blob = item.getAsFile()
         if (blob) {
@@ -213,7 +214,6 @@ export default function MessagingPage() {
       }
     }
 
-    // Fallback: some browsers expose files on clipboardData.files
     if (!imageFile && e.clipboardData?.files?.length) {
       const f = Array.from(e.clipboardData.files).find(x => x.type.startsWith('image/'))
       if (f) imageFile = f
@@ -221,11 +221,16 @@ export default function MessagingPage() {
 
     if (!imageFile) return
 
+    // Prevent double-send (input + parent bubble, or rapid double paste)
     e.preventDefault()
+    e.stopPropagation()
+    pasteLockRef.current = true
     try {
       await sendMediaFile(imageFile)
     } catch {
       /* error already set in sendMediaFile */
+    } finally {
+      pasteLockRef.current = false
     }
   }
 
@@ -877,7 +882,6 @@ export default function MessagingPage() {
             <div
               className="px-2 sm:px-4 py-2 sm:py-3 border-t border-white/5 flex-shrink-0 relative min-w-0 w-full max-w-full box-border"
               style={{ background: 'rgba(8,13,26,0.9)' }}
-              onPaste={handlePasteImage}
             >
               <MessagePicker
                 open={pickerOpen}
