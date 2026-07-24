@@ -8,6 +8,13 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase, Profile } from '../lib/supabase'
 import { notifyUserOfFollow } from '../lib/notifications'
 import { playConnectSound } from '../lib/connectSound'
+import {
+  ensureFollowerProfile,
+  followUser,
+  unfollowUser,
+  getFollowCounts,
+  isFollowing,
+} from '../lib/follows'
 import UserAvatar from '../components/UserAvatar'
 
 function applySeo(profile: Profile, username: string) {
@@ -96,6 +103,7 @@ export default function ProfilePage() {
   const [notFound, setNotFound] = useState(false)
   const [following, setFollowing] = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
+  const [followError, setFollowError] = useState('')
   const [seo, setSeo] = useState<ReturnType<typeof applySeo> | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -122,6 +130,7 @@ export default function ProfilePage() {
     const load = async () => {
       setLoading(true)
       setNotFound(false)
+      setFollowError('')
       const { data } = await supabase
         .from('profiles')
         .select('*')
@@ -137,18 +146,28 @@ export default function ProfilePage() {
         return
       }
 
-      setProfile(data)
+      // Counts from follows table so refresh always matches reality
+      let counts = { followers_count: data.followers_count ?? 0, following_count: data.following_count ?? 0 }
+      try {
+        counts = await getFollowCounts(data.id)
+      } catch {
+        /* keep cached profile counts */
+      }
+
+      if (cancelled) return
+      setProfile({ ...data, ...counts })
       setSeo(applySeo(data, data.username || username))
       setLoading(false)
 
       if (user && user.id !== data.id) {
-        const { data: follow } = await supabase
-          .from('follows')
-          .select('follower_id')
-          .eq('follower_id', user.id)
-          .eq('following_id', data.id)
-          .maybeSingle()
-        if (!cancelled) setFollowing(!!follow)
+        try {
+          const yes = await isFollowing(user.id, data.id)
+          if (!cancelled) setFollowing(yes)
+        } catch {
+          if (!cancelled) setFollowing(false)
+        }
+      } else if (!cancelled) {
+        setFollowing(false)
       }
     }
     if (username) load()
@@ -167,21 +186,49 @@ export default function ProfilePage() {
       return
     }
     setFollowLoading(true)
+    setFollowError('')
     const actorName = authProfile?.full_name || user.email?.split('@')[0] || 'Someone'
-    if (following) {
-      await supabase.from('follows').delete()
-        .eq('follower_id', user.id).eq('following_id', profile.id)
-      setFollowing(false)
-      setProfile(p => p ? { ...p, followers_count: Math.max(0, (p.followers_count || 0) - 1) } : p)
-    } else {
-      await supabase.from('follows').insert({ follower_id: user.id, following_id: profile.id })
-      // Client-side notify in case DB triggers are not yet applied
-      await notifyUserOfFollow(profile.id, user.id, actorName)
-      setFollowing(true)
-      setProfile(p => p ? { ...p, followers_count: (p.followers_count || 0) + 1 } : p)
-      void playConnectSound()
+    const wasFollowing = following
+
+    // Optimistic UI
+    setFollowing(!wasFollowing)
+    setProfile(p =>
+      p
+        ? {
+            ...p,
+            followers_count: Math.max(0, (p.followers_count || 0) + (wasFollowing ? -1 : 1)),
+          }
+        : p,
+    )
+
+    try {
+      await ensureFollowerProfile(user.id, actorName)
+      if (wasFollowing) {
+        await unfollowUser(user.id, profile.id)
+      } else {
+        await followUser(user.id, profile.id)
+        await notifyUserOfFollow(profile.id, user.id, actorName)
+        void playConnectSound()
+      }
+      // Re-sync counts from DB
+      const counts = await getFollowCounts(profile.id)
+      setProfile(p => (p ? { ...p, ...counts } : p))
+      setFollowing(await isFollowing(user.id, profile.id))
+    } catch (e: unknown) {
+      // Revert optimistic UI
+      setFollowing(wasFollowing)
+      setProfile(p =>
+        p
+          ? {
+              ...p,
+              followers_count: Math.max(0, (p.followers_count || 0) + (wasFollowing ? 1 : -1)),
+            }
+          : p,
+      )
+      setFollowError(e instanceof Error ? e.message : 'Follow failed')
+    } finally {
+      setFollowLoading(false)
     }
-    setFollowLoading(false)
   }
 
   const tags = [
@@ -347,6 +394,10 @@ export default function ProfilePage() {
                   </div>
                 ))}
               </div>
+
+              {followError && (
+                <p className="mt-3 text-xs text-red-400 text-center px-2">{followError}</p>
+              )}
 
               <div className={`grid gap-1.5 sm:gap-2 mt-5 w-full min-w-0 max-w-full ${isOwn ? 'grid-cols-2' : 'grid-cols-3'}`}>
                 {isOwn ? (
