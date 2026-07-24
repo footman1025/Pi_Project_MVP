@@ -3,10 +3,12 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase, Message, Profile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { notifyUserOfMessage } from '../lib/notifications'
-import { Send, Search, Loader2, MessageCircle, Smile, Paperclip, FileText, Download, ExternalLink, X } from 'lucide-react'
+import { Send, Search, Loader2, MessageCircle, Smile, Paperclip, FileText, Download, ExternalLink, X, Pin, Forward, Trash2, Copy } from 'lucide-react'
 import UserAvatar from '../components/UserAvatar'
 import MessagePicker from '../components/MessagePicker'
 import MessageContextMenu, { CopiedToast, type MessageMenuAction } from '../components/MessageContextMenu'
+import MediaCaptureButtons from '../components/MediaCaptureButtons'
+import VoiceMessageBubble from '../components/VoiceMessageBubble'
 import { encodeSticker, getLargeEmojiContent, isEmojiOnlyMessage } from '../data/stickers'
 import {
   uploadMessageFile,
@@ -24,8 +26,12 @@ import {
   truncatePreview,
   type ReplyMeta,
 } from '../lib/messageReply'
-import MediaCaptureButtons from '../components/MediaCaptureButtons'
-import VoiceMessageBubble from '../components/VoiceMessageBubble'
+import {
+  getReactions,
+  toggleReaction,
+  getPinnedMessageId,
+  setPinnedMessageId,
+} from '../lib/messageExtras'
 
 function timeAgo(date: string) {
   const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
@@ -53,6 +59,12 @@ export default function MessagingPage() {
   const [replyTo, setReplyTo] = useState<(ReplyMeta & { senderId: string }) | null>(null)
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; msg: Message } | null>(null)
   const [copiedToast, setCopiedToast] = useState(false)
+  const [toastLabel, setToastLabel] = useState('Copied')
+  const [reactionTick, setReactionTick] = useState(0)
+  const [pinnedId, setPinnedId] = useState<string | null>(null)
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [forwardMsg, setForwardMsg] = useState<Message | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -142,6 +154,10 @@ export default function MessagingPage() {
     setPickerOpen(false)
     setReplyTo(null)
     setCtxMenu(null)
+    setSelectMode(false)
+    setSelectedIds(new Set())
+    setForwardMsg(null)
+    if (user) setPinnedId(getPinnedMessageId(user.id, p.id))
     await fetchMessages(p.id)
     // Mark messages as read
     if (user) {
@@ -257,20 +273,75 @@ export default function MessagingPage() {
     requestAnimationFrame(() => inputRef.current?.focus())
   }, [user, selectedUser, profile])
 
-  const showCopied = () => {
+  const showToast = (label = 'Copied') => {
+    setToastLabel(label)
     setCopiedToast(true)
     setTimeout(() => setCopiedToast(false), 1400)
   }
 
   const openContextMenu = (e: { clientX: number; clientY: number; preventDefault: () => void }, msg: Message) => {
     e.preventDefault()
+    if (selectMode) {
+      setSelectedIds(prev => {
+        const next = new Set(prev)
+        if (next.has(msg.id)) next.delete(msg.id)
+        else next.add(msg.id)
+        return next
+      })
+      return
+    }
     setPickerOpen(false)
     setCtxMenu({ x: e.clientX, y: e.clientY, msg })
   }
 
+  const deleteMessage = async (msg: Message) => {
+    if (!user || msg.sender_id !== user.id) return
+    const { error } = await supabase.from('messages').delete().eq('id', msg.id).eq('sender_id', user.id)
+    if (error) {
+      // Fallback soft-delete if delete policy not applied yet
+      await supabase.from('messages').update({ content: '[[deleted]]' }).eq('id', msg.id).eq('sender_id', user.id)
+      setMessages(m => m.map(x => x.id === msg.id ? { ...x, content: '[[deleted]]' } : x))
+    } else {
+      setMessages(m => m.filter(x => x.id !== msg.id))
+    }
+    if (pinnedId === msg.id && selectedUser) {
+      setPinnedMessageId(user.id, selectedUser.id, null)
+      setPinnedId(null)
+    }
+    showToast('Deleted')
+  }
+
+  const forwardToUser = async (peer: Profile, msg: Message) => {
+    if (!user) return
+    const text = getMessagePlainText(msg.content)
+    const body = text.startsWith('📎') || parseFileMessage(parseReply(msg.content)?.body ?? msg.content)
+      ? (parseReply(msg.content)?.body ?? msg.content)
+      : `↪️ Forwarded:\n${text}`
+    const row = { sender_id: user.id, receiver_id: peer.id, content: body }
+    const { data } = await supabase.from('messages').insert(row).select().single()
+    if (peer.id === selectedUser?.id && data) {
+      setMessages(m => (m.some(x => x.id === data.id) ? m : [...m, data]))
+    }
+    if (!conversations.find(c => c.id === peer.id)) {
+      setConversations(c => [peer, ...c])
+    }
+    const actorName = profile?.full_name || user.email?.split('@')[0] || 'Someone'
+    await notifyUserOfMessage(peer.id, user.id, actorName)
+    setForwardMsg(null)
+    showToast('Forwarded')
+  }
+
   const handleMenuAction = async (action: MessageMenuAction) => {
-    if (!ctxMenu) return
+    if (!ctxMenu || !user) return
     const msg = ctxMenu.msg
+
+    if (typeof action === 'object' && action.type === 'react') {
+      toggleReaction(msg.id, action.emoji)
+      setReactionTick(t => t + 1)
+      setCtxMenu(null)
+      return
+    }
+
     if (action === 'reply') {
       startReply(msg)
       return
@@ -278,7 +349,7 @@ export default function MessagingPage() {
     if (action === 'copy') {
       try {
         await navigator.clipboard.writeText(getMessagePlainText(msg.content))
-        showCopied()
+        showToast('Copied')
       } catch { /* ignore */ }
       setCtxMenu(null)
       return
@@ -288,9 +359,33 @@ export default function MessagingPage() {
       if (file?.url) {
         try {
           await navigator.clipboard.writeText(file.url)
-          showCopied()
+          showToast('Link copied')
         } catch { /* ignore */ }
       }
+      setCtxMenu(null)
+      return
+    }
+    if (action === 'pin' && selectedUser) {
+      const next = pinnedId === msg.id ? null : msg.id
+      setPinnedMessageId(user.id, selectedUser.id, next)
+      setPinnedId(next)
+      showToast(next ? 'Pinned' : 'Unpinned')
+      setCtxMenu(null)
+      return
+    }
+    if (action === 'forward') {
+      setForwardMsg(msg)
+      setCtxMenu(null)
+      return
+    }
+    if (action === 'select') {
+      setSelectMode(true)
+      setSelectedIds(new Set([msg.id]))
+      setCtxMenu(null)
+      return
+    }
+    if (action === 'delete') {
+      await deleteMessage(msg)
       setCtxMenu(null)
       return
     }
@@ -303,6 +398,8 @@ export default function MessagingPage() {
       longPressTimer.current = null
     }
   }
+
+  const pinnedMessage = pinnedId ? messages.find(m => m.id === pinnedId) : null
 
   const insertEmoji = (emoji: string) => {
     const el = inputRef.current
@@ -469,6 +566,90 @@ export default function MessagingPage() {
               </div>
             </div>
 
+            {pinnedMessage && (
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById(`msg-${pinnedMessage.id}`)
+                  el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                }}
+                className="flex items-center gap-2 px-3 sm:px-5 py-2 border-b border-teal-500/20 bg-teal-500/10 text-left w-full min-w-0"
+              >
+                <Pin size={14} className="text-teal-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-semibold text-teal-300 uppercase tracking-wider">Pinned message</p>
+                  <p className="text-xs text-slate-300 truncate">{getMessagePlainText(pinnedMessage.content)}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={e => {
+                    e.stopPropagation()
+                    if (!user || !selectedUser) return
+                    setPinnedMessageId(user.id, selectedUser.id, null)
+                    setPinnedId(null)
+                  }}
+                  className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-white/10"
+                  aria-label="Unpin"
+                >
+                  <X size={14} />
+                </button>
+              </button>
+            )}
+
+            {selectMode && (
+              <div className="flex items-center gap-2 px-3 sm:px-5 py-2 border-b border-white/10 bg-white/[0.03]">
+                <p className="text-xs text-slate-300 flex-1">{selectedIds.size} selected</p>
+                <button
+                  type="button"
+                  disabled={selectedIds.size === 0}
+                  onClick={async () => {
+                    const texts = messages.filter(m => selectedIds.has(m.id)).map(m => getMessagePlainText(m.content))
+                    try {
+                      await navigator.clipboard.writeText(texts.join('\n\n'))
+                      showToast('Copied')
+                    } catch { /* ignore */ }
+                  }}
+                  className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 disabled:opacity-40"
+                  title="Copy"
+                >
+                  <Copy size={15} />
+                </button>
+                <button
+                  type="button"
+                  disabled={selectedIds.size !== 1}
+                  onClick={() => {
+                    const msg = messages.find(m => selectedIds.has(m.id))
+                    if (msg) setForwardMsg(msg)
+                  }}
+                  className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 disabled:opacity-40"
+                  title="Forward"
+                >
+                  <Forward size={15} />
+                </button>
+                <button
+                  type="button"
+                  disabled={selectedIds.size === 0}
+                  onClick={async () => {
+                    const mine = messages.filter(m => selectedIds.has(m.id) && m.sender_id === user.id)
+                    for (const m of mine) await deleteMessage(m)
+                    setSelectMode(false)
+                    setSelectedIds(new Set())
+                  }}
+                  className="p-2 rounded-lg text-rose-400 hover:bg-rose-500/10 disabled:opacity-40"
+                  title="Delete"
+                >
+                  <Trash2 size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setSelectMode(false); setSelectedIds(new Set()) }}
+                  className="px-2 py-1 rounded-lg text-xs text-slate-400 hover:text-white"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+
             {/* Messages */}
             <div className="flex-1 overflow-y-auto overflow-x-hidden px-2.5 sm:px-5 py-4 space-y-3 min-w-0 w-full box-border">
               {messages.length === 0 && (
@@ -480,13 +661,29 @@ export default function MessagingPage() {
                 const isMe = msg.sender_id === user.id
                 const replyParsed = parseReply(msg.content)
                 const body = replyParsed?.body ?? msg.content
-                const largeEmoji = getLargeEmojiContent(body)
-                const file = parseFileMessage(body)
+                const isDeleted = body === '[[deleted]]'
+                const largeEmoji = isDeleted ? null : getLargeEmojiContent(body)
+                const file = isDeleted ? null : parseFileMessage(body)
+                const reactions = getReactions(msg.id)
+                void reactionTick
+                const isSelected = selectedIds.has(msg.id)
                 return (
                   <div
+                    id={`msg-${msg.id}`}
                     key={msg.id}
-                    className={`flex items-end gap-1.5 w-full max-w-full min-w-0 box-border ${isMe ? 'flex-row-reverse' : 'flex-row'}`}
+                    className={`flex items-end gap-1.5 w-full max-w-full min-w-0 box-border ${isMe ? 'flex-row-reverse' : 'flex-row'} ${
+                      isSelected ? 'bg-teal-500/10 rounded-xl px-1 py-0.5' : ''
+                    }`}
                     onContextMenu={e => openContextMenu(e, msg)}
+                    onClick={() => {
+                      if (!selectMode) return
+                      setSelectedIds(prev => {
+                        const next = new Set(prev)
+                        if (next.has(msg.id)) next.delete(msg.id)
+                        else next.add(msg.id)
+                        return next
+                      })
+                    }}
                     onTouchStart={e => {
                       const touch = e.touches[0]
                       clearLongPress()
@@ -500,6 +697,13 @@ export default function MessagingPage() {
                     onTouchEnd={clearLongPress}
                     onTouchMove={clearLongPress}
                   >
+                    {selectMode && (
+                      <div className={`shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center self-center ${
+                        isSelected ? 'bg-teal-500 border-teal-400' : 'border-white/30'
+                      }`}>
+                        {isSelected && <span className="text-white text-[10px] font-bold">✓</span>}
+                      </div>
+                    )}
                     <div className="shrink-0 self-end">
                       <UserAvatar
                         url={isMe ? profile?.avatar_url : selectedUser.avatar_url}
@@ -510,6 +714,12 @@ export default function MessagingPage() {
                       />
                     </div>
                     <div className="min-w-0 max-w-[calc(100%-2.75rem)] sm:max-w-[72%] overflow-hidden">
+                      {isDeleted ? (
+                        <div className={`px-3 py-2 rounded-2xl text-sm italic ${isMe ? 'text-white/70 bg-teal-700/50' : 'text-slate-500 bg-white/5 border border-white/10'}`}>
+                          Message deleted
+                        </div>
+                      ) : (
+                        <>
                       {replyParsed && (
                         <div
                           className={`mb-1 px-2.5 py-1.5 rounded-xl border-l-2 text-[11px] leading-snug ${
@@ -591,7 +801,30 @@ export default function MessagingPage() {
                           {body}
                         </div>
                       )}
-                      <p className={`text-xs text-slate-600 mt-1 ${isMe ? 'text-right' : 'text-left'}`}>{timeAgo(msg.created_at)}</p>
+                        </>
+                      )}
+                      {reactions.length > 0 && (
+                        <div className={`flex flex-wrap gap-1 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                          {reactions.map(emoji => (
+                            <button
+                              key={emoji}
+                              type="button"
+                              onClick={e => {
+                                e.stopPropagation()
+                                toggleReaction(msg.id, emoji)
+                                setReactionTick(t => t + 1)
+                              }}
+                              className="px-1.5 py-0.5 rounded-full text-sm bg-white/10 border border-white/10 hover:bg-white/15"
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <p className={`text-xs text-slate-600 mt-1 ${isMe ? 'text-right' : 'text-left'}`}>
+                        {pinnedId === msg.id && <Pin size={10} className="inline text-teal-500 mr-1" />}
+                        {timeAgo(msg.created_at)}
+                      </p>
                     </div>
                   </div>
                 )
@@ -697,12 +930,49 @@ export default function MessagingPage() {
               <MessageContextMenu
                 x={ctxMenu.x}
                 y={ctxMenu.y}
+                isMe={ctxMenu.msg.sender_id === user.id}
+                canDelete={ctxMenu.msg.sender_id === user.id}
                 canCopyLink={!!parseFileMessage(parseReply(ctxMenu.msg.content)?.body ?? ctxMenu.msg.content)}
                 onAction={handleMenuAction}
                 onClose={() => setCtxMenu(null)}
               />
             )}
-            <CopiedToast show={copiedToast} />
+            {forwardMsg && (
+              <div className="fixed inset-0 z-[85] flex items-end sm:items-center justify-center bg-black/70 p-4">
+                <div
+                  className="w-full max-w-sm rounded-2xl border border-white/10 shadow-2xl overflow-hidden"
+                  style={{ background: 'linear-gradient(160deg, #12182b, #0a0f1c)' }}
+                >
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+                    <p className="text-white text-sm font-semibold">Forward to…</p>
+                    <button type="button" onClick={() => setForwardMsg(null)} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10">
+                      <X size={16} />
+                    </button>
+                  </div>
+                  <div className="max-h-72 overflow-y-auto p-2">
+                    {conversations.length === 0 ? (
+                      <p className="text-slate-500 text-sm text-center py-8">No conversations yet</p>
+                    ) : (
+                      conversations.map(c => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => forwardToUser(c, forwardMsg)}
+                          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl hover:bg-white/5 text-left"
+                        >
+                          <UserAvatar url={c.avatar_url} name={c.full_name} id={c.id} size={36} />
+                          <div className="min-w-0">
+                            <p className="text-white text-sm font-semibold truncate">{c.full_name}</p>
+                            <p className="text-slate-500 text-xs truncate">{c.role || 'Pi Member'}</p>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+            <CopiedToast show={copiedToast} label={toastLabel} />
           </>
         )}
       </div>
