@@ -225,7 +225,10 @@ export default function ProfilePage() {
                 <ChevronDown size={14} className={`text-slate-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
               </button>
               {dropdownOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-52 rounded-2xl border border-white/10 shadow-2xl z-20 overflow-hidden pi-panel">
+                  <div
+                    className="absolute right-0 top-full mt-2 w-52 rounded-2xl border border-white/10 shadow-2xl z-50 overflow-hidden"
+                    style={{ background: 'linear-gradient(160deg, #0d1224 0%, #080d1a 100%)' }}
+                  >
                     <div className="px-4 py-3 border-b border-white/[0.06]">
                       <p className="text-white font-semibold text-sm truncate">{displayName}</p>
                       <p className="text-slate-500 text-xs truncate">{user?.email}</p>
