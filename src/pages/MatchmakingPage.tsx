@@ -87,7 +87,7 @@ export default function MatchmakingPage() {
         </div>
         <p className="text-slate-400 text-sm max-w-2xl leading-relaxed">
           Not “people you may like.” Pi ranks who can <span className="text-teal-300 font-semibold">accelerate your goals</span> —
-          with transparent reasons across skills, interests, roles, and geography.
+          with live scores from skills, interests, goals, roles, location, and profile narrative.
           {!usingLive && (
             <span className="block mt-1 text-slate-500">
               Complete your profile and invite teammates for live graph matches — sample matches shown meanwhile.
