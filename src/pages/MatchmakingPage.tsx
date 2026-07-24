@@ -140,7 +140,7 @@ export default function MatchmakingPage() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <h3 className="font-bold text-white text-base sm:text-lg cursor-pointer hover:text-pi-300 truncate"
-                            onClick={() => p.username && navigate(`/p/${p.username}`)}>{name}</h3>
+                            onClick={() => p.username && navigate(`/p/${p.username}`, { state: { from: '/match' } })}>{name}</h3>
                           {p.role && (
                             <span className="inline-block mt-1 text-[11px] sm:text-xs text-slate-500 font-medium px-2 py-0.5 bg-white/5 rounded-full max-w-full truncate">
                               {p.role}
@@ -202,7 +202,7 @@ export default function MatchmakingPage() {
 
                   <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mt-4 pt-4 border-t border-white/5">
                     <button
-                      onClick={() => p.username ? navigate(`/p/${p.username}`) : navigate('/messages')}
+                      onClick={() => p.username ? navigate(`/p/${p.username}`, { state: { from: '/match' } }) : navigate('/messages')}
                       className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white pi-mark">
                       <UserRoundPlus size={14} className="shrink-0" /> Connect
                     </button>

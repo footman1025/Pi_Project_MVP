@@ -4,12 +4,27 @@ export type ChatTurn = { role: 'user' | 'assistant'; content: string }
 
 const DEFAULT_MODEL = 'llama-3.3-70b-versatile'
 
-/** UI flag: key lives on the server / Vite proxy, not in the browser request. */
+/** Safe Vite env access (works even if ImportMeta.env types are missing in CI). */
+function viteEnv(key: string): string | undefined {
+  try {
+    const env = (import.meta as unknown as { env?: Record<string, string | undefined> }).env
+    const v = env?.[key]
+    return typeof v === 'string' ? v : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** UI flag only — never read the API key in client code (it would be baked into the JS bundle). */
 export function hasGroqKey(): boolean {
-  return Boolean(
-    import.meta.env.VITE_GROQ_API_KEY?.trim() ||
-    import.meta.env.VITE_GROQ_ENABLED === 'true',
-  )
+  // Production: set VITE_GROQ_ENABLED=true on Vercel; real key stays in GROQ_API_KEY (server).
+  // Dev: enable the Groq UI; Vite /api/groq proxy reads the key from .env.local server-side.
+  if (viteEnv('VITE_GROQ_ENABLED') === 'true') return true
+  try {
+    return Boolean((import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV)
+  } catch {
+    return false
+  }
 }
 
 function buildSystemPrompt(ctx: {
@@ -82,7 +97,7 @@ export async function askGroqAssistant(
     throw new Error('Groq is not enabled. Add VITE_GROQ_API_KEY (or VITE_GROQ_ENABLED=true) to .env.local and restart.')
   }
 
-  const model = (import.meta.env.VITE_GROQ_MODEL as string | undefined)?.trim() || DEFAULT_MODEL
+  const model = viteEnv('VITE_GROQ_MODEL')?.trim() || DEFAULT_MODEL
 
   const messages = [
     { role: 'system' as const, content: buildSystemPrompt(ctx) },

@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import {
   MapPin, Globe2, Star, Code2, ChevronDown, ChevronUp, ExternalLink,
@@ -95,6 +95,7 @@ function applySeo(profile: Profile, username: string) {
 export default function ProfilePage() {
   const { username = '' } = useParams<{ username: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const { session, profile: authProfile, user } = useAuth()
   const [showSEO, setShowSEO] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -158,6 +159,11 @@ export default function ProfilePage() {
   }, [username, user])
 
   const goBack = () => {
+    const from = (location.state as { from?: string } | null)?.from
+    if (from) {
+      navigate(from)
+      return
+    }
     // Prefer real browser history (e.g. Matching → profile); else Matching / home
     if (window.history.length > 1) {
       navigate(-1)
@@ -168,6 +174,10 @@ export default function ProfilePage() {
 
   // Logged-in: AppShell sidebar — no public top nav; show Back above the card
   const inApp = isLoggedIn
+  const backLabel =
+    (location.state as { from?: string } | null)?.from === '/match'
+      ? 'Back to Matching'
+      : 'Back'
 
   const toggleFollow = async () => {
     if (!user || !profile || isOwn) {
@@ -266,11 +276,11 @@ export default function ProfilePage() {
           <button
             type="button"
             onClick={goBack}
-            className="mb-4 flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-slate-200 hover:text-white border border-white/10 hover:border-pi-500/40 bg-white/[0.04] hover:bg-pi-500/10 transition-all"
+            className="mb-4 flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-white border border-pi-500/35 bg-pi-500/15 hover:bg-pi-500/25 transition-all"
             aria-label="Go back to previous screen"
           >
             <ArrowLeft size={16} className="shrink-0" />
-            Back
+            {backLabel}
           </button>
         )}
         {loading ? (

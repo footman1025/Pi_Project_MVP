@@ -1,7 +1,11 @@
- # Ignore all node_modules anywhere in the project
+# Dependencies
 node_modules/
+
+# Build output — never commit (Vite can embed VITE_* secrets into JS)
+dist/
 
 # Environment variables — never commit these
 .env
 .env.local
 .env.production
+.env*.local
