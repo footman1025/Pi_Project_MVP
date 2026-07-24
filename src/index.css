@@ -9,11 +9,22 @@
 
   html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
+    max-width: 100%;
   }
 
   body {
     @apply bg-dark-950 text-white font-sans antialiased;
     background: #080d1a;
+    overflow-x: hidden;
+    max-width: 100%;
+    width: 100%;
+  }
+
+  #root {
+    overflow-x: hidden;
+    max-width: 100%;
+    min-width: 0;
   }
 
   ::-webkit-scrollbar {

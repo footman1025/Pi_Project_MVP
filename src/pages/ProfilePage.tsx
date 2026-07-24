@@ -196,23 +196,24 @@ export default function ProfilePage() {
   ] : []
 
   return (
-    <div className="min-h-screen pi-atmosphere">
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center px-6 py-4 border-b border-white/[0.06] bg-dark-950/80 backdrop-blur-xl">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
+    <div className="min-h-screen pi-atmosphere overflow-x-hidden max-w-[100vw]">
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center gap-2 px-3 sm:px-6 py-3 sm:py-4 border-b border-white/[0.06] bg-dark-950/80 backdrop-blur-xl min-w-0">
+        <div className="flex items-center gap-2 cursor-pointer shrink-0" onClick={() => navigate('/')}>
           <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-display font-extrabold text-lg pi-mark">π</div>
           <span className="font-display text-white font-bold text-xl">Pi</span>
         </div>
-        <div className="flex-1" />
+        <div className="flex-1 min-w-0" />
 
         {isLoggedIn ? (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button onClick={() => navigate('/dashboard')}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white pi-mark">
-              <LayoutGrid size={15} /> Dashboard
+              className="flex items-center gap-2 px-2.5 sm:px-4 py-2 rounded-xl text-sm font-semibold text-white pi-mark">
+              <LayoutGrid size={15} />
+              <span className="hidden sm:inline">Dashboard</span>
             </button>
             <div className="relative" ref={dropdownRef}>
               <button onClick={() => setDropdownOpen(o => !o)}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.07] transition-all">
+                className="flex items-center gap-2 px-2 sm:px-3 py-2 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.07] transition-all">
                 <UserAvatar
                   url={authProfile?.avatar_url}
                   name={displayName}
@@ -265,7 +266,7 @@ export default function ProfilePage() {
         )}
       </nav>
 
-      <div className="px-4 sm:px-6 pt-24 pb-12 max-w-3xl mx-auto overflow-x-hidden">
+      <div className="px-3 sm:px-6 pt-20 sm:pt-24 pb-12 w-full max-w-3xl mx-auto overflow-x-hidden box-border">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24">
             <Loader2 size={32} className="animate-spin text-pi-400 mb-3" />
@@ -279,38 +280,40 @@ export default function ProfilePage() {
           </div>
         ) : (
           <>
-            <div className="p-4 sm:p-6 rounded-3xl border border-white/[0.06] mb-6 pi-card overflow-hidden">
-              <div className="flex items-start gap-5">
-                <UserAvatar
-                  url={profile.avatar_url}
-                  name={profile.full_name || profile.username}
-                  id={profile.id}
-                  size={80}
-                  rounded="rounded-3xl"
-                  className="shadow-lg shadow-pi-500/20"
-                />
-                <div className="flex-1 min-w-0">
-                  <h1 className="font-display text-2xl font-extrabold text-white mb-1">
+            <div className="!p-3 sm:!p-6 rounded-2xl sm:rounded-3xl border border-white/[0.06] mb-4 sm:mb-6 pi-card overflow-hidden w-full max-w-full min-w-0 box-border">
+              <div className="flex items-start gap-3 sm:gap-5 min-w-0">
+                <div className="shrink-0">
+                  <UserAvatar
+                    url={profile.avatar_url}
+                    name={profile.full_name || profile.username}
+                    id={profile.id}
+                    size={72}
+                    rounded="rounded-2xl"
+                    className="shadow-lg shadow-pi-500/20"
+                  />
+                </div>
+                <div className="flex-1 min-w-0 overflow-hidden">
+                  <h1 className="font-display text-xl sm:text-2xl font-extrabold text-white mb-1 break-words">
                     {profile.full_name || profile.username}
                   </h1>
-                  <p className="text-pi-300 font-semibold mb-2">{profile.role || 'Pi Member'}</p>
+                  <p className="text-pi-300 font-semibold mb-2 text-sm sm:text-base truncate">{profile.role || 'Pi Member'}</p>
                   <div className="flex flex-wrap items-center gap-2 text-slate-400 text-sm mb-3">
-                    {profile.location && <><MapPin size={14} />{profile.location}</>}
+                    {profile.location && <><MapPin size={14} className="shrink-0" /><span className="break-words">{profile.location}</span></>}
                     {profile.website && (
                       <>
                         {profile.location && <span className="mx-1">·</span>}
-                        <Globe2 size={14} />
+                        <Globe2 size={14} className="shrink-0" />
                         <a href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`}
-                          target="_blank" rel="noreferrer" className="hover:text-pi-300 transition-colors truncate max-w-[180px]">
+                          target="_blank" rel="noreferrer" className="hover:text-pi-300 transition-colors truncate max-w-[140px] sm:max-w-[180px]">
                           {profile.website}
                         </a>
                       </>
                     )}
                     {profile.username && (
-                      <span className="text-slate-500">@{profile.username}</span>
+                      <span className="text-slate-500 truncate">@{profile.username}</span>
                     )}
                   </div>
-                  <p className="text-slate-300 text-sm leading-relaxed">
+                  <p className="text-slate-300 text-sm leading-relaxed break-words [overflow-wrap:anywhere]">
                     {profile.bio || profile.ai_summary || 'This member has not added a bio yet.'}
                   </p>
                 </div>
@@ -342,22 +345,22 @@ export default function ProfilePage() {
                 ))}
               </div>
 
-              <div className={`grid gap-2 mt-5 w-full min-w-0 ${isOwn ? 'grid-cols-2' : 'grid-cols-3'}`}>
+              <div className={`grid gap-1.5 sm:gap-2 mt-5 w-full min-w-0 max-w-full ${isOwn ? 'grid-cols-2' : 'grid-cols-3'}`}>
                 {isOwn ? (
                   <button onClick={() => navigate('/profile/edit')}
-                    className="w-full min-w-0 py-3 px-2 rounded-xl font-bold text-white text-sm pi-mark">
+                    className="w-full min-w-0 py-2.5 sm:py-3 px-1 sm:px-2 rounded-xl font-bold text-white text-xs sm:text-sm pi-mark">
                     Edit Profile
                   </button>
                 ) : (
                   <>
                     <button onClick={toggleFollow} disabled={followLoading}
-                      className={`w-full min-w-0 py-3 px-1.5 sm:px-2 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-2 transition-all
+                      className={`w-full min-w-0 py-2.5 sm:py-3 px-1 sm:px-2 rounded-xl font-bold text-[11px] sm:text-sm flex items-center justify-center gap-1 transition-all
                         ${following
                           ? 'border border-pi-500/40 text-pi-300 bg-pi-500/10'
                           : 'text-white pi-mark'}`}>
-                      {followLoading ? <Loader2 size={15} className="animate-spin" />
-                        : following ? <><UserCheck size={14} className="shrink-0" /> <span className="truncate">Following</span></>
-                        : <><UserPlus size={14} className="shrink-0" /> <span className="truncate">Follow</span></>}
+                      {followLoading ? <Loader2 size={14} className="animate-spin" />
+                        : following ? <><UserCheck size={13} className="shrink-0" /> <span className="truncate">Following</span></>
+                        : <><UserPlus size={13} className="shrink-0" /> <span className="truncate">Follow</span></>}
                     </button>
                     <button
                       onClick={() => {
@@ -368,8 +371,8 @@ export default function ProfilePage() {
                         void playConnectSound()
                         navigate(`/messages?u=${profile.id}`)
                       }}
-                      className="w-full min-w-0 py-3 px-1.5 sm:px-2 rounded-xl border border-white/10 text-slate-300 text-xs sm:text-sm font-medium hover:border-white/20 flex items-center justify-center gap-1 sm:gap-2">
-                      <MessageCircle size={14} className="shrink-0" />
+                      className="w-full min-w-0 py-2.5 sm:py-3 px-1 sm:px-2 rounded-xl border border-white/10 text-slate-300 text-[11px] sm:text-sm font-medium hover:border-white/20 flex items-center justify-center gap-1">
+                      <MessageCircle size={13} className="shrink-0" />
                       <span className="truncate">Message</span>
                     </button>
                   </>
@@ -378,27 +381,26 @@ export default function ProfilePage() {
                   onClick={() => {
                     navigator.clipboard?.writeText(window.location.href)
                   }}
-                  className="w-full min-w-0 py-3 px-1.5 sm:px-2 rounded-xl border border-white/10 text-slate-300 text-xs sm:text-sm font-medium hover:border-white/20 flex items-center justify-center gap-1 sm:gap-2">
-                  <ExternalLink size={14} className="shrink-0" />
+                  className="w-full min-w-0 py-2.5 sm:py-3 px-1 sm:px-2 rounded-xl border border-white/10 text-slate-300 text-[11px] sm:text-sm font-medium hover:border-white/20 flex items-center justify-center gap-1">
+                  <ExternalLink size={13} className="shrink-0" />
                   <span className="truncate">Share</span>
                 </button>
               </div>
             </div>
 
             {seo && (
-              <div className="rounded-2xl border border-pi-500/20 overflow-hidden bg-pi-500/[0.05]">
+              <div className="rounded-2xl border border-pi-500/20 overflow-hidden bg-pi-500/[0.05] w-full max-w-full min-w-0">
                 <button onClick={() => setShowSEO(o => !o)}
-                  className="w-full flex items-center gap-3 px-4 sm:px-5 py-4 text-left hover:bg-pi-500/5 transition-all min-w-0">
+                  className="w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-4 text-left hover:bg-pi-500/5 transition-all min-w-0">
                   <div className="w-8 h-8 rounded-xl pi-mark flex items-center justify-center shrink-0">
                     <Code2 size={15} className="text-white" />
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 overflow-hidden">
                     <p className="text-white font-semibold text-sm">SEO Structure</p>
-                    <p className="text-slate-400 text-xs truncate">Live meta tags & JSON-LD for this profile</p>
+                    <p className="text-slate-400 text-xs truncate">Live meta tags & JSON-LD</p>
                   </div>
-                  <span className="inline-flex items-center gap-1 shrink-0 whitespace-nowrap text-[11px] sm:text-xs text-pi-300 bg-pi-500/10 border border-pi-500/20 px-2.5 py-1 rounded-full font-semibold leading-none">
-                    Live
-                    <span aria-hidden="true">✓</span>
+                  <span className="inline-flex items-center gap-1 shrink-0 whitespace-nowrap text-[11px] text-pi-300 bg-pi-500/10 border border-pi-500/20 px-2 py-1 rounded-full font-semibold leading-none">
+                    Live ✓
                   </span>
                   {showSEO
                     ? <ChevronUp size={18} className="text-slate-400 shrink-0" />
@@ -406,20 +408,20 @@ export default function ProfilePage() {
                 </button>
 
                 {showSEO && (
-                  <div className="px-5 pb-5 animate-fade-in space-y-4">
-                    <div>
+                  <div className="px-3 sm:px-5 pb-4 sm:pb-5 animate-fade-in space-y-4 min-w-0 max-w-full overflow-hidden">
+                    <div className="min-w-0">
                       <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Page Title</p>
-                      <p className="text-sm text-emerald-400 font-mono">{seo.title}</p>
+                      <p className="text-sm text-emerald-400 font-mono break-words [overflow-wrap:anywhere]">{seo.title}</p>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Canonical URL</p>
                       <p className="text-sm text-blue-400 font-mono break-all">{seo.canonical}</p>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Meta Tags</p>
-                      <div className="bg-black/30 rounded-xl p-3 font-mono text-xs space-y-1">
+                      <div className="bg-black/30 rounded-xl p-2.5 sm:p-3 font-mono text-[10px] sm:text-xs space-y-1.5 overflow-x-auto max-w-full">
                         {seo.metaTags.map((m, i) => (
-                          <div key={i} className="text-slate-300">
+                          <div key={i} className="text-slate-300 break-all [overflow-wrap:anywhere] leading-relaxed">
                             <span className="text-pink-400">{'<meta '}</span>
                             {'name' in m && m.name ? (
                               <><span className="text-yellow-400">name</span><span className="text-slate-400">=</span><span className="text-green-400">"{m.name}"</span></>
@@ -433,15 +435,15 @@ export default function ProfilePage() {
                         ))}
                       </div>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Structured Data (JSON-LD)</p>
-                      <pre className="bg-black/30 rounded-xl p-3 font-mono text-xs text-slate-300 overflow-x-auto whitespace-pre-wrap">
+                      <pre className="bg-black/30 rounded-xl p-2.5 sm:p-3 font-mono text-[10px] sm:text-xs text-slate-300 overflow-x-auto max-w-full whitespace-pre-wrap break-all [overflow-wrap:anywhere]">
                         {seo.jsonLd}
                       </pre>
                     </div>
-                    <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                      <Star size={14} className="text-emerald-400" />
-                      <p className="text-emerald-300 text-xs font-medium">
+                    <div className="flex items-start gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 min-w-0">
+                      <Star size={14} className="text-emerald-400 shrink-0 mt-0.5" />
+                      <p className="text-emerald-300 text-xs font-medium break-words">
                         Title, description, canonical, Open Graph, and JSON-LD Person schema are applied to this page’s document head.
                       </p>
                     </div>
