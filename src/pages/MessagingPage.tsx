@@ -187,6 +187,48 @@ export default function MessagingPage() {
     }
   }
 
+  /** Ctrl/Cmd+V image from clipboard → upload & send like an attachment */
+  const handlePasteImage = async (e: React.ClipboardEvent) => {
+    if (!user || !selectedUser || sending) return
+    const items = e.clipboardData?.items
+    if (!items?.length) return
+
+    let imageFile: File | null = null
+    for (const item of Array.from(items)) {
+      if (item.kind === 'file' && item.type.startsWith('image/')) {
+        const blob = item.getAsFile()
+        if (blob) {
+          const ext =
+            blob.type === 'image/png' ? 'png'
+            : blob.type === 'image/webp' ? 'webp'
+            : blob.type === 'image/gif' ? 'gif'
+            : 'jpg'
+          imageFile = new File(
+            [blob],
+            blob.name && blob.name !== 'image.png' ? blob.name : `clipboard-image.${ext}`,
+            { type: blob.type || 'image/png' },
+          )
+          break
+        }
+      }
+    }
+
+    // Fallback: some browsers expose files on clipboardData.files
+    if (!imageFile && e.clipboardData?.files?.length) {
+      const f = Array.from(e.clipboardData.files).find(x => x.type.startsWith('image/'))
+      if (f) imageFile = f
+    }
+
+    if (!imageFile) return
+
+    e.preventDefault()
+    try {
+      await sendMediaFile(imageFile)
+    } catch {
+      /* error already set in sendMediaFile */
+    }
+  }
+
   const fetchMessages = async (otherId: string) => {
     if (!user) return
     const { data } = await supabase
@@ -431,17 +473,11 @@ export default function MessagingPage() {
   const handleFilePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = ''
-    if (!file || !user || !selectedUser) return
-    setUploadError('')
-    setPickerOpen(false)
-    setSending(true)
+    if (!file) return
     try {
-      const attached = await uploadMessageFile(user.id, selectedUser.id, file)
-      await insertMessage(withReply(encodeFileMessage(attached)))
-    } catch (err: any) {
-      setUploadError(err?.message || 'Failed to send file')
-    } finally {
-      setSending(false)
+      await sendMediaFile(file)
+    } catch {
+      /* error already set */
     }
   }
 
@@ -838,7 +874,11 @@ export default function MessagingPage() {
             </div>
 
             {/* Input */}
-            <div className="px-2 sm:px-4 py-2 sm:py-3 border-t border-white/5 flex-shrink-0 relative min-w-0 w-full max-w-full box-border" style={{ background: 'rgba(8,13,26,0.9)' }}>
+            <div
+              className="px-2 sm:px-4 py-2 sm:py-3 border-t border-white/5 flex-shrink-0 relative min-w-0 w-full max-w-full box-border"
+              style={{ background: 'rgba(8,13,26,0.9)' }}
+              onPaste={handlePasteImage}
+            >
               <MessagePicker
                 open={pickerOpen}
                 onClose={() => setPickerOpen(false)}
@@ -906,6 +946,7 @@ export default function MessagingPage() {
                     ref={inputRef}
                     value={newMsg}
                     onChange={e => setNewMsg(e.target.value)}
+                    onPaste={handlePasteImage}
                     onKeyDown={e => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault()
