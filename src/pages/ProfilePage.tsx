@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import {
   MapPin, Globe2, Star, Code2, ChevronDown, ChevronUp, ExternalLink,
-  LayoutGrid, UserCog, LogOut, Bell, UserPlus, UserCheck, Loader2, MessageCircle, Sparkles
+  LayoutGrid, UserCog, LogOut, Bell, UserPlus, UserCheck, Loader2, MessageCircle, Sparkles, ArrowLeft
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase, Profile } from '../lib/supabase'
@@ -180,6 +180,15 @@ export default function ProfilePage() {
     navigate('/')
   }
 
+  const goBack = () => {
+    // Prefer real browser history; otherwise land on dashboard / home
+    if (window.history.length > 1) {
+      navigate(-1)
+    } else {
+      navigate(isLoggedIn ? '/dashboard' : '/')
+    }
+  }
+
   const toggleFollow = async () => {
     if (!user || !profile || isOwn) {
       if (!user) navigate('/login')
@@ -245,9 +254,18 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen pi-atmosphere overflow-x-hidden max-w-[100vw]">
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center gap-2 px-3 sm:px-6 py-3 sm:py-4 border-b border-white/[0.06] bg-dark-950/80 backdrop-blur-xl min-w-0">
-        <div className="flex items-center gap-2 cursor-pointer shrink-0" onClick={() => navigate('/')}>
+        <button
+          type="button"
+          onClick={goBack}
+          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-sm font-medium text-slate-300 hover:text-white border border-white/10 hover:border-white/20 bg-white/[0.03] hover:bg-white/[0.06] transition-all shrink-0"
+          aria-label="Go back"
+        >
+          <ArrowLeft size={16} className="shrink-0" />
+          <span className="hidden sm:inline">Back</span>
+        </button>
+        <div className="flex items-center gap-2 cursor-pointer shrink-0 min-w-0" onClick={() => navigate('/')}>
           <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-display font-extrabold text-lg pi-mark">π</div>
-          <span className="font-display text-white font-bold text-xl">Pi</span>
+          <span className="font-display text-white font-bold text-xl hidden sm:inline">Pi</span>
         </div>
         <div className="flex-1 min-w-0" />
 
