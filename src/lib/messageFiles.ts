@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 
 const BUCKET = 'message-files'
-const MAX_BYTES = 10 * 1024 * 1024 // 10 MB
+const MAX_BYTES = 25 * 1024 * 1024 // 25 MB (short voice/video clips)
 
 const ALLOWED_PREFIXES = [
   'image/',
@@ -51,7 +51,7 @@ export async function uploadMessageFile(
     throw new Error('This file type is not supported. Try an image, PDF, Office doc, text, zip, audio, or short video.')
   }
   if (file.size > MAX_BYTES) {
-    throw new Error('File must be under 10 MB.')
+    throw new Error('File must be under 25 MB.')
   }
 
   const name = safeFileName(file.name)
@@ -92,4 +92,12 @@ export function parseFileMessage(content: string): FileAttachment | null {
 
 export function isImageFile(type: string) {
   return type.startsWith('image/')
+}
+
+export function isAudioFile(type: string) {
+  return type.startsWith('audio/')
+}
+
+export function isVideoFile(type: string) {
+  return type.startsWith('video/')
 }

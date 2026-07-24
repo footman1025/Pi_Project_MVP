@@ -1,6 +1,6 @@
 -- ============================================================
 -- Pi chat file attachments — run once in Supabase SQL Editor
--- Creates a PUBLIC bucket "message-files" (max 10 MB per file)
+-- Creates a PUBLIC bucket "message-files" (max 25 MB per file)
 -- ============================================================
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -8,12 +8,12 @@ values (
   'message-files',
   'message-files',
   true,
-  10485760,
+  26214400,
   null
 )
 on conflict (id) do update set
   public = true,
-  file_size_limit = 10485760;
+  file_size_limit = 26214400;
 
 -- Anyone with the URL can view (needed so chat partners can open files)
 drop policy if exists "Message files are publicly accessible" on storage.objects;

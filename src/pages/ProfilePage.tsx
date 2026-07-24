@@ -7,6 +7,7 @@ import {
 import { useAuth } from '../contexts/AuthContext'
 import { supabase, Profile } from '../lib/supabase'
 import { notifyUserOfFollow } from '../lib/notifications'
+import { playConnectSound } from '../lib/connectSound'
 import UserAvatar from '../components/UserAvatar'
 
 function applySeo(profile: Profile, username: string) {
@@ -178,6 +179,7 @@ export default function ProfilePage() {
       await notifyUserOfFollow(profile.id, user.id, actorName)
       setFollowing(true)
       setProfile(p => p ? { ...p, followers_count: (p.followers_count || 0) + 1 } : p)
+      void playConnectSound()
     }
     setFollowLoading(false)
   }
@@ -358,7 +360,14 @@ export default function ProfilePage() {
                         : <><UserPlus size={14} className="shrink-0" /> <span className="truncate">Follow</span></>}
                     </button>
                     <button
-                      onClick={() => isLoggedIn ? navigate(`/messages?u=${profile.id}`) : navigate('/signup')}
+                      onClick={() => {
+                        if (!isLoggedIn) {
+                          navigate('/signup')
+                          return
+                        }
+                        void playConnectSound()
+                        navigate(`/messages?u=${profile.id}`)
+                      }}
                       className="w-full min-w-0 py-3 px-1.5 sm:px-2 rounded-xl border border-white/10 text-slate-300 text-xs sm:text-sm font-medium hover:border-white/20 flex items-center justify-center gap-1 sm:gap-2">
                       <MessageCircle size={14} className="shrink-0" />
                       <span className="truncate">Message</span>

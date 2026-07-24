@@ -14,6 +14,8 @@ import {
   parseFileMessage,
   formatFileSize,
   isImageFile,
+  isAudioFile,
+  isVideoFile,
 } from '../lib/messageFiles'
 import {
   encodeReply,
@@ -22,6 +24,7 @@ import {
   truncatePreview,
   type ReplyMeta,
 } from '../lib/messageReply'
+import MediaCaptureButtons from '../components/MediaCaptureButtons'
 
 function timeAgo(date: string) {
   const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
@@ -146,6 +149,23 @@ export default function MessagingPage() {
         .eq('sender_id', p.id)
         .eq('receiver_id', user.id)
       await markMessageNotificationsRead(p.id)
+    }
+  }
+
+  const sendMediaFile = async (file: File) => {
+    if (!user || !selectedUser) return
+    setUploadError('')
+    setPickerOpen(false)
+    setSending(true)
+    try {
+      const attached = await uploadMessageFile(user.id, selectedUser.id, file)
+      await insertMessage(withReply(encodeFileMessage(attached)))
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to send recording'
+      setUploadError(msg)
+      throw err
+    } finally {
+      setSending(false)
     }
   }
 
@@ -513,7 +533,7 @@ export default function MessagingPage() {
                         </div>
                       ) : file ? (
                         <div className={`rounded-2xl overflow-hidden border ${isMe ? 'border-white/10' : 'border-white/10 bg-white/5'}`}
-                          style={isMe && !isImageFile(file.type) ? { background: 'linear-gradient(135deg, #14b8a6, #0d9488)' } : {}}>
+                          style={isMe && !isImageFile(file.type) && !isAudioFile(file.type) && !isVideoFile(file.type) ? { background: 'linear-gradient(135deg, #14b8a6, #0d9488)' } : {}}>
                           {isImageFile(file.type) ? (
                             <a href={file.url} target="_blank" rel="noreferrer" className="block">
                               <img
@@ -526,6 +546,24 @@ export default function MessagingPage() {
                                 <span className="truncate">{file.name}</span>
                               </div>
                             </a>
+                          ) : isAudioFile(file.type) ? (
+                            <div className={`px-3 py-3 ${isMe ? 'bg-teal-600/90' : 'bg-white/5'}`}>
+                              <p className={`text-xs mb-2 font-medium ${isMe ? 'text-white/80' : 'text-slate-400'}`}>Voice message</p>
+                              <audio controls preload="metadata" src={file.url} className="w-full max-w-[240px] h-9" />
+                            </div>
+                          ) : isVideoFile(file.type) ? (
+                            <div className="bg-black/40">
+                              <video
+                                controls
+                                playsInline
+                                preload="metadata"
+                                src={file.url}
+                                className="w-full max-h-64 object-contain bg-black"
+                              />
+                              <div className={`flex items-center gap-2 px-3 py-2 text-xs ${isMe ? 'bg-teal-700/80 text-white' : 'bg-white/5 text-slate-300'}`}>
+                                <span className="truncate">Video · {formatFileSize(file.size)}</span>
+                              </div>
+                            </div>
                           ) : (
                             <a
                               href={file.url}
@@ -620,6 +658,11 @@ export default function MessagingPage() {
                 >
                   <Paperclip size={18} />
                 </button>
+                <MediaCaptureButtons
+                  disabled={sending}
+                  onCaptured={sendMediaFile}
+                  onError={msg => setUploadError(msg)}
+                />
                 <div className="flex-1 min-w-0 relative flex items-center bg-white/5 border border-white/10 rounded-xl focus-within:border-pi-500/50 transition-colors overflow-hidden">
                   <input
                     ref={inputRef}

@@ -5,6 +5,7 @@ import { mockMatches } from '../data/mockData'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { MatchResult, rankMatches } from '../lib/matching'
+import { playConnectSound } from '../lib/connectSound'
 
 export default function MatchmakingPage() {
   const navigate = useNavigate()
@@ -189,7 +190,10 @@ export default function MatchmakingPage() {
                       className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white pi-mark">
                       <UserRoundPlus size={15} /> Connect
                     </button>
-                    <button onClick={() => navigate(`/messages?u=${p.id}`)}
+                    <button onClick={() => {
+                      void playConnectSound()
+                      navigate(`/messages?u=${p.id}`)
+                    }}
                       className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-slate-300 border border-white/10 hover:border-white/20">
                       <MessageCircle size={15} /> Message
                     </button>

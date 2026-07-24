@@ -10,6 +10,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import UserAvatar from './UserAvatar'
 import { track } from '../lib/analytics'
+import { playConnectSound } from '../lib/connectSound'
 
 const navItems = [
   { to: '/dashboard', icon: LayoutGrid, label: 'Dashboard' },
@@ -71,7 +72,11 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
     const channel = supabase
       .channel(`notif-count:${user.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
-        () => setUnreadNotifs(c => c + 1))
+        (payload) => {
+          setUnreadNotifs(c => c + 1)
+          const row = payload.new as { type?: string }
+          if (row?.type === 'follow') void playConnectSound()
+        })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
         () => fetchCount())
       .subscribe()
