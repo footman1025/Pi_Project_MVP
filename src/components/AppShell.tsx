@@ -95,6 +95,7 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
   }, [user])
 
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'User'
+  const isMessages = location.pathname.startsWith('/messages')
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -207,8 +208,14 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
           </NavLink>
         </header>
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden pb-20 lg:pb-0 min-w-0">
-          <div className="animate-fade-in min-w-0">{children}</div>
+        <main
+          className={`flex-1 min-w-0 ${
+            isMessages
+              ? 'overflow-hidden min-h-0 pb-[calc(3.75rem+env(safe-area-inset-bottom,0px))] lg:pb-0'
+              : 'overflow-y-auto overflow-x-hidden pb-20 lg:pb-0'
+          }`}
+        >
+          <div className={`animate-fade-in min-w-0 ${isMessages ? 'h-full' : ''}`}>{children}</div>
         </main>
 
         <nav

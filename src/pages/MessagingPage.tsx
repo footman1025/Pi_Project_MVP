@@ -477,7 +477,7 @@ export default function MessagingPage() {
   }
 
   return (
-    <div className="flex overflow-hidden min-w-0 w-full max-w-full h-[calc(100dvh-8.5rem)] lg:h-[calc(100vh-4rem)]">
+    <div className="flex overflow-hidden min-w-0 w-full max-w-full h-full min-h-0">
       {/* Left: Conversations */}
       <div className={`flex flex-col border-r border-white/5 min-w-0 ${selectedUser ? 'hidden md:flex' : 'flex'} w-full md:w-80 flex-shrink-0`}
         style={{ background: 'rgba(8,13,26,0.8)' }}>
@@ -838,7 +838,7 @@ export default function MessagingPage() {
             </div>
 
             {/* Input */}
-            <div className="px-2 sm:px-4 py-3 border-t border-white/5 flex-shrink-0 relative min-w-0 w-full max-w-full box-border" style={{ background: 'rgba(8,13,26,0.9)' }}>
+            <div className="px-2 sm:px-4 py-2 sm:py-3 border-t border-white/5 flex-shrink-0 relative min-w-0 w-full max-w-full box-border" style={{ background: 'rgba(8,13,26,0.9)' }}>
               <MessagePicker
                 open={pickerOpen}
                 onClose={() => setPickerOpen(false)}
