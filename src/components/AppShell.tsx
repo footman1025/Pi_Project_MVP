@@ -11,6 +11,10 @@ import { supabase } from '../lib/supabase'
 import UserAvatar from './UserAvatar'
 import { track } from '../lib/analytics'
 import { playConnectSound, unlockConnectSound } from '../lib/connectSound'
+import {
+  ensureSystemAlertPermission,
+  showSystemAlertForRow,
+} from '../lib/systemAlerts'
 
 const navItems = [
   { to: '/dashboard', icon: LayoutGrid, label: 'Dashboard' },
@@ -69,19 +73,35 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
     const onRead = () => fetchCount()
     window.addEventListener('pi:notifications-read', onRead)
 
-    // Unlock Web Audio after first tap so incoming message sounds can play
-    const unlock = () => { void unlockConnectSound() }
+    // Unlock Web Audio + request OS notification permission after first tap
+    const unlock = () => {
+      void unlockConnectSound()
+      void ensureSystemAlertPermission()
+    }
     window.addEventListener('pointerdown', unlock, { once: true })
     window.addEventListener('keydown', unlock, { once: true })
+
+    const onAlertClick = (e: Event) => {
+      const path = (e as CustomEvent<{ path?: string }>).detail?.path
+      if (path) navigate(path)
+    }
+    window.addEventListener('pi:system-alert-click', onAlertClick)
 
     const channel = supabase
       .channel(`notif-count:${user.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
         (payload) => {
           setUnreadNotifs(c => c + 1)
-          const row = payload.new as { type?: string }
+          const row = payload.new as {
+            id?: string
+            type?: string
+            message?: string | null
+            actor_id?: string | null
+          }
           // Alien ring on connect + when someone messages you
           if (row?.type === 'follow' || row?.type === 'message') void playConnectSound()
+          // Native Windows / macOS / browser system toast
+          showSystemAlertForRow(row)
         })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
         () => fetchCount())
@@ -90,9 +110,10 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
       window.removeEventListener('pi:notifications-read', onRead)
       window.removeEventListener('pointerdown', unlock)
       window.removeEventListener('keydown', unlock)
+      window.removeEventListener('pi:system-alert-click', onAlertClick)
       supabase.removeChannel(channel)
     }
-  }, [user])
+  }, [user, navigate])
 
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'User'
   const isMessages = location.pathname.startsWith('/messages')

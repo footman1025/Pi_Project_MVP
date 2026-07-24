@@ -5,6 +5,11 @@ import { useAuth } from '../contexts/AuthContext'
 import { Bell, Heart, MessageCircle, UserPlus, Loader2, CheckCheck } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 import StateMessage from '../components/StateMessage'
+import {
+  ensureSystemAlertPermission,
+  systemAlertPermission,
+  systemAlertsSupported,
+} from '../lib/systemAlerts'
 
 function timeAgo(date: string) {
   const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
@@ -31,6 +36,7 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<NotifRow[]>([])
   const [loading, setLoading] = useState(true)
   const [markingAll, setMarkingAll] = useState(false)
+  const [alertPerm, setAlertPerm] = useState(() => systemAlertPermission())
   const badgeCleared = useRef(false)
 
   useEffect(() => {
@@ -134,6 +140,31 @@ export default function NotificationsPage() {
             )}
           </div>
           <p className="text-slate-400 text-sm">Tap a message to open the chat directly.</p>
+          {systemAlertsSupported() && alertPerm !== 'granted' && alertPerm !== 'unsupported' && (
+            <button
+              type="button"
+              onClick={async () => {
+                const ok = await ensureSystemAlertPermission()
+                setAlertPerm(systemAlertPermission())
+                if (ok) {
+                  // Quick confirmation toast via OS
+                  const { showPiSystemAlert } = await import('../lib/systemAlerts')
+                  showPiSystemAlert({
+                    title: 'Pi alerts enabled',
+                    body: 'You’ll get system alerts for messages, follows, likes, and comments.',
+                    path: '/notifications',
+                    tag: 'pi-alerts-enabled',
+                    force: true,
+                  })
+                }
+              }}
+              className="mt-2 text-xs font-semibold text-teal-300 hover:text-teal-200 underline underline-offset-2"
+            >
+              {alertPerm === 'denied'
+                ? 'System alerts blocked — enable Pi in browser site settings'
+                : 'Enable system alerts (desktop notifications)'}
+            </button>
+          )}
         </div>
         {notifications.length > 0 && (
           <button onClick={markAllRead} disabled={markingAll}
