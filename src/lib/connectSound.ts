@@ -1,6 +1,7 @@
-/** Sci‑fi / alien-style connection ring via Web Audio (no external file). */
+/** Sci‑fi / alien-style connection / message ring via Web Audio (no external file). */
 
 let sharedCtx: AudioContext | null = null
+let lastPlayAt = 0
 
 function getCtx() {
   if (typeof window === 'undefined') return null
@@ -33,11 +34,29 @@ function tone(
 }
 
 /**
- * Plays a short alien “connection” ring when two users connect.
- * Safe to call from UI clicks; no-ops if Audio is unavailable.
+ * Browsers block AudioContext until a user gesture.
+ * Call once on first click/tap so later message sounds can play.
+ */
+export async function unlockConnectSound() {
+  try {
+    const ctx = getCtx()
+    if (!ctx) return
+    if (ctx.state === 'suspended') await ctx.resume()
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Plays a short alien “connection” / incoming-message ring.
+ * Safe to call from UI; no-ops if Audio is unavailable. Debounced ~900ms.
  */
 export async function playConnectSound() {
   try {
+    const now = Date.now()
+    if (now - lastPlayAt < 900) return
+    lastPlayAt = now
+
     const ctx = getCtx()
     if (!ctx) return
     if (ctx.state === 'suspended') await ctx.resume()

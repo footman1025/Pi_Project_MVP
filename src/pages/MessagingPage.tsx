@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase, Message, Profile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { notifyUserOfMessage } from '../lib/notifications'
+import { playConnectSound } from '../lib/connectSound'
 import { Send, Search, Loader2, MessageCircle, Smile, Paperclip, FileText, Download, ExternalLink, X, Pin, Forward, Trash2, Copy } from 'lucide-react'
 import UserAvatar from '../components/UserAvatar'
 import MessagePicker from '../components/MessagePicker'
@@ -206,6 +207,10 @@ export default function MessagingPage() {
         if ((msg.sender_id === user.id && msg.receiver_id === selectedUser.id) ||
             (msg.sender_id === selectedUser.id && msg.receiver_id === user.id)) {
           setMessages(m => (m.some(x => x.id === msg.id) ? m : [...m, msg]))
+          // Incoming message from the other person → alien ring
+          if (msg.sender_id === selectedUser.id && msg.receiver_id === user.id) {
+            void playConnectSound()
+          }
         }
       })
       .subscribe()

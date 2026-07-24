@@ -10,7 +10,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import UserAvatar from './UserAvatar'
 import { track } from '../lib/analytics'
-import { playConnectSound } from '../lib/connectSound'
+import { playConnectSound, unlockConnectSound } from '../lib/connectSound'
 
 const navItems = [
   { to: '/dashboard', icon: LayoutGrid, label: 'Dashboard' },
@@ -69,19 +69,27 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
     const onRead = () => fetchCount()
     window.addEventListener('pi:notifications-read', onRead)
 
+    // Unlock Web Audio after first tap so incoming message sounds can play
+    const unlock = () => { void unlockConnectSound() }
+    window.addEventListener('pointerdown', unlock, { once: true })
+    window.addEventListener('keydown', unlock, { once: true })
+
     const channel = supabase
       .channel(`notif-count:${user.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
         (payload) => {
           setUnreadNotifs(c => c + 1)
           const row = payload.new as { type?: string }
-          if (row?.type === 'follow') void playConnectSound()
+          // Alien ring on connect + when someone messages you
+          if (row?.type === 'follow' || row?.type === 'message') void playConnectSound()
         })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
         () => fetchCount())
       .subscribe()
     return () => {
       window.removeEventListener('pi:notifications-read', onRead)
+      window.removeEventListener('pointerdown', unlock)
+      window.removeEventListener('keydown', unlock)
       supabase.removeChannel(channel)
     }
   }, [user])

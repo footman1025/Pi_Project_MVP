@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { X, SendHorizonal, Sparkles, Minimize2 } from 'lucide-react'
 import { aiAssistantSuggestions } from '../data/mockData'
 import { useAuth } from '../contexts/AuthContext'
+import { askGroqAssistant, hasGroqKey, type ChatTurn } from '../lib/groqAssistant'
 
 interface Message {
   role: 'user' | 'ai'
   text: string
 }
 
+/** Offline / no-key fallback */
 function getAiReply(text: string, displayName: string): string {
   const lower = text.toLowerCase()
   const name = displayName || 'there'
@@ -53,7 +55,6 @@ function getAiReply(text: string, displayName: string): string {
     return `I can guide you to Matching, Opportunities, Communities, AI Twin, Messages, and Investor Demo. Ask something specific — e.g. “find investors”, “improve my profile”, or “recommend communities”.`
   }
 
-  // Complete answer — never leave the user waiting on “One moment…”
   return `Got it. On Pi, the next best moves are usually: (1) strengthen your AI Twin on Edit Profile, (2) review Matching for ranked people + reasons, (3) check Opportunities for actionable fits. Tell me which of those you want, or ask about investors, communities, or co-founders.`
 }
 
@@ -66,18 +67,21 @@ export default function AiAssistant({ open, onClose }: Props) {
   const navigate = useNavigate()
   const { profile, user } = useAuth()
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'there'
+  const groqEnabled = hasGroqKey()
 
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'ai',
-      text: "Hi — I'm your Pi AI assistant. I can help with matches, opportunities, communities, your Digital Twin, and next steps. What should we explore?",
+      text: groqEnabled
+        ? "Hi — I'm your Pi AI assistant (powered by Groq). Ask me anything about Matching, Opportunities, your Digital Twin, Feed, Messages, or how to use Pi."
+        : "Hi — I'm your Pi AI assistant. Add a Groq API key (VITE_GROQ_API_KEY) for live answers, or ask me about matches, opportunities, communities, and next steps.",
     },
   ])
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -87,34 +91,67 @@ export default function AiAssistant({ open, onClose }: Props) {
     if (open) setTimeout(() => inputRef.current?.focus(), 120)
   }, [open])
 
-  // Never leave typing stuck if the panel closes mid-reply
   useEffect(() => {
-    if (!open && timerRef.current) {
-      clearTimeout(timerRef.current)
-      timerRef.current = null
+    if (!open) {
+      abortRef.current?.abort()
+      abortRef.current = null
       setTyping(false)
     }
   }, [open])
 
   useEffect(() => () => {
-    if (timerRef.current) clearTimeout(timerRef.current)
+    abortRef.current?.abort()
   }, [])
 
-  const send = (text: string) => {
+  const send = async (text: string) => {
     const trimmed = text.trim()
     if (!trimmed || typing) return
 
-    setMessages(m => [...m, { role: 'user', text: trimmed }])
+    const nextMessages: Message[] = [...messages, { role: 'user', text: trimmed }]
+    setMessages(nextMessages)
     setInput('')
     setTyping(true)
 
-    if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(() => {
-      timerRef.current = null
-      const reply = getAiReply(trimmed, displayName)
+    try {
+      let reply: string
+      if (hasGroqKey()) {
+        const history: ChatTurn[] = nextMessages
+          .slice(0, -1)
+          .filter(m => m.text)
+          .map(m => ({
+            role: m.role === 'user' ? 'user' : 'assistant',
+            content: m.text,
+          }))
+
+        reply = await askGroqAssistant(history, trimmed, {
+          displayName,
+          role: profile?.role,
+          skills: profile?.skills,
+          goals: profile?.goals,
+        })
+      } else {
+        await new Promise(r => setTimeout(r, 500))
+        reply = getAiReply(trimmed, displayName)
+      }
+
       setMessages(m => [...m, { role: 'ai', text: reply }])
+    } catch (e: unknown) {
+      let msg = 'Something went wrong.'
+      if (e instanceof Error) msg = e.message
+      else if (typeof e === 'string') msg = e
+      else if (e && typeof e === 'object' && 'message' in e && typeof (e as { message: unknown }).message === 'string') {
+        msg = (e as { message: string }).message
+      }
+      setMessages(m => [
+        ...m,
+        {
+          role: 'ai',
+          text: `I couldn’t reach Groq just now. ${msg}`,
+        },
+      ])
+    } finally {
       setTyping(false)
-    }, 700 + Math.random() * 400)
+    }
   }
 
   if (!open) return null
@@ -155,7 +192,9 @@ export default function AiAssistant({ open, onClose }: Props) {
             <p className="text-white font-bold text-sm tracking-tight">Pi AI Assistant</p>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[11px] text-emerald-400/90 font-medium">Online · guided demo replies</span>
+              <span className="text-[11px] text-emerald-400/90 font-medium">
+                {groqEnabled ? 'Online · Groq AI' : 'Online · guided demo replies'}
+              </span>
             </div>
           </div>
           <button
@@ -181,7 +220,7 @@ export default function AiAssistant({ open, onClose }: Props) {
               </div>
             )}
             <div
-              className={`max-w-[82%] px-3.5 py-2.5 text-[13px] leading-relaxed ${
+              className={`max-w-[82%] px-3.5 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap ${
                 msg.role === 'user'
                   ? 'text-white rounded-2xl rounded-br-md'
                   : 'text-slate-200 rounded-2xl rounded-bl-md border border-white/[0.07]'
@@ -261,7 +300,7 @@ export default function AiAssistant({ open, onClose }: Props) {
           className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] pl-3.5 pr-1.5 py-1.5 focus-within:border-teal-500/40 transition-colors"
           onSubmit={e => {
             e.preventDefault()
-            send(input)
+            void send(input)
           }}
         >
           <input
@@ -283,7 +322,8 @@ export default function AiAssistant({ open, onClose }: Props) {
           </button>
         </form>
         <p className="text-[10px] text-slate-600 text-center mt-2 flex items-center justify-center gap-1">
-          <Minimize2 size={10} /> Guided demo replies · Matching lives on /match
+          <Minimize2 size={10} />
+          {groqEnabled ? 'Groq AI · answers about this site' : 'Add VITE_GROQ_API_KEY for live AI · Matching on /match'}
         </p>
       </div>
     </div>
