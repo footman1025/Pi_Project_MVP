@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase, Post, Comment, Profile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { notifyPostAuthorOfLike, notifyPostAuthorOfComment } from '../lib/notifications'
 import { displayName } from '../lib/posts'
-import { Heart, MessageCircle, Share2, Send, Image, Loader2, Sparkles } from 'lucide-react'
+import { uploadPostImage } from '../lib/postImageUpload'
+import { Heart, MessageCircle, Share2, Send, Image, Loader2, Sparkles, X } from 'lucide-react'
 import UserAvatar from '../components/UserAvatar'
 import LoadingSpinner from '../components/LoadingSpinner'
 import StateMessage from '../components/StateMessage'
@@ -86,7 +87,20 @@ function PostCard({ post, onLike, onComment, actorName }: {
         </div>
       </div>
 
-      <p className="text-slate-200 text-sm leading-relaxed mb-4 whitespace-pre-wrap">{post.content}</p>
+      {post.content?.trim() && (
+        <p className="text-slate-200 text-sm leading-relaxed mb-4 whitespace-pre-wrap">{post.content}</p>
+      )}
+
+      {post.image_url && (
+        <div className="mb-4 -mx-1 overflow-hidden rounded-xl border border-white/10">
+          <img
+            src={post.image_url}
+            alt="Post"
+            className="w-full max-h-[480px] object-cover bg-black/40"
+            loading="lazy"
+          />
+        </div>
+      )}
 
       <div className="flex items-center gap-1 pt-3 border-t border-white/5">
         <button onClick={() => onLike(post.id, !!post.liked)}
@@ -153,10 +167,36 @@ export default function FeedPage() {
   const navigate = useNavigate()
   const [posts, setPosts] = useState<Post[]>([])
   const [newPost, setNewPost] = useState('')
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [posting, setPosting] = useState(false)
   const [error, setError] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const actorName = profile?.full_name || user?.email?.split('@')[0] || 'Someone'
+
+  const clearImage = () => {
+    setImageFile(null)
+    setImagePreview(prev => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const onPickImage = (file: File | undefined) => {
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setError('Please choose an image file (JPG, PNG, WEBP, or GIF).')
+      return
+    }
+    setError('')
+    setImagePreview(prev => {
+      if (prev) URL.revokeObjectURL(prev)
+      return URL.createObjectURL(file)
+    })
+    setImageFile(file)
+  }
 
   const fetchPosts = useCallback(async () => {
     let list: Post[] = []
@@ -210,6 +250,12 @@ export default function FeedPage() {
   }, [fetchPosts])
 
   useEffect(() => {
+    return () => {
+      if (imagePreview) URL.revokeObjectURL(imagePreview)
+    }
+  }, [imagePreview])
+
+  useEffect(() => {
     const channel = supabase
       .channel('public:posts')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, () => {
@@ -260,18 +306,27 @@ export default function FeedPage() {
   }
 
   const handlePost = async () => {
-    if (!newPost.trim() || !user) return
+    const content = newPost.trim()
+    if ((!content && !imageFile) || !user) return
     setPosting(true)
     setError('')
-    const content = newPost.trim()
 
     try {
       const me = await ensureProfile()
       if (!me) throw new Error('Could not load your profile. Try signing out and back in.')
 
+      let imageUrl: string | null = null
+      if (imageFile) {
+        imageUrl = await uploadPostImage(user.id, imageFile)
+      }
+
       const { data, error: insertError } = await supabase
         .from('posts')
-        .insert({ author_id: user.id, content })
+        .insert({
+          author_id: user.id,
+          content: content || '',
+          image_url: imageUrl,
+        })
         .select('*')
         .single()
 
@@ -307,6 +362,7 @@ export default function FeedPage() {
       }
 
       setNewPost('')
+      clearImage()
       setPosts(ps => [newItem, ...ps.filter(p => p.id !== newItem.id)])
       await fetchPosts()
     } catch (e: any) {
@@ -352,13 +408,43 @@ export default function FeedPage() {
             rows={3}
             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-pi-500/50 transition-colors resize-none mb-3"
           />
+          {imagePreview && (
+            <div className="relative mb-3 inline-block max-w-full">
+              <img
+                src={imagePreview}
+                alt="Selected"
+                className="max-h-56 rounded-xl border border-white/10 object-cover"
+              />
+              <button
+                type="button"
+                onClick={clearImage}
+                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 border border-white/20 flex items-center justify-center text-white hover:bg-black/90 transition-colors"
+                aria-label="Remove photo"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="hidden"
+            onChange={e => onPickImage(e.target.files?.[0])}
+          />
           <div className="flex items-center justify-between">
             <div className="flex gap-2">
-              <button type="button" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-400 hover:text-white text-xs transition-colors">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                  imageFile ? 'text-pi-300 bg-pi-500/10' : 'text-slate-400 hover:text-white'
+                }`}
+              >
                 <Image size={14} /> Photo
               </button>
             </div>
-            <button type="button" onClick={handlePost} disabled={posting || !newPost.trim()}
+            <button type="button" onClick={handlePost} disabled={posting || (!newPost.trim() && !imageFile)}
               className="flex items-center gap-2 px-5 py-2 rounded-xl font-semibold text-white text-sm disabled:opacity-40 transition-all hover:scale-105 active:scale-95"
               style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
               {posting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
