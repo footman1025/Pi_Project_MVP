@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { MatchResult, rankMatches } from '../lib/matching'
 import { playConnectSound } from '../lib/connectSound'
+import UserAvatar from '../components/UserAvatar'
 
 export default function MatchmakingPage() {
   const navigate = useNavigate()
@@ -133,9 +134,21 @@ export default function MatchmakingPage() {
                 <div className="p-4 sm:p-5 min-w-0">
                   {/* Header: identity + match % */}
                   <div className="flex items-start gap-3 min-w-0">
-                    <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br ${m.color} flex items-center justify-center text-white font-bold text-xl sm:text-2xl flex-shrink-0`}>
-                      {name.charAt(0).toUpperCase()}
-                    </div>
+                    <button
+                      type="button"
+                      className="flex-shrink-0 rounded-2xl overflow-hidden ring-1 ring-white/10 hover:ring-pi-500/40 transition-all"
+                      onClick={() => p.username && navigate(`/p/${p.username}`, { state: { from: '/match' } })}
+                      aria-label={`Open ${name}'s profile`}
+                    >
+                      <UserAvatar
+                        url={p.avatar_url}
+                        name={name}
+                        id={p.id}
+                        size={56}
+                        rounded="rounded-2xl"
+                        className="shadow-lg shadow-pi-500/15"
+                      />
+                    </button>
                     <div className="flex-1 min-w-0 overflow-hidden">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
@@ -258,9 +271,14 @@ export default function MatchmakingPage() {
               }}>
               <div className="p-4 sm:p-5 min-w-0">
                 <div className="flex items-start gap-3 min-w-0">
-                  <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br ${m.color} flex items-center justify-center text-white font-bold text-xl sm:text-2xl flex-shrink-0`}>
-                    {m.avatar}
-                  </div>
+                  <UserAvatar
+                    url={null}
+                    name={m.name}
+                    id={String(m.id)}
+                    size={56}
+                    rounded="rounded-2xl"
+                    className="shadow-lg shadow-pi-500/15 flex-shrink-0"
+                  />
                   <div className="flex-1 min-w-0 overflow-hidden">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
