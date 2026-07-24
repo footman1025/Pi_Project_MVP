@@ -25,6 +25,7 @@ import {
   type ReplyMeta,
 } from '../lib/messageReply'
 import MediaCaptureButtons from '../components/MediaCaptureButtons'
+import VoiceMessageBubble from '../components/VoiceMessageBubble'
 
 function timeAgo(date: string) {
   const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
@@ -532,8 +533,11 @@ export default function MessagingPage() {
                           {largeEmoji}
                         </div>
                       ) : file ? (
+                        isAudioFile(file.type) ? (
+                          <VoiceMessageBubble url={file.url} size={file.size} isMe={isMe} />
+                        ) : (
                         <div className={`rounded-2xl overflow-hidden border ${isMe ? 'border-white/10' : 'border-white/10 bg-white/5'}`}
-                          style={isMe && !isImageFile(file.type) && !isAudioFile(file.type) && !isVideoFile(file.type) ? { background: 'linear-gradient(135deg, #14b8a6, #0d9488)' } : {}}>
+                          style={isMe && !isImageFile(file.type) && !isVideoFile(file.type) ? { background: 'linear-gradient(135deg, #14b8a6, #0d9488)' } : {}}>
                           {isImageFile(file.type) ? (
                             <a href={file.url} target="_blank" rel="noreferrer" className="block">
                               <img
@@ -546,11 +550,6 @@ export default function MessagingPage() {
                                 <span className="truncate">{file.name}</span>
                               </div>
                             </a>
-                          ) : isAudioFile(file.type) ? (
-                            <div className={`px-3 py-3 ${isMe ? 'bg-teal-600/90' : 'bg-white/5'}`}>
-                              <p className={`text-xs mb-2 font-medium ${isMe ? 'text-white/80' : 'text-slate-400'}`}>Voice message</p>
-                              <audio controls preload="metadata" src={file.url} className="w-full max-w-[240px] h-9" />
-                            </div>
                           ) : isVideoFile(file.type) ? (
                             <div className="bg-black/40">
                               <video
@@ -583,6 +582,7 @@ export default function MessagingPage() {
                             </a>
                           )}
                         </div>
+                        )
                       ) : (
                         <div className={`px-3 sm:px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words [overflow-wrap:anywhere] ${isMe
                           ? 'text-white rounded-br-sm'
