@@ -1,31 +1,60 @@
 import { useState, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { X, SendHorizonal, Sparkles, Minimize2 } from 'lucide-react'
 import { aiAssistantSuggestions } from '../data/mockData'
+import { useAuth } from '../contexts/AuthContext'
 
 interface Message {
   role: 'user' | 'ai'
   text: string
 }
 
-const aiResponses: Record<string, string> = {
-  default: "I'm analyzing your profile and network to find the best matches. One moment...",
-  investor: "I found 12 AI investors interested in social platforms. Top match: Sarah Chen (95% compatibility) — angel investor focused on AI-native B2C products. Would you like an introduction?",
-  profile: "Your profile is 78% complete. Adding your skills and portfolio will unlock more relevant matches. Want me to suggest improvements?",
-  community: "Based on your interests in AI and startups, I recommend AI Founders Hub and Creator Economy Lab. Both are highly active this week.",
-  portfolio: "I can help optimize your portfolio visibility. Enabling SEO indexing on your public profile makes you discoverable for searches like “AI co-founder”. Want to review your profile?",
-  cofounder: "I found potential technical co-founders with strong compatibility. Gabriel leads the list — engineering lead specializing in AI platforms. Want me to draft an introduction?",
-  competition: "The Alibaba CoCreate London Finals deadline is approaching. Your pitch readiness looks strong. Want tips to improve it?",
-}
-
-function getAiReply(text: string): string {
+function getAiReply(text: string, displayName: string): string {
   const lower = text.toLowerCase()
-  if (lower.includes('investor')) return aiResponses.investor
-  if (lower.includes('profile')) return aiResponses.profile
-  if (lower.includes('communit')) return aiResponses.community
-  if (lower.includes('portfolio')) return aiResponses.portfolio
-  if (lower.includes('co-founder') || lower.includes('cofounder') || lower.includes('technical')) return aiResponses.cofounder
-  if (lower.includes('competition') || lower.includes('startup')) return aiResponses.competition
-  return aiResponses.default
+  const name = displayName || 'there'
+
+  if (/\b(hi|hello|hey|good morning|good evening)\b/.test(lower)) {
+    return `Hi ${name}! I can help with matches, communities, opportunities, your profile, or Investor Demo Mode. What would you like to explore?`
+  }
+
+  if (lower.includes('investor') || lower.includes('funding') || lower.includes('angel') || lower.includes('vc')) {
+    return `Top demo matches for investor outreach: Sarah Chen (95% — AI-native B2C), plus several angels focused on social platforms. Open Matching or Investor Demo to review fit reasons and request an intro path.`
+  }
+
+  if (lower.includes('match') || lower.includes('collaborat') || lower.includes('connect') || lower.includes('people')) {
+    return `Pi Intelligence ranks people by skills, goals, and overlap — not vanity metrics. Open Matching to see live ranked profiles with “Why this match?” explanations. Demo data fills gaps until more members join.`
+  }
+
+  if (lower.includes('profile') || lower.includes('twin') || lower.includes('bio')) {
+    return `Your Digital Twin gets sharper as you add skills, goals, and experience. Visit AI Twin or Edit Profile to improve match quality — a complete twin is the fastest way to better recommendations.`
+  }
+
+  if (lower.includes('communit')) {
+    return `Based on AI/startup interests, start with AI Founders Hub and Creator Economy Lab. Open Communities to join discussions and grow your opportunity graph.`
+  }
+
+  if (lower.includes('portfolio') || lower.includes('seo') || lower.includes('visibility')) {
+    return `Public profiles are SEO-indexed on Pi. Keep your bio, skills, and username clear so searches like “AI co-founder” can find you. Review your public profile page to verify meta tags and structure.`
+  }
+
+  if (lower.includes('co-founder') || lower.includes('cofounder') || lower.includes('technical') || lower.includes('engineer')) {
+    return `For a technical co-founder, Matching surfaces engineers with AI-platform overlap and shared goals. Open Matching, expand “Why this match?”, then Message a top candidate directly.`
+  }
+
+  if (lower.includes('opportunit') || lower.includes('job') || lower.includes('competition') || lower.includes('startup') || lower.includes('grant')) {
+    return `Opportunity Intelligence scores fits against your twin. Open Opportunities for competitions, collaborations, and funding-style listings — each card explains why it matches you.`
+  }
+
+  if (lower.includes('demo') || lower.includes('investor demo') || lower.includes('pitch')) {
+    return `Investor Demo Mode walks through Digital Twin → matches → opportunities in minutes. Open it from the sidebar or /demo — designed so first-time visitors grasp Pi’s category quickly.`
+  }
+
+  if (lower.includes('help') || lower.includes('what can') || lower.includes('how do')) {
+    return `I can guide you to Matching, Opportunities, Communities, AI Twin, Messages, and Investor Demo. Ask something specific — e.g. “find investors”, “improve my profile”, or “recommend communities”.`
+  }
+
+  // Complete answer — never leave the user waiting on “One moment…”
+  return `Got it. On Pi, the next best moves are usually: (1) strengthen your AI Twin on Edit Profile, (2) review Matching for ranked people + reasons, (3) check Opportunities for actionable fits. Tell me which of those you want, or ask about investors, communities, or co-founders.`
 }
 
 interface Props {
@@ -34,16 +63,21 @@ interface Props {
 }
 
 export default function AiAssistant({ open, onClose }: Props) {
+  const navigate = useNavigate()
+  const { profile, user } = useAuth()
+  const displayName = profile?.full_name || user?.email?.split('@')[0] || 'there'
+
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'ai',
-      text: "Hi — I'm your Pi AI assistant. I can help you find collaborators, opportunities, communities, and next steps on Pi. What should we explore?",
+      text: "Hi — I'm your Pi AI assistant. I can help with matches, opportunities, communities, your Digital Twin, and next steps. What should we explore?",
     },
   ])
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -53,20 +87,46 @@ export default function AiAssistant({ open, onClose }: Props) {
     if (open) setTimeout(() => inputRef.current?.focus(), 120)
   }, [open])
 
+  // Never leave typing stuck if the panel closes mid-reply
+  useEffect(() => {
+    if (!open && timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+      setTyping(false)
+    }
+  }, [open])
+
+  useEffect(() => () => {
+    if (timerRef.current) clearTimeout(timerRef.current)
+  }, [])
+
   const send = (text: string) => {
-    if (!text.trim() || typing) return
-    setMessages(m => [...m, { role: 'user', text: text.trim() }])
+    const trimmed = text.trim()
+    if (!trimmed || typing) return
+
+    setMessages(m => [...m, { role: 'user', text: trimmed }])
     setInput('')
     setTyping(true)
-    setTimeout(() => {
+
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null
+      const reply = getAiReply(trimmed, displayName)
+      setMessages(m => [...m, { role: 'ai', text: reply }])
       setTyping(false)
-      setMessages(m => [...m, { role: 'ai', text: getAiReply(text) }])
-    }, 900 + Math.random() * 500)
+    }, 700 + Math.random() * 400)
   }
 
   if (!open) return null
 
-  const showSuggestions = messages.length <= 2 && !typing
+  const showSuggestions = messages.length <= 3 && !typing
+
+  const quickLinks = [
+    { label: 'Matching', to: '/match' },
+    { label: 'Opportunities', to: '/opportunities' },
+    { label: 'AI Twin', to: '/twin' },
+    { label: 'Investor Demo', to: '/demo' },
+  ]
 
   return (
     <div
@@ -79,7 +139,6 @@ export default function AiAssistant({ open, onClose }: Props) {
         boxShadow: '0 24px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(20,184,166,0.12)',
       }}
     >
-      {/* Header */}
       <div className="relative px-4 pt-4 pb-3 flex-shrink-0">
         <div
           className="absolute inset-0 opacity-80 pointer-events-none"
@@ -96,7 +155,7 @@ export default function AiAssistant({ open, onClose }: Props) {
             <p className="text-white font-bold text-sm tracking-tight">Pi AI Assistant</p>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[11px] text-emerald-400/90 font-medium">Online · ready to help</span>
+              <span className="text-[11px] text-emerald-400/90 font-medium">Online · guided demo replies</span>
             </div>
           </div>
           <button
@@ -110,7 +169,6 @@ export default function AiAssistant({ open, onClose }: Props) {
         </div>
       </div>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-2 space-y-3.5 min-h-0" style={{ maxHeight: 280 }}>
         {messages.map((msg, i) => (
           <div key={i} className={`flex gap-2.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -163,7 +221,6 @@ export default function AiAssistant({ open, onClose }: Props) {
         <div ref={bottomRef} />
       </div>
 
-      {/* Composer block */}
       <div className="flex-shrink-0 border-t border-white/[0.06] px-3 pt-3 pb-3"
         style={{ background: 'rgba(0,0,0,0.22)' }}>
         {showSuggestions && (
@@ -176,8 +233,9 @@ export default function AiAssistant({ open, onClose }: Props) {
                 <button
                   key={s}
                   type="button"
+                  disabled={typing}
                   onClick={() => send(s)}
-                  className="text-left text-xs px-3 py-2.5 rounded-xl border border-white/[0.08] text-slate-300 hover:text-white hover:border-teal-500/35 hover:bg-teal-500/10 transition-all"
+                  className="text-left text-xs px-3 py-2.5 rounded-xl border border-white/[0.08] text-slate-300 hover:text-white hover:border-teal-500/35 hover:bg-teal-500/10 transition-all disabled:opacity-50"
                 >
                   {s}
                 </button>
@@ -185,6 +243,19 @@ export default function AiAssistant({ open, onClose }: Props) {
             </div>
           </div>
         )}
+
+        <div className="flex gap-1.5 mb-2 overflow-x-auto pb-0.5">
+          {quickLinks.map(l => (
+            <button
+              key={l.to}
+              type="button"
+              onClick={() => { onClose(); navigate(l.to) }}
+              className="shrink-0 text-[10px] font-semibold px-2.5 py-1 rounded-full border border-teal-500/25 text-teal-300 bg-teal-500/10 hover:bg-teal-500/20"
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
 
         <form
           className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] pl-3.5 pr-1.5 py-1.5 focus-within:border-teal-500/40 transition-colors"
@@ -198,7 +269,8 @@ export default function AiAssistant({ open, onClose }: Props) {
             value={input}
             onChange={e => setInput(e.target.value)}
             placeholder="Ask Pi anything…"
-            className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none min-w-0 py-2"
+            disabled={typing}
+            className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none min-w-0 py-2 disabled:opacity-60"
           />
           <button
             type="submit"
@@ -211,7 +283,7 @@ export default function AiAssistant({ open, onClose }: Props) {
           </button>
         </form>
         <p className="text-[10px] text-slate-600 text-center mt-2 flex items-center justify-center gap-1">
-          <Minimize2 size={10} /> Demo replies · not a live model yet
+          <Minimize2 size={10} /> Guided demo replies · Matching lives on /match
         </p>
       </div>
     </div>
