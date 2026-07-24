@@ -44,15 +44,39 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+const ALWAYS_PUBLIC = [
+  '/',
+  '/onboarding',
+  '/login',
+  '/signup',
+  '/forgot-password',
+  '/reset-password',
+  '/demo',
+  '/investor',
+]
+
 export default function App() {
   const location = useLocation()
+  const { session, loading: authLoading } = useAuth()
   const [assistantOpen, setAssistantOpen] = useState(false)
 
-  const isPublic = ['/', '/onboarding', '/login', '/signup', '/forgot-password', '/reset-password', '/demo', '/investor'].includes(location.pathname)
-    || location.pathname.startsWith('/p/')
+  const isProfilePath = location.pathname.startsWith('/p/')
+  // Logged-in members see profiles inside AppShell (sidebar + back). Guests get public SEO layout.
+  const isPublic =
+    ALWAYS_PUBLIC.includes(location.pathname) ||
+    (isProfilePath && !session && !authLoading)
 
   useEffect(() => { window.scrollTo(0, 0) }, [location.pathname])
   useEffect(() => { trackPageView(location.pathname) }, [location.pathname])
+
+  // Wait for auth before deciding public vs app shell for profile URLs
+  if (isProfilePath && authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-dark-950">
+        <LoadingSpinner size="lg" label="Loading Pi…" />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-dark-950 text-white">
@@ -86,6 +110,7 @@ export default function App() {
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/profile/edit" element={<ProfileEditPage />} />
               <Route path="/twin" element={<DigitalTwinPage />} />
+              <Route path="/p/:username" element={<ProfilePage />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </AppShell>

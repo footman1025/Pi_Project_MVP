@@ -1,8 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import {
   MapPin, Globe2, Star, Code2, ChevronDown, ChevronUp, ExternalLink,
-  LayoutGrid, UserCog, LogOut, Bell, UserPlus, UserCheck, Loader2, MessageCircle, Sparkles, ArrowLeft
+  UserPlus, UserCheck, Loader2, MessageCircle, Sparkles, ArrowLeft
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase, Profile } from '../lib/supabase'
@@ -95,9 +95,8 @@ function applySeo(profile: Profile, username: string) {
 export default function ProfilePage() {
   const { username = '' } = useParams<{ username: string }>()
   const navigate = useNavigate()
-  const { session, profile: authProfile, user, signOut } = useAuth()
+  const { session, profile: authProfile, user } = useAuth()
   const [showSEO, setShowSEO] = useState(false)
-  const [dropdownOpen, setDropdownOpen] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -105,25 +104,9 @@ export default function ProfilePage() {
   const [followLoading, setFollowLoading] = useState(false)
   const [followError, setFollowError] = useState('')
   const [seo, setSeo] = useState<ReturnType<typeof applySeo> | null>(null)
-  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const isLoggedIn = !!session
   const isOwn = !!(user && profile && user.id === profile.id)
-  const displayName = authProfile?.full_name || user?.email?.split('@')[0] || 'You'
-
-  useEffect(() => {
-    if (!dropdownOpen) return
-    const onPointerDown = (e: MouseEvent | TouchEvent) => {
-      const el = dropdownRef.current
-      if (el && !el.contains(e.target as Node)) setDropdownOpen(false)
-    }
-    document.addEventListener('mousedown', onPointerDown)
-    document.addEventListener('touchstart', onPointerDown)
-    return () => {
-      document.removeEventListener('mousedown', onPointerDown)
-      document.removeEventListener('touchstart', onPointerDown)
-    }
-  }, [dropdownOpen])
 
   useEffect(() => {
     let cancelled = false
@@ -174,20 +157,17 @@ export default function ProfilePage() {
     return () => { cancelled = true }
   }, [username, user])
 
-  const handleSignOut = async () => {
-    await signOut()
-    setDropdownOpen(false)
-    navigate('/')
-  }
-
   const goBack = () => {
-    // Prefer real browser history; otherwise land on dashboard / home
+    // Prefer real browser history (e.g. Matching → profile); else Matching / home
     if (window.history.length > 1) {
       navigate(-1)
     } else {
-      navigate(isLoggedIn ? '/dashboard' : '/')
+      navigate(isLoggedIn ? '/match' : '/')
     }
   }
+
+  // Logged-in: AppShell sidebar — no public top nav; show Back above the card
+  const inApp = isLoggedIn
 
   const toggleFollow = async () => {
     if (!user || !profile || isOwn) {
@@ -252,7 +232,8 @@ export default function ProfilePage() {
   ] : []
 
   return (
-    <div className="min-h-screen pi-atmosphere overflow-x-hidden max-w-[100vw]">
+    <div className={`${inApp ? 'min-h-0' : 'min-h-screen'} pi-atmosphere overflow-x-hidden max-w-[100vw]`}>
+      {!inApp && (
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center gap-2 px-3 sm:px-6 py-3 sm:py-4 border-b border-white/[0.06] bg-dark-950/80 backdrop-blur-xl min-w-0">
         <button
           type="button"
@@ -268,73 +249,30 @@ export default function ProfilePage() {
           <span className="font-display text-white font-bold text-xl hidden sm:inline">Pi</span>
         </div>
         <div className="flex-1 min-w-0" />
-
-        {isLoggedIn ? (
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <button onClick={() => navigate('/dashboard')}
-              className="flex items-center gap-2 px-2.5 sm:px-4 py-2 rounded-xl text-sm font-semibold text-white pi-mark">
-              <LayoutGrid size={15} />
-              <span className="hidden sm:inline">Dashboard</span>
-            </button>
-            <div className="relative" ref={dropdownRef}>
-              <button onClick={() => setDropdownOpen(o => !o)}
-                className="flex items-center gap-2 px-2 sm:px-3 py-2 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.07] transition-all">
-                <UserAvatar
-                  url={authProfile?.avatar_url}
-                  name={displayName}
-                  id={user?.id}
-                  size={28}
-                  rounded="rounded-lg"
-                />
-                <span className="text-white text-sm font-medium hidden sm:inline max-w-[100px] truncate">{displayName}</span>
-                <ChevronDown size={14} className={`text-slate-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {dropdownOpen && (
-                  <div
-                    className="absolute right-0 top-full mt-2 w-52 rounded-2xl border border-white/10 shadow-2xl z-50 overflow-hidden"
-                    style={{ background: 'linear-gradient(160deg, #0d1224 0%, #080d1a 100%)' }}
-                  >
-                    <div className="px-4 py-3 border-b border-white/[0.06]">
-                      <p className="text-white font-semibold text-sm truncate">{displayName}</p>
-                      <p className="text-slate-500 text-xs truncate">{user?.email}</p>
-                    </div>
-                    <div className="p-2">
-                      <button onClick={() => { navigate('/dashboard'); setDropdownOpen(false) }}
-                        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:text-white hover:bg-white/[0.05]">
-                        <LayoutGrid size={15} className="text-pi-400" /> Dashboard
-                      </button>
-                      <button onClick={() => { navigate('/notifications'); setDropdownOpen(false) }}
-                        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:text-white hover:bg-white/[0.05]">
-                        <Bell size={15} className="text-amber-400" /> Notifications
-                      </button>
-                      <button onClick={() => { navigate('/profile/edit'); setDropdownOpen(false) }}
-                        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:text-white hover:bg-white/[0.05]">
-                        <UserCog size={15} className="text-emerald-400" /> Edit Profile
-                      </button>
-                      <div className="my-1 border-t border-white/[0.06]" />
-                      <button onClick={handleSignOut}
-                        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-red-400 hover:bg-red-500/10">
-                        <LogOut size={15} /> Sign Out
-                      </button>
-                    </div>
-                  </div>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <button onClick={() => navigate('/login')}
-              className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-300 border border-white/10 hover:border-white/20">
-              Sign In
-            </button>
-            <button onClick={() => navigate('/signup')} className="pi-btn-primary !px-4 !py-2 text-sm">
-              Join Pi
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <button onClick={() => navigate('/login')}
+            className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-300 border border-white/10 hover:border-white/20">
+            Sign In
+          </button>
+          <button onClick={() => navigate('/signup')} className="pi-btn-primary !px-4 !py-2 text-sm">
+            Join Pi
+          </button>
+        </div>
       </nav>
+      )}
 
-      <div className="px-3 sm:px-6 pt-20 sm:pt-24 pb-12 w-full max-w-3xl mx-auto overflow-x-hidden box-border">
+      <div className={`px-3 sm:px-6 ${inApp ? 'pt-2 sm:pt-4' : 'pt-20 sm:pt-24'} pb-12 w-full max-w-3xl mx-auto overflow-x-hidden box-border`}>
+        {inApp && (
+          <button
+            type="button"
+            onClick={goBack}
+            className="mb-4 flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-slate-200 hover:text-white border border-white/10 hover:border-pi-500/40 bg-white/[0.04] hover:bg-pi-500/10 transition-all"
+            aria-label="Go back to previous screen"
+          >
+            <ArrowLeft size={16} className="shrink-0" />
+            Back
+          </button>
+        )}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24">
             <Loader2 size={32} className="animate-spin text-pi-400 mb-3" />
@@ -344,7 +282,9 @@ export default function ProfilePage() {
           <div className="text-center py-24 pi-card">
             <h1 className="font-display text-2xl font-extrabold text-white mb-2">Profile not found</h1>
             <p className="text-slate-400 text-sm mb-6">No Pi member with username “{username}”.</p>
-            <button onClick={() => navigate('/')} className="pi-btn-primary">Back home</button>
+            <button onClick={() => navigate(inApp ? '/match' : '/')} className="pi-btn-primary">
+              {inApp ? 'Back to Matching' : 'Back home'}
+            </button>
           </div>
         ) : (
           <>
