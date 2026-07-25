@@ -9,6 +9,7 @@ import UserAvatar from '../components/UserAvatar'
 import MessagePicker from '../components/MessagePicker'
 import MessageContextMenu, { CopiedToast, type MessageMenuAction } from '../components/MessageContextMenu'
 import MediaCaptureButtons from '../components/MediaCaptureButtons'
+import MediaSendModal from '../components/MediaSendModal'
 import VoiceMessageBubble from '../components/VoiceMessageBubble'
 import { encodeSticker, getLargeEmojiContent, isEmojiOnlyMessage } from '../data/stickers'
 import {
@@ -66,6 +67,8 @@ export default function MessagingPage() {
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [forwardMsg, setForwardMsg] = useState<Message | null>(null)
+  const [pendingMedia, setPendingMedia] = useState<{ file: File; previewUrl: string } | null>(null)
+  const [mediaCaption, setMediaCaption] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -159,6 +162,11 @@ export default function MessagingPage() {
     setSelectMode(false)
     setSelectedIds(new Set())
     setForwardMsg(null)
+    setPendingMedia(prev => {
+      if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl)
+      return null
+    })
+    setMediaCaption('')
     if (user) setPinnedId(getPinnedMessageId(user.id, p.id))
     await fetchMessages(p.id)
     // Mark messages as read
@@ -171,6 +179,18 @@ export default function MessagingPage() {
     }
   }
 
+  const clearPendingMedia = useCallback(() => {
+    setPendingMedia(prev => {
+      if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl)
+      return null
+    })
+    setMediaCaption('')
+  }, [])
+
+  useEffect(() => () => {
+    if (pendingMedia?.previewUrl) URL.revokeObjectURL(pendingMedia.previewUrl)
+  }, [pendingMedia?.previewUrl])
+
   const sendMediaFile = async (file: File) => {
     if (!user || !selectedUser) return
     setUploadError('')
@@ -180,7 +200,7 @@ export default function MessagingPage() {
       const attached = await uploadMessageFile(user.id, selectedUser.id, file)
       await insertMessage(withReply(encodeFileMessage(attached)))
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to send recording'
+      const msg = err instanceof Error ? err.message : 'Failed to send file'
       setUploadError(msg)
       throw err
     } finally {
@@ -188,9 +208,46 @@ export default function MessagingPage() {
     }
   }
 
-  /** Ctrl/Cmd+V image from clipboard → upload & send like an attachment */
+  /** Images/videos → confirm modal; other files send immediately */
+  const queueOrSendFile = async (file: File) => {
+    if (!user || !selectedUser) return
+    setUploadError('')
+    setPickerOpen(false)
+    if (isImageFile(file.type) || isVideoFile(file.type)) {
+      setPendingMedia(prev => {
+        if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl)
+        return { file, previewUrl: URL.createObjectURL(file) }
+      })
+      setMediaCaption('')
+      return
+    }
+    await sendMediaFile(file)
+  }
+
+  const confirmSendPendingMedia = async () => {
+    if (!pendingMedia || !user || !selectedUser) return
+    const file = pendingMedia.file
+    const caption = mediaCaption.trim()
+    clearPendingMedia()
+    setSending(true)
+    setUploadError('')
+    try {
+      const attached = await uploadMessageFile(user.id, selectedUser.id, file)
+      await insertMessage(withReply(encodeFileMessage(attached)))
+      if (caption) {
+        await insertMessage(caption)
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to send media'
+      setUploadError(msg)
+    } finally {
+      setSending(false)
+    }
+  }
+
+  /** Ctrl/Cmd+V image from clipboard → open confirm preview */
   const handlePasteImage = async (e: React.ClipboardEvent) => {
-    if (!user || !selectedUser || sending || pasteLockRef.current) return
+    if (!user || !selectedUser || sending || pasteLockRef.current || pendingMedia) return
     const items = e.clipboardData?.items
     if (!items?.length && !e.clipboardData?.files?.length) return
 
@@ -221,14 +278,11 @@ export default function MessagingPage() {
 
     if (!imageFile) return
 
-    // Prevent double-send (input + parent bubble, or rapid double paste)
     e.preventDefault()
     e.stopPropagation()
     pasteLockRef.current = true
     try {
-      await sendMediaFile(imageFile)
-    } catch {
-      /* error already set in sendMediaFile */
+      await queueOrSendFile(imageFile)
     } finally {
       pasteLockRef.current = false
     }
@@ -480,7 +534,7 @@ export default function MessagingPage() {
     e.target.value = ''
     if (!file) return
     try {
-      await sendMediaFile(file)
+      await queueOrSendFile(file)
     } catch {
       /* error already set */
     }
@@ -941,8 +995,16 @@ export default function MessagingPage() {
                   <Paperclip size={18} />
                 </button>
                 <MediaCaptureButtons
-                  disabled={sending}
-                  onCaptured={sendMediaFile}
+                  disabled={sending || !!pendingMedia}
+                  onCaptured={async (file) => {
+                    try {
+                      // Voice notes send immediately; camera video/photos confirm first
+                      if (isAudioFile(file.type)) await sendMediaFile(file)
+                      else await queueOrSendFile(file)
+                    } catch {
+                      /* error already set */
+                    }
+                  }}
                   onError={msg => setUploadError(msg)}
                 />
                 <div className="flex-1 min-w-0 relative flex items-center bg-white/5 border border-white/10 rounded-xl focus-within:border-pi-500/50 transition-colors overflow-hidden">
@@ -985,6 +1047,17 @@ export default function MessagingPage() {
                 canCopyLink={!!parseFileMessage(parseReply(ctxMenu.msg.content)?.body ?? ctxMenu.msg.content)}
                 onAction={handleMenuAction}
                 onClose={() => setCtxMenu(null)}
+              />
+            )}
+            {pendingMedia && (
+              <MediaSendModal
+                file={pendingMedia.file}
+                previewUrl={pendingMedia.previewUrl}
+                caption={mediaCaption}
+                sending={sending}
+                onCaptionChange={setMediaCaption}
+                onCancel={clearPendingMedia}
+                onSend={() => { void confirmSendPendingMedia() }}
               />
             )}
             {forwardMsg && (
