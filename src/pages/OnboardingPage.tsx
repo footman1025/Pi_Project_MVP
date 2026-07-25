@@ -4,8 +4,10 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { ArrowRight, ArrowLeft, Sparkles, Check, Users, Briefcase, MessageCircle } from 'lucide-react'
 import { onboardingRoles, onboardingInterests, onboardingGoals } from '../data/mockData'
-import { buildOnboardingPreview } from '../lib/aiSummary'
+import { buildLiveOnboardingPreview, buildOnboardingPreview, OnboardingPreview } from '../lib/aiSummary'
+import { Profile } from '../lib/supabase'
 import { track } from '../lib/analytics'
+import StatusBadge from '../components/StatusBadge'
 
 const steps = [
   'What best describes you?',
@@ -34,7 +36,7 @@ export default function OnboardingPage() {
   const [goals, setGoals] = useState<string[]>([])
   const [skills, setSkills] = useState('')
   const [generating, setGenerating] = useState(false)
-  const [aiResults, setAiResults] = useState<ReturnType<typeof buildOnboardingPreview> | null>(null)
+  const [aiResults, setAiResults] = useState<OnboardingPreview | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -50,7 +52,7 @@ export default function OnboardingPage() {
       setGenerating(true)
       setStep(4)
       const skillsArr = skills.split(',').map(s => s.trim()).filter(Boolean)
-      const preview = buildOnboardingPreview(role, interests, goals, skillsArr)
+      const template = buildOnboardingPreview(role, interests, goals, skillsArr)
 
       if (user) {
         setSaving(true)
@@ -59,7 +61,7 @@ export default function OnboardingPage() {
           interests,
           goals,
           skills: skillsArr,
-          ai_summary: preview.summary,
+          ai_summary: template.summary,
           updated_at: new Date().toISOString(),
         }).eq('id', user.id)
 
@@ -72,12 +74,42 @@ export default function OnboardingPage() {
         setSaving(false)
       }
 
+      const started = Date.now()
+      let preview: OnboardingPreview = { ...template, source: 'preview' }
+      if (user) {
+        try {
+          const me: Profile = {
+            id: user.id,
+            username: null,
+            full_name: user.email?.split('@')[0] || null,
+            avatar_url: null,
+            bio: null,
+            role,
+            location: null,
+            website: null,
+            skills: skillsArr,
+            interests,
+            goals,
+            ai_summary: template.summary,
+            experience: [],
+            followers_count: 0,
+            following_count: 0,
+            posts_count: 0,
+            created_at: new Date().toISOString(),
+          }
+          preview = await buildLiveOnboardingPreview(me, role, interests, goals, skillsArr)
+        } catch {
+          preview = { ...template, source: 'preview' }
+        }
+      }
+
+      const wait = Math.max(0, 1800 - (Date.now() - started))
       setTimeout(() => {
         setAiResults(preview)
         setGenerating(false)
         setStep(5)
-        track('onboarding_complete', { authenticated: !!user })
-      }, 2200)
+        track('onboarding_complete', { authenticated: !!user, preview_source: preview.source })
+      }, wait)
     } else {
       setStep(s => s + 1)
     }
@@ -241,7 +273,12 @@ export default function OnboardingPage() {
                     <Users size={14} className="text-white" />
                   </div>
                   <p className="text-white font-bold text-sm">People Pi would match next</p>
-                  <span className="ml-auto text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">Preview</span>
+                  <span className="ml-auto">
+                    <StatusBadge
+                      kind={aiResults.source === 'preview' ? 'demo' : aiResults.source === 'mixed' ? 'partial' : 'live'}
+                      label={aiResults.source === 'preview' ? 'Preview' : aiResults.source === 'mixed' ? 'Partial live' : 'Live from network'}
+                    />
+                  </span>
                 </div>
                 <div className="space-y-2">
                   {aiResults.matches.map((m, i) => (
@@ -266,7 +303,12 @@ export default function OnboardingPage() {
                     <MessageCircle size={14} className="text-white" />
                   </div>
                   <p className="text-white font-bold text-sm">Communities for your interests</p>
-                  <span className="ml-auto text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">Preview</span>
+                  <span className="ml-auto">
+                    <StatusBadge
+                      kind={aiResults.source === 'preview' ? 'demo' : 'live'}
+                      label={aiResults.source === 'preview' ? 'Preview' : 'Live from network'}
+                    />
+                  </span>
                 </div>
                 <div className="space-y-2">
                   {aiResults.communities.map((c, i) => (
@@ -287,7 +329,12 @@ export default function OnboardingPage() {
                     <Briefcase size={14} className="text-white" />
                   </div>
                   <p className="text-white font-bold text-sm">Opportunities to explore</p>
-                  <span className="ml-auto text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">Preview</span>
+                  <span className="ml-auto">
+                    <StatusBadge
+                      kind={aiResults.source === 'preview' ? 'demo' : aiResults.source === 'mixed' ? 'partial' : 'live'}
+                      label={aiResults.source === 'preview' ? 'Preview' : 'Scored for you'}
+                    />
+                  </span>
                 </div>
                 <div className="space-y-2">
                   {aiResults.opportunities.map((o, i) => (

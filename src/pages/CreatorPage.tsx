@@ -1,11 +1,19 @@
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Clapperboard, GraduationCap, UsersRound, Package, HeartHandshake, AreaChart, TrendingUp, PlayCircle, Newspaper, UserCog } from 'lucide-react'
-import { mockCreators } from '../data/mockData'
+import {
+  Clapperboard, GraduationCap, UsersRound, Package, HeartHandshake, AreaChart,
+  TrendingUp, PlayCircle, Newspaper, UserCog, MessageCircle, UserRound, Loader2,
+} from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import { fetchHubProfiles } from '../lib/hubProfiles'
+import { MatchResult } from '../lib/matching'
+import UserAvatar from '../components/UserAvatar'
+import StatusBadge from '../components/StatusBadge'
 
 const creatorFeatures = [
   { icon: Clapperboard, label: 'Go Live', desc: 'Host live sessions with your audience', color: 'from-red-500 to-pink-600', to: '/feed', soon: true },
   { icon: GraduationCap, label: 'Courses', desc: 'Sell premium educational content', color: 'from-pi-500 to-teal-600', to: '/feed', soon: true },
-  { icon: UsersRound, label: 'Communities', desc: 'Build paid premium communities', color: 'from-emerald-500 to-teal-600', to: '/communities', soon: false },
+  { icon: UsersRound, label: 'Communities', desc: 'Build and grow communities', color: 'from-emerald-500 to-teal-600', to: '/communities', soon: false },
   { icon: Package, label: 'Digital Products', desc: 'Sell templates, tools & more', color: 'from-amber-500 to-orange-600', to: '/feed', soon: true },
   { icon: HeartHandshake, label: 'Tips & Donations', desc: 'Let your audience support you', color: 'from-pink-500 to-rose-600', to: '/profile/edit', soon: true },
   { icon: AreaChart, label: 'Analytics', desc: 'Real-time performance insights', color: 'from-cyan-500 to-blue-600', to: '/dashboard', soon: true },
@@ -13,19 +21,37 @@ const creatorFeatures = [
 
 export default function CreatorPage() {
   const navigate = useNavigate()
+  const { profile, user } = useAuth()
+  const [loading, setLoading] = useState(true)
+  const [matches, setMatches] = useState<MatchResult[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      setLoading(true)
+      const res = await fetchHubProfiles(profile, user?.id, 'creators', 12)
+      if (cancelled) return
+      setMatches(res.matches)
+      setLoading(false)
+    })()
+    return () => { cancelled = true }
+  }, [profile, user?.id])
+
+  const hasLive = matches.length > 0
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-2 flex-wrap">
           <h1 className="font-display text-3xl font-extrabold text-white">Creator Hub</h1>
-          <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/25 text-amber-400 font-semibold">
-            Preview
-          </span>
+          <StatusBadge
+            kind={hasLive ? 'live' : 'partial'}
+            label={hasLive ? 'Live members' : 'Awaiting creators'}
+            size="md"
+          />
         </div>
         <p className="text-slate-400">
-          Concept space for growing an audience and monetizing expertise on Pi.
-          Live tools for courses, livestreams, and tips are coming — you can start by posting and joining communities today.
+          Discover creators on Pi and connect via Message. Monetization tools (courses, livestreams, tips) are coming — start by posting and joining communities today.
         </p>
       </div>
 
@@ -84,10 +110,10 @@ export default function CreatorPage() {
             onClick={() => navigate(to)}
             className="p-5 rounded-2xl border border-white/5 hover:border-pi-500/20 transition-all duration-300 hover:scale-[1.02] group text-left relative"
             style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.5), rgba(14,20,25,0.7))' }}>
-            {soon && (
-              <span className="absolute top-3 right-3 text-[10px] px-1.5 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/25 text-amber-400 font-semibold">
-                Soon
-              </span>
+            {soon ? (
+              <StatusBadge kind="soon" className="absolute top-3 right-3" />
+            ) : (
+              <StatusBadge kind="live" className="absolute top-3 right-3" />
             )}
             <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
               <Icon size={20} className="text-white" />
@@ -98,36 +124,83 @@ export default function CreatorPage() {
         ))}
       </div>
 
-      <div className="flex items-center gap-2 mb-4">
-        <h2 className="text-xl font-bold text-white">Top Creators on Pi</h2>
-        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/25 text-amber-400 font-semibold">Demo</span>
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <h2 className="text-xl font-bold text-white">Creators for you</h2>
+        <StatusBadge kind={hasLive ? 'live' : 'demo'} label={hasLive ? 'Live members' : 'No matches yet'} />
       </div>
-      <div className="grid md:grid-cols-3 gap-4">
-        {mockCreators.map((c, i) => (
-          <div key={i} className="p-5 rounded-2xl border border-white/5 hover:border-pi-500/20 transition-all"
-            style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.5), rgba(14,20,25,0.7))' }}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${c.color} flex items-center justify-center text-white font-bold text-xl`}>
-                {c.avatar}
-              </div>
-              <div>
-                <p className="text-white font-bold">{c.name}</p>
-                <p className="text-slate-400 text-xs">{c.category}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="text-center p-2 rounded-xl bg-white/5">
-                <p className="text-white font-bold text-sm">{c.followers}</p>
-                <p className="text-slate-500 text-xs">Followers</p>
-              </div>
-              <div className="text-center p-2 rounded-xl bg-white/5">
-                <p className="text-emerald-400 font-bold text-sm">{c.revenue}</p>
-                <p className="text-slate-500 text-xs">Revenue</p>
-              </div>
-            </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-slate-400 text-sm gap-2">
+          <Loader2 size={18} className="animate-spin text-pi-400" /> Loading creators…
+        </div>
+      ) : !hasLive ? (
+        <div className="p-5 rounded-2xl border border-amber-500/20 bg-amber-500/5 text-sm text-slate-300">
+          <p className="font-semibold text-amber-200 mb-1">No matching creators yet</p>
+          <p className="text-slate-400 text-xs leading-relaxed mb-3">
+            Invite creators to Pi, or open Matching / Search to find real members today.
+          </p>
+          <div className="flex gap-3">
+            <button type="button" onClick={() => navigate('/match')} className="text-teal-300 font-semibold text-xs hover:underline">
+              Open Matching →
+            </button>
+            <button type="button" onClick={() => navigate('/search')} className="text-teal-300 font-semibold text-xs hover:underline">
+              Search →
+            </button>
           </div>
-        ))}
-      </div>
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {matches.map(m => {
+            const p = m.profile
+            const name = p.full_name || p.username || 'Member'
+            const skills = (p.skills || []).slice(0, 3)
+            return (
+              <div
+                key={p.id}
+                className="p-5 rounded-2xl border border-white/5 hover:border-pi-500/20 transition-all"
+                style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.5), rgba(14,20,25,0.7))' }}
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <UserAvatar url={p.avatar_url} name={name} id={p.id} size={48} rounded="rounded-2xl" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-white font-bold truncate">{name}</p>
+                    <p className="text-slate-400 text-xs truncate">{p.role || 'Creator'}</p>
+                  </div>
+                  <span className="text-sm font-extrabold text-teal-300 shrink-0">{m.match}%</span>
+                </div>
+                {skills.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {skills.map(s => (
+                      <span key={s} className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-slate-400 border border-white/5">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <p className="text-slate-500 text-xs mb-4 line-clamp-2">{m.reasons[0] || p.bio || 'Active on Pi'}</p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/messages?u=${p.id}`)}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-white"
+                    style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+                  >
+                    <MessageCircle size={14} /> Message
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!p.username}
+                    onClick={() => p.username && navigate(`/p/${p.username}`, { state: { from: '/creators' } })}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-slate-300 border border-white/10 hover:border-white/20 transition-all disabled:opacity-40"
+                  >
+                    <UserRound size={14} /> Profile
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase'
 import { MatchResult, rankMatches } from '../lib/matching'
 import { playConnectSound } from '../lib/connectSound'
 import UserAvatar from '../components/UserAvatar'
+import StatusBadge from '../components/StatusBadge'
 
 export default function MatchmakingPage() {
   const navigate = useNavigate()
@@ -77,13 +78,11 @@ export default function MatchmakingPage() {
         <div className="flex items-center gap-2 mb-2 flex-wrap">
           <Sparkles size={22} className="text-pi-400 shrink-0" />
           <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-white">Pi Intelligence Engine</h1>
-          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold border ${
-            usingLive
-              ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-              : 'bg-amber-500/15 border-amber-500/30 text-amber-400'
-          }`}>
-            {usingLive ? 'Live graph' : 'Demo'}
-          </span>
+          <StatusBadge
+            kind={usingLive ? 'live' : 'demo'}
+            label={usingLive ? 'Live graph' : 'Demo samples'}
+            size="md"
+          />
         </div>
         <p className="text-slate-400 text-sm max-w-2xl leading-relaxed">
           Not “people you may like.” Pi ranks who can <span className="text-teal-300 font-semibold">accelerate your goals</span> —

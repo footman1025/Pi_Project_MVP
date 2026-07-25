@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Sparkles, UsersRound, Briefcase, Bot, Bell, TrendingUp, ArrowRight, Loader2 } from 'lucide-react'
-import { mockOpportunities } from '../data/mockData'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase, Profile } from '../lib/supabase'
 import { MatchResult, rankMatches, scoreOpportunityForUser } from '../lib/matching'
+import { fetchOpportunities, OpportunityItem } from '../lib/opportunities'
 import MockIcon from '../components/MockIcon'
 import UserAvatar from '../components/UserAvatar'
+import StatusBadge from '../components/StatusBadge'
 import { buildDigitalTwin } from '../lib/digitalTwin'
 import DigitalTwinCard from '../components/DigitalTwinCard'
 import { hasGroqKey } from '../lib/groqAssistant'
@@ -32,13 +33,15 @@ export default function DashboardPage() {
   const [communities, setCommunities] = useState<LiveCommunity[]>([])
   const [unreadNotifs, setUnreadNotifs] = useState(0)
   const [memberCount, setMemberCount] = useState(0)
+  const [opportunities, setOpportunities] = useState<OpportunityItem[]>([])
+  const [oppsLive, setOppsLive] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     const load = async () => {
       setLoading(true)
       try {
-        const [profilesRes, communitiesRes, notifRes, membersRes] = await Promise.all([
+        const [profilesRes, communitiesRes, notifRes, membersRes, oppsRes] = await Promise.all([
           profile && user
             ? supabase.from('profiles').select('*').neq('id', user.id).limit(40)
             : Promise.resolve({ data: null as Profile[] | null }),
@@ -55,6 +58,7 @@ export default function DashboardPage() {
                 .eq('is_read', false)
             : Promise.resolve({ count: 0 }),
           supabase.from('profiles').select('id', { count: 'exact', head: true }),
+          fetchOpportunities(),
         ])
 
         if (cancelled) return
@@ -70,6 +74,8 @@ export default function DashboardPage() {
         setCommunities((communitiesRes.data as LiveCommunity[]) || [])
         setUnreadNotifs(notifRes.count || 0)
         setMemberCount(membersRes.count || 0)
+        setOpportunities(oppsRes.items)
+        setOppsLive(oppsRes.isLive)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -78,7 +84,7 @@ export default function DashboardPage() {
     return () => { cancelled = true }
   }, [profile, user])
 
-  const topOpps = mockOpportunities
+  const topOpps = opportunities
     .map(o => ({ ...o, personalizedMatch: scoreOpportunityForUser(profile, o) }))
     .sort((a, b) => b.personalizedMatch - a.personalizedMatch)
     .slice(0, 3)
@@ -111,10 +117,10 @@ export default function DashboardPage() {
     {
       icon: Briefcase,
       label: 'Opportunities',
-      value: `${mockOpportunities.length} in catalog`,
+      value: `${opportunities.length} in catalog`,
       color: 'from-amber-500 to-orange-600',
       to: '/opportunities',
-      demo: true,
+      demo: !oppsLive,
     },
     {
       icon: Bot,
@@ -157,13 +163,14 @@ export default function DashboardPage() {
             </p>
           </div>
         </div>
-        <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
-          <span className="px-2.5 py-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 text-emerald-300 font-semibold">
-            Live: profiles · match · messages · feed · communities
-          </span>
-          <span className="px-2.5 py-1 rounded-full border border-amber-500/25 bg-amber-500/10 text-amber-300 font-semibold">
-            Catalog demo: opportunities · creators · professionals
-          </span>
+        <div className="mt-3 flex flex-wrap gap-2 items-center">
+          <StatusBadge kind="live" label="Live: profiles · match · messages · feed · communities" size="md" />
+          <StatusBadge
+            kind={oppsLive ? 'live' : 'demo'}
+            label={oppsLive ? 'Live opportunities catalog' : 'Demo opportunities fallback'}
+            size="md"
+          />
+          <StatusBadge kind="partial" label="Creators / Professionals = live members + Soon tools" size="md" />
         </div>
       </div>
 
@@ -185,16 +192,10 @@ export default function DashboardPage() {
             onClick={() => to && navigate(to)}
             className={`p-3 sm:p-4 rounded-2xl border border-white/5 text-left transition-all duration-300 hover:border-pi-500/20 group relative min-w-0 ${to ? 'cursor-pointer' : 'cursor-default'}`}
             style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.5), rgba(14,20,25,0.7))' }}>
-            {demo && (
-              <span className="absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/20 text-amber-400 font-semibold leading-none">
-                Demo
-              </span>
-            )}
-            {!demo && (
-              <span className="absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 font-semibold leading-none">
-                Live
-              </span>
-            )}
+            <StatusBadge
+              kind={demo ? 'demo' : 'live'}
+              className="absolute top-2 right-2"
+            />
             <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center mb-2 sm:mb-3`}>
               <Icon size={16} className="text-white" />
             </div>
@@ -278,7 +279,10 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between gap-2 mb-4">
               <div>
                 <h2 className="text-base sm:text-lg font-bold text-white">Hot Opportunities</h2>
-                <p className="text-[11px] text-amber-400/90 font-semibold">Catalog demo · scored for you</p>
+                <p className="text-[11px] font-semibold flex items-center gap-1.5 mt-0.5">
+                  <StatusBadge kind={oppsLive ? 'live' : 'demo'} label={oppsLive ? 'Live catalog' : 'Demo catalog'} />
+                  <span className="text-slate-500">scored for you</span>
+                </p>
               </div>
               <button onClick={() => navigate('/opportunities')} className="text-pi-400 text-sm hover:text-pi-300 flex items-center gap-1 shrink-0">
                 All <ArrowRight size={14} />
@@ -361,7 +365,15 @@ export default function DashboardPage() {
               See how everything connects
             </h3>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Discover the full vision behind Pi — the AI-native ecosystem for human connection.
+              Vision roadmap plus{' '}
+              <button
+                type="button"
+                className="text-teal-300 font-semibold hover:underline"
+                onClick={e => { e.stopPropagation(); navigate('/transparency') }}
+              >
+                Engineering Transparency
+              </button>
+              {' '}— what’s live vs demo.
             </p>
           </div>
           <button

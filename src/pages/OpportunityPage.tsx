@@ -1,18 +1,35 @@
-import { useState, useMemo } from 'react'
-import { Briefcase, Sparkles, Clock4, ChevronDown, ChevronUp } from 'lucide-react'
-import { mockOpportunities } from '../data/mockData'
+import { useState, useMemo, useEffect } from 'react'
+import { Briefcase, Sparkles, Clock4, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
 import MockIcon from '../components/MockIcon'
+import StatusBadge from '../components/StatusBadge'
 import { useAuth } from '../contexts/AuthContext'
 import { opportunityReasonForUser, scoreOpportunityForUser } from '../lib/matching'
+import { fetchOpportunities, OpportunityItem } from '../lib/opportunities'
 
 const categories = ['All', 'Competition', 'Funding', 'Community', 'Co-founder', 'Talent', 'Accelerator']
 
 export default function OpportunityPage() {
   const { profile } = useAuth()
   const [active, setActive] = useState('All')
-  const [expandedId, setExpandedId] = useState<number | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [items, setItems] = useState<OpportunityItem[]>([])
+  const [isLive, setIsLive] = useState(false)
+  const [loading, setLoading] = useState(true)
 
-  const filtered = active === 'All' ? mockOpportunities : mockOpportunities.filter(o => o.category === active)
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      setLoading(true)
+      const res = await fetchOpportunities()
+      if (cancelled) return
+      setItems(res.items)
+      setIsLive(res.isLive)
+      setLoading(false)
+    })()
+    return () => { cancelled = true }
+  }, [])
+
+  const filtered = active === 'All' ? items : items.filter(o => o.category === active)
 
   const withReasons = useMemo(() =>
     filtered
@@ -27,21 +44,23 @@ export default function OpportunityPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="mb-8">
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
           <Briefcase size={22} className="text-amber-400" />
           <h1 className="font-display text-3xl font-extrabold text-white">Opportunity Intelligence Hub</h1>
+          <StatusBadge kind={isLive ? 'live' : 'demo'} label={isLive ? 'Live catalog' : 'Demo catalog'} size="md" />
         </div>
         <p className="text-slate-400 text-sm leading-relaxed max-w-3xl">
           Discover funding, jobs, grants, accelerators, and partnerships — with{' '}
           <span className="text-teal-300 font-semibold">fit scores from your live Digital Twin</span>.
         </p>
         <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
-          <span className="px-2.5 py-1 rounded-full border border-amber-500/25 bg-amber-500/10 text-amber-300 font-semibold">
-            Listings = catalog demo (Phase 2 marketplace)
-          </span>
-          <span className="px-2.5 py-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 text-emerald-300 font-semibold">
-            Match % = live from your profile signals
-          </span>
+          <StatusBadge
+            kind={isLive ? 'live' : 'demo'}
+            label={isLive ? 'Listings = live Supabase catalog' : 'Listings = demo fallback (run opportunities SQL)'}
+            size="md"
+          />
+          <StatusBadge kind="live" label="Match % = live from your profile signals" size="md" />
+          <StatusBadge kind="soon" label="Apply / marketplace = Phase 2" size="md" />
         </div>
       </div>
 
@@ -56,56 +75,62 @@ export default function OpportunityPage() {
         ))}
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        {withReasons.map((o, i) => (
-          <div key={o.id}
-            className={`rounded-2xl border bg-gradient-to-br ${o.color} ${o.border} transition-all duration-300 animate-fade-in`}
-            style={{ animationDelay: `${i * 80}ms` }}>
-            <div className="p-5">
-              <div className="flex items-start gap-4">
-                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${o.iconColor} flex items-center justify-center flex-shrink-0`}>
-                  <MockIcon name={o.iconName} size={22} />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-white font-bold mb-1">{o.title}</h3>
-                  <p className="text-slate-400 text-sm mb-3">{o.subtitle}</p>
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <span className="text-xs font-bold text-white bg-white/10 px-2.5 py-1 rounded-full">{o.prize}</span>
-                    <span className="flex items-center gap-1 text-xs text-slate-400">
-                      <Clock4 size={11} />{o.deadline}
-                    </span>
-                    <span className="flex items-center gap-1 text-xs text-emerald-400 font-semibold ml-auto">
-                      <Sparkles size={11} />{o.personalizedMatch}% match
-                    </span>
+      {loading ? (
+        <div className="flex items-center justify-center py-20 text-slate-400 text-sm gap-2">
+          <Loader2 size={18} className="animate-spin text-pi-400" /> Loading opportunities…
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-2 gap-4">
+          {withReasons.map((o, i) => (
+            <div key={o.id}
+              className={`rounded-2xl border bg-gradient-to-br ${o.color} ${o.border} transition-all duration-300 animate-fade-in`}
+              style={{ animationDelay: `${i * 80}ms` }}>
+              <div className="p-5">
+                <div className="flex items-start gap-4">
+                  <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${o.iconColor} flex items-center justify-center flex-shrink-0`}>
+                    <MockIcon name={o.iconName} size={22} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-white font-bold mb-1">{o.title}</h3>
+                    <p className="text-slate-400 text-sm mb-3">{o.subtitle}</p>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="text-xs font-bold text-white bg-white/10 px-2.5 py-1 rounded-full">{o.prize}</span>
+                      <span className="flex items-center gap-1 text-xs text-slate-400">
+                        <Clock4 size={11} />{o.deadline}
+                      </span>
+                      <span className="flex items-center gap-1 text-xs text-emerald-400 font-semibold ml-auto">
+                        <Sparkles size={11} />{o.personalizedMatch}% match
+                      </span>
+                    </div>
                   </div>
                 </div>
+
+                <button
+                  onClick={() => setExpandedId(expandedId === o.id ? null : o.id)}
+                  className="mt-4 w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-pi-300 bg-black/20 border border-pi-500/20 hover:bg-pi-500/10 transition-all">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles size={12} />
+                    Why Pi recommends this for you
+                  </div>
+                  {expandedId === o.id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                </button>
               </div>
 
-              <button
-                onClick={() => setExpandedId(expandedId === o.id ? null : o.id)}
-                className="mt-4 w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-pi-300 bg-black/20 border border-pi-500/20 hover:bg-pi-500/10 transition-all">
-                <div className="flex items-center gap-1.5">
-                  <Sparkles size={12} />
-                  Why Pi recommends this for you
+              {expandedId === o.id && (
+                <div className="px-5 pb-5 animate-fade-in">
+                  <div className="p-4 rounded-xl border border-pi-500/20 bg-black/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sparkles size={13} className="text-pi-400" />
+                      <p className="text-pi-300 text-xs font-bold uppercase tracking-wider">Pi Intelligence</p>
+                    </div>
+                    <p className="text-slate-300 text-sm leading-relaxed">{o.personalizedReason}</p>
+                  </div>
                 </div>
-                {expandedId === o.id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-              </button>
+              )}
             </div>
-
-            {expandedId === o.id && (
-              <div className="px-5 pb-5 animate-fade-in">
-                <div className="p-4 rounded-xl border border-pi-500/20 bg-black/20">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Sparkles size={13} className="text-pi-400" />
-                    <p className="text-pi-300 text-xs font-bold uppercase tracking-wider">Pi Intelligence</p>
-                  </div>
-                  <p className="text-slate-300 text-sm leading-relaxed">{o.personalizedReason}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

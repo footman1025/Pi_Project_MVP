@@ -4,7 +4,7 @@ import {
   LayoutGrid, Sparkles, Briefcase, Rocket,
   UsersRound, Building2, SearchCheck, Telescope,
   LogOut, Bell, Menu, X, BotMessageSquare, ScanFace,
-  Newspaper, MessageCircle, UserCog
+  Newspaper, MessageCircle, UserCog, ShieldCheck
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -28,6 +28,7 @@ const navItems = [
   { to: '/messages', icon: MessageCircle, label: 'Messages' },
   { to: '/search', icon: SearchCheck, label: 'Search' },
   { to: '/vision', icon: Telescope, label: 'Vision' },
+  { to: '/transparency', icon: ShieldCheck, label: 'What’s live' },
 ]
 
 const mobileTabs = [

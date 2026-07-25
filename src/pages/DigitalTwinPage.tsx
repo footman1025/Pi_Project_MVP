@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { buildDigitalTwin } from '../lib/digitalTwin'
 import DigitalTwinCard from '../components/DigitalTwinCard'
 import StateMessage from '../components/StateMessage'
+import StatusBadge from '../components/StatusBadge'
 
 export default function DigitalTwinPage() {
   const { profile } = useAuth()
@@ -26,9 +27,11 @@ export default function DigitalTwinPage() {
   return (
     <div className="p-6 max-w-3xl mx-auto">
       <div className="mb-6">
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
           <Bot size={22} className="text-teal-400" />
           <h1 className="font-display text-3xl font-extrabold text-white">AI Digital Twin</h1>
+          <StatusBadge kind="live" label="Live from your profile" size="md" />
+          <StatusBadge kind="soon" label="Full LLM twin later" size="md" />
         </div>
         <p className="text-slate-400 text-sm leading-relaxed">
           Your AI representation of skills, goals, experience, and ambitions — Pi’s identity intelligence layer.

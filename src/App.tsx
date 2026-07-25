@@ -24,6 +24,7 @@ import ProfessionalPage from './pages/ProfessionalPage'
 import CommunityPage from './pages/CommunityPage'
 import SearchPage from './pages/SearchPage'
 import VisionPage from './pages/VisionPage'
+import TransparencyPage from './pages/TransparencyPage'
 import MessagingPage from './pages/MessagingPage'
 import NotificationsPage from './pages/NotificationsPage'
 import ProfileEditPage from './pages/ProfileEditPage'
@@ -61,16 +62,17 @@ export default function App() {
   const [assistantOpen, setAssistantOpen] = useState(false)
 
   const isProfilePath = location.pathname.startsWith('/p/')
-  // Logged-in members see profiles inside AppShell (sidebar + back). Guests get public SEO layout.
+  const isTransparencyPath = location.pathname === '/transparency'
+  // Logged-in members see profiles / transparency inside AppShell. Guests get public layout.
   const isPublic =
     ALWAYS_PUBLIC.includes(location.pathname) ||
-    (isProfilePath && !session && !authLoading)
+    ((isProfilePath || isTransparencyPath) && !session && !authLoading)
 
   useEffect(() => { window.scrollTo(0, 0) }, [location.pathname])
   useEffect(() => { trackPageView(location.pathname) }, [location.pathname])
 
-  // Wait for auth before deciding public vs app shell for profile URLs
-  if (isProfilePath && authLoading) {
+  // Wait for auth before deciding public vs app shell for dual-mode URLs
+  if ((isProfilePath || isTransparencyPath) && authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-dark-950">
         <LoadingSpinner size="lg" label="Loading Pi…" />
@@ -90,6 +92,7 @@ export default function App() {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/demo" element={<InvestorDemoPage />} />
           <Route path="/investor" element={<InvestorDashboardPage />} />
+          <Route path="/transparency" element={<TransparencyPage />} />
           <Route path="/p/:username" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
@@ -106,6 +109,7 @@ export default function App() {
               <Route path="/communities" element={<CommunityPage />} />
               <Route path="/search" element={<SearchPage />} />
               <Route path="/vision" element={<VisionPage />} />
+              <Route path="/transparency" element={<TransparencyPage />} />
               <Route path="/messages" element={<MessagingPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/profile/edit" element={<ProfileEditPage />} />

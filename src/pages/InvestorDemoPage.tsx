@@ -48,9 +48,16 @@ export default function InvestorDemoPage() {
             style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>π</div>
           <span className="text-white font-bold">Pi</span>
         </button>
-        <span className="text-xs px-2.5 py-1 rounded-full border border-teal-500/30 bg-teal-500/10 text-teal-300 font-semibold">
-          Investor Demo Mode
+        <span className="text-xs px-2.5 py-1 rounded-full border border-amber-500/25 bg-amber-500/10 text-amber-300 font-semibold">
+          Demo · scripted tour
         </span>
+        <button
+          type="button"
+          onClick={() => navigate('/transparency')}
+          className="text-xs text-slate-400 hover:text-teal-300 transition-colors hidden sm:inline"
+        >
+          What’s live
+        </button>
         <div className="flex-1" />
         <button
           onClick={() => { setAuto(a => !a); track('investor_demo_auto', { on: !auto }) }}

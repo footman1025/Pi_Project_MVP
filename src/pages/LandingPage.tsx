@@ -94,6 +94,7 @@ export default function LandingPage() {
           <a href="#why" className="hover:text-white transition-colors">Why Pi</a>
           <a href="#features" className="hover:text-white transition-colors">Features</a>
           <button onClick={() => navigate('/demo')} className="hover:text-teal-300 transition-colors text-teal-400/90 font-medium">Investor Demo</button>
+          <button onClick={() => navigate('/transparency')} className="hover:text-white transition-colors">What’s live</button>
         </div>
 
         {isLoggedIn ? (
@@ -565,6 +566,11 @@ export default function LandingPage() {
           <span className="text-white font-bold">π</span>
           <span>Pi — One Platform. Infinite Opportunities.</span>
         </div>
+        <p className="mb-2">
+          <button type="button" onClick={() => navigate('/transparency')} className="text-teal-400/90 hover:text-teal-300 underline-offset-2 hover:underline">
+            Engineering Transparency — what’s live
+          </button>
+        </p>
         <p>© 2026 Pi. All rights reserved. · Private Pilot</p>
       </footer>
     </div>

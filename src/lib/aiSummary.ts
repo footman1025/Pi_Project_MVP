@@ -1,4 +1,7 @@
-import type { Experience } from './supabase'
+import type { Experience, Profile } from './supabase'
+import { supabase } from './supabase'
+import { rankMatches, scoreOpportunityForUser } from './matching'
+import { fetchOpportunities } from './opportunities'
 
 export type SummaryInput = {
   fullName?: string | null
@@ -8,6 +11,7 @@ export type SummaryInput = {
   skills?: string[] | null
   experience?: Experience[] | null
 }
+
 
 function articleFor(word: string) {
   return /^[aeiou]/i.test(word.trim()) ? 'an' : 'a'
@@ -125,4 +129,93 @@ export function buildOnboardingPreview(role: string, interests: string[], goals:
   ]
 
   return { matches, communities, opportunities, summary }
+}
+
+export type OnboardingPreview = ReturnType<typeof buildOnboardingPreview> & {
+  /** live = network data used; preview = templates only; mixed = some live sections */
+  source: 'live' | 'preview' | 'mixed'
+}
+
+/**
+ * After onboarding save: prefer real matches / communities / opportunities.
+ * Falls back to template preview sections when the network is empty.
+ */
+export async function buildLiveOnboardingPreview(
+  me: Profile,
+  role: string,
+  interests: string[],
+  goals: string[],
+  skills: string[],
+): Promise<OnboardingPreview> {
+  const base = buildOnboardingPreview(role, interests, goals, skills)
+  let usedLive = false
+  let usedPreview = false
+
+  const [profilesRes, communitiesRes, oppsRes] = await Promise.all([
+    supabase.from('profiles').select('*').neq('id', me.id).limit(40),
+    supabase
+      .from('communities')
+      .select('id, name, members_count, category, icon')
+      .order('members_count', { ascending: false })
+      .limit(5),
+    fetchOpportunities(),
+  ])
+
+  let matches = base.matches
+  if (profilesRes.data && profilesRes.data.length > 0) {
+    const ranked = rankMatches(me, profilesRes.data as Profile[]).slice(0, 3)
+    if (ranked.length) {
+      usedLive = true
+      matches = ranked.map(m => ({
+        name: m.profile.full_name || m.profile.username || 'Pi member',
+        role: m.profile.role || 'Member',
+        match: m.match,
+        reason: m.reasons[0] || 'Ranked from your twin signals',
+      }))
+    } else {
+      usedPreview = true
+    }
+  } else {
+    usedPreview = true
+  }
+
+  let communities = base.communities
+  if (communitiesRes.data && communitiesRes.data.length > 0) {
+    usedLive = true
+    communities = communitiesRes.data.slice(0, 3).map(c => ({
+      name: c.name,
+      members: `${c.members_count ?? 0} members`,
+      icon: c.icon || '◎',
+      reason: c.category
+        ? `Live community · ${c.category}`
+        : 'Live community on Pi',
+    }))
+  } else {
+    usedPreview = true
+  }
+
+  let opportunities = base.opportunities
+  if (oppsRes.items.length > 0) {
+    const scored = oppsRes.items
+      .map(o => ({ ...o, score: scoreOpportunityForUser(me, o) }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+    if (scored.length) {
+      if (oppsRes.isLive) usedLive = true
+      else usedPreview = true
+      opportunities = scored.map(o => ({
+        title: o.title,
+        prize: o.prize,
+        icon: '🎯',
+        reason: `Twin fit ${o.score}% · ${o.category}`,
+      }))
+    }
+  } else {
+    usedPreview = true
+  }
+
+  const source: OnboardingPreview['source'] =
+    usedLive && !usedPreview ? 'live' : usedLive && usedPreview ? 'mixed' : 'preview'
+
+  return { matches, communities, opportunities, summary: base.summary, source }
 }

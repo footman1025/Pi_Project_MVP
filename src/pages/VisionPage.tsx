@@ -172,6 +172,21 @@ export default function VisionPage() {
         ))}
       </div>
 
+      <div className="mb-8 p-5 rounded-2xl border border-teal-500/20 bg-teal-500/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <p className="text-white font-bold mb-1">Engineering Transparency</p>
+          <p className="text-slate-400 text-sm">See exactly what is live, demo, partial, or coming soon — for investor honesty.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => navigate('/transparency')}
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white shrink-0"
+          style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+        >
+          What’s live <ArrowRight size={16} />
+        </button>
+      </div>
+
       {/* CTA */}
       <div className="p-8 rounded-3xl border border-pi-500/20 text-center"
         style={{ background: 'linear-gradient(135deg, rgba(20,184,166,0.1), rgba(13,148,136,0.05))', boxShadow: '0 0 60px rgba(20,184,166,0.15)' }}>

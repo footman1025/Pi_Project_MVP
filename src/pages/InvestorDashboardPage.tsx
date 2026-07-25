@@ -33,8 +33,15 @@ export default function InvestorDashboardPage() {
             <p className="text-[10px] text-slate-500 mt-0.5">Demo dashboard · strategic deal flow</p>
           </div>
         </div>
-        <span className="ml-auto text-xs px-2.5 py-1 rounded-full border border-amber-500/25 bg-amber-500/10 text-amber-400 font-semibold">
-          Demo
+        <button
+          type="button"
+          onClick={() => navigate('/transparency')}
+          className="ml-auto text-xs text-slate-400 hover:text-teal-300 transition-colors hidden sm:inline mr-2"
+        >
+          What’s live
+        </button>
+        <span className="text-xs px-2.5 py-1 rounded-full border border-amber-500/25 bg-amber-500/10 text-amber-400 font-semibold">
+          Demo · not live deal flow
         </span>
       </nav>
 
