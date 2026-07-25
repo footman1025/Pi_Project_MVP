@@ -70,7 +70,7 @@ export default function MessagingPage() {
   const [pendingMedia, setPendingMedia] = useState<{ file: File; previewUrl: string } | null>(null)
   const [mediaCaption, setMediaCaption] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const pasteLockRef = useRef(false)
   const openedFromQuery = useRef<string | null>(null)
@@ -507,6 +507,20 @@ export default function MessagingPage() {
 
   const pinnedMessage = pinnedId ? messages.find(m => m.id === pinnedId) : null
 
+  const resizeComposer = useCallback(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    // ~1 line min, ~6 lines max (Telegram-style grow)
+    const max = 144
+    el.style.height = `${Math.min(el.scrollHeight, max)}px`
+    el.style.overflowY = el.scrollHeight > max ? 'auto' : 'hidden'
+  }, [])
+
+  useEffect(() => {
+    resizeComposer()
+  }, [newMsg, resizeComposer])
+
   const insertEmoji = (emoji: string) => {
     const el = inputRef.current
     if (el) {
@@ -518,6 +532,7 @@ export default function MessagingPage() {
         el.focus()
         const pos = start + emoji.length
         el.setSelectionRange(pos, pos)
+        resizeComposer()
       })
     } else {
       setNewMsg(m => m + emoji)
@@ -971,7 +986,7 @@ export default function MessagingPage() {
                 accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.json,audio/*,video/mp4,video/webm"
                 onChange={handleFilePick}
               />
-              <div className="flex gap-1.5 sm:gap-2 items-center w-full max-w-full min-w-0">
+              <div className="flex gap-1.5 sm:gap-2 items-end w-full max-w-full min-w-0">
                 <button
                   type="button"
                   onMouseDown={e => e.preventDefault()}
@@ -1007,10 +1022,11 @@ export default function MessagingPage() {
                   }}
                   onError={msg => setUploadError(msg)}
                 />
-                <div className="flex-1 min-w-0 relative flex items-center bg-white/5 border border-white/10 rounded-xl focus-within:border-pi-500/50 transition-colors overflow-hidden">
-                  <input
+                <div className="flex-1 min-w-0 relative flex items-end bg-white/5 border border-white/10 rounded-2xl focus-within:border-pi-500/50 transition-colors">
+                  <textarea
                     ref={inputRef}
                     value={newMsg}
+                    rows={1}
                     onChange={e => setNewMsg(e.target.value)}
                     onPaste={handlePasteImage}
                     onKeyDown={e => {
@@ -1022,7 +1038,8 @@ export default function MessagingPage() {
                     }}
                     onFocus={() => setPickerOpen(false)}
                     placeholder={replyTo ? `Reply…` : `Message…`}
-                    className="w-full min-w-0 bg-transparent px-3 sm:px-4 py-2.5 text-white placeholder-slate-600 text-sm focus:outline-none"
+                    className="w-full min-w-0 max-h-36 bg-transparent px-3 sm:px-4 py-2.5 text-white placeholder-slate-600 text-sm focus:outline-none resize-none leading-5 break-words whitespace-pre-wrap"
+                    style={{ overflowY: 'hidden' }}
                   />
                 </div>
                 <button
