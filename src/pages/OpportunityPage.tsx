@@ -3,7 +3,7 @@ import { Briefcase, Sparkles, Clock4, ChevronDown, ChevronUp } from 'lucide-reac
 import { mockOpportunities } from '../data/mockData'
 import MockIcon from '../components/MockIcon'
 import { useAuth } from '../contexts/AuthContext'
-import { opportunityReasonForUser } from '../lib/matching'
+import { opportunityReasonForUser, scoreOpportunityForUser } from '../lib/matching'
 
 const categories = ['All', 'Competition', 'Funding', 'Community', 'Co-founder', 'Talent', 'Accelerator']
 
@@ -15,13 +15,13 @@ export default function OpportunityPage() {
   const filtered = active === 'All' ? mockOpportunities : mockOpportunities.filter(o => o.category === active)
 
   const withReasons = useMemo(() =>
-    filtered.map(o => ({
-      ...o,
-      personalizedReason: opportunityReasonForUser(profile, o.aiReason, o.title),
-      personalizedMatch: profile
-        ? Math.min(99, o.match - 4 + (profile.goals?.length ? 3 : 0) + (profile.interests?.length ? 2 : 0) + (profile.role ? 2 : 0))
-        : o.match,
-    })),
+    filtered
+      .map(o => ({
+        ...o,
+        personalizedReason: opportunityReasonForUser(profile, o.aiReason, o.title),
+        personalizedMatch: scoreOpportunityForUser(profile, o),
+      }))
+      .sort((a, b) => b.personalizedMatch - a.personalizedMatch),
   [filtered, profile])
 
   return (
@@ -31,13 +31,18 @@ export default function OpportunityPage() {
           <Briefcase size={22} className="text-amber-400" />
           <h1 className="font-display text-3xl font-extrabold text-white">Opportunity Intelligence Hub</h1>
         </div>
-        <p className="text-slate-400">
+        <p className="text-slate-400 text-sm leading-relaxed max-w-3xl">
           Discover funding, jobs, grants, accelerators, and partnerships — with{' '}
-          <span className="text-teal-300 font-semibold">why each opportunity fits you</span>.{' '}
-          <span className="text-amber-400 text-xs font-semibold border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 rounded-full ml-1">
-            Catalog demo · reasons personalized
-          </span>
+          <span className="text-teal-300 font-semibold">fit scores from your live Digital Twin</span>.
         </p>
+        <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
+          <span className="px-2.5 py-1 rounded-full border border-amber-500/25 bg-amber-500/10 text-amber-300 font-semibold">
+            Listings = catalog demo (Phase 2 marketplace)
+          </span>
+          <span className="px-2.5 py-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 text-emerald-300 font-semibold">
+            Match % = live from your profile signals
+          </span>
+        </div>
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-2 mb-8">

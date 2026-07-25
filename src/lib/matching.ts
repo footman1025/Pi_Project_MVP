@@ -245,3 +245,39 @@ export function opportunityReasonForUser(
   if (!bits.length) return baseReason
   return `${bits.join(' and ')} align with “${title}”. ${baseReason}`
 }
+
+/**
+ * Score a catalog opportunity against the live twin (catalog rows are still demo listings;
+ * the % is personalized from real profile signals).
+ */
+export function scoreOpportunityForUser(
+  me: Profile | null | undefined,
+  opp: { title: string; subtitle?: string; category?: string; aiReason?: string; match?: number },
+): number {
+  const base = typeof opp.match === 'number' ? opp.match : 55
+  if (!me) return Math.min(92, Math.max(28, base - 8))
+
+  let score = 36
+  const hay = norm([opp.title, opp.subtitle, opp.category, opp.aiReason].filter(Boolean).join(' '))
+
+  const role = norm(me.role || '')
+  if (role && hay.includes(role.split(' ')[0] || '')) score += 10
+
+  for (const g of tagList(me.goals).slice(0, 6)) {
+    if (g.length >= 3 && hay.includes(g)) score += 7
+  }
+  for (const i of tagList(me.interests).slice(0, 6)) {
+    if (i.length >= 3 && hay.includes(i)) score += 5
+  }
+  for (const s of tagList(me.skills).slice(0, 6)) {
+    if (s.length >= 3 && hay.includes(s)) score += 4
+  }
+
+  if (/founder|entrepreneur|startup/.test(role) && /fund|accelerator|co-founder|startup/.test(hay)) score += 8
+  if (/engineer|developer|software/.test(role) && /talent|engineer|technical|hack/.test(hay)) score += 8
+  if (/investor|angel|vc/.test(role) && /fund|deal|venture|invest/.test(hay)) score += 8
+
+  // Mild pull toward catalog baseline so ranking stays stable for demos
+  score = Math.round(score * 0.7 + base * 0.3)
+  return Math.min(96, Math.max(30, score))
+}
