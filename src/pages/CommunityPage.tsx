@@ -1,16 +1,11 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, useMemo } from 'react'
 import { supabase, Community, Post } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { UsersRound, Sparkles, Loader2, Send, MessageCircle, Search as SearchIcon } from 'lucide-react'
-import { mockCommunities as mockCommData } from '../data/mockData'
-import MockIcon from '../components/MockIcon'
 import UserAvatar from '../components/UserAvatar'
+import StatusBadge from '../components/StatusBadge'
 import { displayName } from '../lib/posts'
-
-const mockCommunityReasons: Record<string, string> = Object.fromEntries(
-  mockCommData.map(c => [c.name, c.aiReason])
-)
+import { rankCommunitiesForUser } from '../lib/communityRank'
 
 const categories = ['All', 'Technology', 'Business', 'Creator', 'Design', 'Finance', 'Health', 'Music']
 
@@ -184,9 +179,9 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
 
       <div className="p-6 rounded-2xl border border-white/5 mb-6" style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.5), rgba(14,20,25,0.7))' }}>
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl"
             style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
-            <MockIcon name={(community as any).iconName || 'Globe2'} size={26} />
+            {community.icon || '◎'}
           </div>
           <div className="flex-1">
             <h2 className="font-display text-2xl font-extrabold text-white">{community.name}</h2>
@@ -203,7 +198,6 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
         {community.description && <p className="text-slate-400 text-sm mt-3">{community.description}</p>}
         <p className="text-slate-500 text-xs mt-3">
           This is a topic space: join, post, and discuss with people who share this interest.
-          Member counts from seed data may look large — real discussion lives in the posts below.
         </p>
       </div>
 
@@ -272,8 +266,7 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
 }
 
 export default function CommunityPage() {
-  const { user } = useAuth()
-  const navigate = useNavigate()
+  const { user, profile } = useAuth()
   const [active, setActive] = useState('All')
   const [communities, setCommunities] = useState<Community[]>([])
   const [loading, setLoading] = useState(true)
@@ -331,8 +324,13 @@ export default function CommunityPage() {
     }
   }
 
-  // Filter by category (applied on top of search results)
-  const filtered = active === 'All' ? communities : communities.filter(c => c.category === active)
+  // Filter by category, then rank by twin fit
+  const filtered = useMemo(() => {
+    const base = active === 'All' ? communities : communities.filter(c => c.category === active)
+    return rankCommunitiesForUser(profile, base)
+  }, [communities, active, profile])
+
+  const topRecs = filtered.slice(0, 2)
 
   if (selected) {
     return (
@@ -345,9 +343,10 @@ export default function CommunityPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="mb-8">
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
           <UsersRound size={22} className="text-emerald-400" />
           <h1 className="font-display text-3xl font-extrabold text-white">Communities</h1>
+          <StatusBadge kind="live" label="Live · twin-ranked" size="md" />
         </div>
         <p className="text-slate-400">
           Topic groups where people with shared interests join, post, and discuss.
@@ -396,8 +395,24 @@ export default function CommunityPage() {
           <Sparkles size={16} className="text-white" />
         </div>
         <p className="text-sm text-slate-300">
-          <span className="text-pi-300 font-semibold">Pi AI recommends:</span> Based on your interests, you'd thrive in{' '}
-          <span className="text-white font-semibold">AI Founders Hub</span> and <span className="text-white font-semibold">Creator Economy Lab</span>.
+          <span className="text-pi-300 font-semibold">Pi AI recommends:</span>{' '}
+          {topRecs.length >= 2 ? (
+            <>
+              Based on your twin, start with{' '}
+              <span className="text-white font-semibold">{topRecs[0].name}</span>
+              {' '}({topRecs[0].score}% fit) and{' '}
+              <span className="text-white font-semibold">{topRecs[1].name}</span>
+              {' '}({topRecs[1].score}% fit).
+            </>
+          ) : topRecs.length === 1 ? (
+            <>
+              Top fit right now:{' '}
+              <span className="text-white font-semibold">{topRecs[0].name}</span>
+              {' '}({topRecs[0].score}%).
+            </>
+          ) : (
+            <>Complete your profile interests to personalize community ranking.</>
+          )}
         </p>
       </div>
 
@@ -421,21 +436,19 @@ export default function CommunityPage() {
         </div>
       ) : (
         <div className="grid md:grid-cols-2 gap-4">
-          {filtered.map((c, idx) => {
-            // Merge AI reason from mock data by name match
-            const mockReason = mockCommunityReasons[c.name]
-            return (
+          {filtered.map(c => (
               <div key={c.id}
                 className="rounded-2xl border border-white/5 hover:border-pi-500/20 transition-all group"
                 style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.5), rgba(14,20,25,0.7))' }}>
                 <div className="p-5 cursor-pointer" onClick={() => setSelected(c)}>
                   <div className="flex items-center gap-4 mb-4">
-                    <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${c.category === 'Technology' ? 'from-pi-500 to-teal-600' : c.category === 'Business' ? 'from-blue-500 to-cyan-600' : c.category === 'Creator' ? 'from-pink-500 to-rose-600' : c.category === 'Design' ? 'from-amber-500 to-orange-600' : c.category === 'Finance' ? 'from-green-500 to-emerald-600' : c.category === 'Health' ? 'from-red-500 to-pink-600' : c.category === 'Music' ? 'from-teal-500 to-pi-600' : 'from-pi-500 to-teal-600'} flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform`}>
-                      <MockIcon name={(c as any).iconName || 'Globe2'} size={22} />
+                    <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${c.category === 'Technology' ? 'from-pi-500 to-teal-600' : c.category === 'Business' ? 'from-blue-500 to-cyan-600' : c.category === 'Creator' ? 'from-pink-500 to-rose-600' : c.category === 'Design' ? 'from-amber-500 to-orange-600' : c.category === 'Finance' ? 'from-green-500 to-emerald-600' : c.category === 'Health' ? 'from-red-500 to-pink-600' : c.category === 'Music' ? 'from-teal-500 to-pi-600' : 'from-pi-500 to-teal-600'} flex items-center justify-center flex-shrink-0 text-xl group-hover:scale-110 transition-transform`}>
+                      {c.icon || '◎'}
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-bold text-white">{c.name}</h3>
+                        <span className="text-xs font-extrabold text-teal-300">{c.score}% fit</span>
                         {c.joined && (
                           <span className="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">Joined</span>
                         )}
@@ -444,16 +457,13 @@ export default function CommunityPage() {
                     </div>
                   </div>
 
-                  {/* AI Reason */}
-                  {mockReason && (
-                    <div className="mb-4 p-3 rounded-xl border border-pi-500/20" style={{ background: 'rgba(20,184,166,0.08)' }}>
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        <Sparkles size={12} className="text-pi-400" />
-                        <p className="text-pi-300 text-xs font-bold uppercase tracking-wider">Pi Intelligence</p>
-                      </div>
-                      <p className="text-slate-300 text-xs leading-relaxed">{mockReason}</p>
+                  <div className="mb-4 p-3 rounded-xl border border-pi-500/20" style={{ background: 'rgba(20,184,166,0.08)' }}>
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <Sparkles size={12} className="text-pi-400" />
+                      <p className="text-pi-300 text-xs font-bold uppercase tracking-wider">Pi Intelligence</p>
                     </div>
-                  )}
+                    <p className="text-slate-300 text-xs leading-relaxed">{c.reason}</p>
+                  </div>
 
                   <button
                     onClick={e => { e.stopPropagation(); setSelected(c) }}
@@ -463,8 +473,7 @@ export default function CommunityPage() {
                   </button>
                 </div>
               </div>
-            )
-          })}
+          ))}
         </div>
       )}
     </div>

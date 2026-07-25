@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Sparkles, MapPin, Tag, MessageCircle, UserRoundPlus, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
-import { mockMatches } from '../data/mockData'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { MatchResult, rankMatches } from '../lib/matching'
@@ -68,9 +67,6 @@ export default function MatchmakingPage() {
   }
 
   const liveFiltered = matches.filter(m => roleFilter(m.profile.role, filter))
-  const demoFiltered = filter === 'All'
-    ? mockMatches
-    : mockMatches.filter(m => roleFilter(m.role, filter))
 
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto overflow-x-hidden w-full min-w-0">
@@ -79,8 +75,8 @@ export default function MatchmakingPage() {
           <Sparkles size={22} className="text-pi-400 shrink-0" />
           <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-white">Pi Intelligence Engine</h1>
           <StatusBadge
-            kind={usingLive ? 'live' : 'demo'}
-            label={usingLive ? 'Live graph' : 'Demo samples'}
+            kind={usingLive ? 'live' : 'partial'}
+            label={usingLive ? 'Live graph' : 'Awaiting members'}
             size="md"
           />
         </div>
@@ -89,7 +85,7 @@ export default function MatchmakingPage() {
           with live scores from skills, interests, goals, roles, location, and profile narrative.
           {!usingLive && (
             <span className="block mt-1 text-slate-500">
-              Complete your profile and invite teammates for live graph matches — sample matches shown meanwhile.
+              The live graph needs other Pi members. Run the demo seed SQL or invite teammates — we don’t show fake match cards.
             </span>
           )}
         </p>
@@ -114,7 +110,7 @@ export default function MatchmakingPage() {
       ) : usingLive ? (
         <div className="space-y-4">
           {liveFiltered.length === 0 && (
-            <p className="text-slate-500 text-sm text-center py-10">No members match this filter yet.</p>
+            <p className="text-slate-500 text-sm text-center py-10">No members match this filter yet. Try “All”.</p>
           )}
           {liveFiltered.map((m, i) => {
             const p = m.profile
@@ -258,115 +254,24 @@ export default function MatchmakingPage() {
           })}
         </div>
       ) : (
-        <div className="space-y-4">
-          {demoFiltered.map((m, i) => (
-            <div key={m.id}
-              className="rounded-2xl border border-white/5 hover:border-pi-500/20 transition-all duration-300"
-              style={{
-                background: 'linear-gradient(135deg, rgba(14,20,25,0.5), rgba(14,20,25,0.7))',
-                opacity: animated ? 1 : 0,
-                transform: animated ? 'translateY(0)' : 'translateY(20px)',
-                transition: `opacity 0.5s ease ${i * 100}ms, transform 0.5s ease ${i * 100}ms, border-color 0.3s ease`,
-              }}>
-              <div className="p-4 sm:p-5 min-w-0">
-                <div className="flex items-start gap-3 min-w-0">
-                  <UserAvatar
-                    url={null}
-                    name={m.name}
-                    id={String(m.id)}
-                    size={56}
-                    rounded="rounded-2xl"
-                    className="shadow-lg shadow-pi-500/15 flex-shrink-0"
-                  />
-                  <div className="flex-1 min-w-0 overflow-hidden">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-bold text-white text-base sm:text-lg truncate">{m.name}</h3>
-                        <span className="inline-block mt-1 text-[11px] sm:text-xs text-slate-500 font-medium px-2 py-0.5 bg-white/5 rounded-full max-w-full truncate">
-                          {m.role}
-                        </span>
-                      </div>
-                      <div className="flex-shrink-0 text-center">
-                        <div className="relative w-12 h-12 sm:w-16 sm:h-16">
-                          <svg className="w-full h-full -rotate-90" viewBox="0 0 64 64">
-                            <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="6" />
-                            <circle cx="32" cy="32" r="26" fill="none"
-                              stroke="url(#matchGradDemo)" strokeWidth="6" strokeLinecap="round"
-                              strokeDasharray={`${2 * Math.PI * 26}`}
-                              strokeDashoffset={animated ? `${2 * Math.PI * 26 * (1 - m.match / 100)}` : `${2 * Math.PI * 26}`}
-                              style={{ transition: `stroke-dashoffset 1.5s ease ${i * 100 + 200}ms` }}
-                            />
-                            <defs>
-                              <linearGradient id="matchGradDemo" x1="0%" y1="0%" x2="100%" y2="0%">
-                                <stop offset="0%" stopColor="#14b8a6" />
-                                <stop offset="100%" stopColor="#2dd4bf" />
-                              </linearGradient>
-                            </defs>
-                          </svg>
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <span className="text-xs sm:text-sm font-extrabold text-white">{m.match}%</span>
-                          </div>
-                        </div>
-                        <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5">match</p>
-                      </div>
-                    </div>
-                    <p className="text-slate-400 text-sm mt-2 line-clamp-2 break-words">{m.description}</p>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-3 w-full min-w-0">
-                  {m.tags.map(tag => (
-                    <span
-                      key={tag}
-                      title={tag}
-                      className="inline-flex items-center gap-1 max-w-full text-[11px] sm:text-xs text-pi-300 bg-pi-500/10 border border-pi-500/20 px-2.5 py-1 rounded-full"
-                    >
-                      <Tag size={10} className="shrink-0 opacity-70" />
-                      <span className="truncate max-w-[11rem] sm:max-w-[14rem]">{tag}</span>
-                    </span>
-                  ))}
-                </div>
-
-                <span className="flex items-center gap-1 text-xs text-slate-500 mt-2.5">
-                  <MapPin size={12} className="shrink-0" />
-                  <span className="truncate">{m.location}</span>
-                </span>
-
-                <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mt-4 pt-4 border-t border-white/5">
-                  <button className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white pi-mark">
-                    <UserRoundPlus size={14} className="shrink-0" /> Connect
-                  </button>
-                  <button className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium text-slate-300 border border-white/10">
-                    <MessageCircle size={14} className="shrink-0" /> Message
-                  </button>
-                  <button
-                    onClick={() => setExpandedId(expandedId === String(m.id) ? null : String(m.id))}
-                    className="col-span-2 sm:ml-auto flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-pi-300 bg-pi-500/10 border border-pi-500/20">
-                    <Sparkles size={12} className="shrink-0" /> Why this match?
-                    {expandedId === String(m.id) ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                  </button>
-                </div>
-              </div>
-              {expandedId === String(m.id) && (
-                <div className="px-4 sm:px-5 pb-4 sm:pb-5 animate-fade-in">
-                  <div className="p-3 sm:p-4 rounded-xl border border-pi-500/20" style={{ background: 'rgba(20,184,166,0.08)' }}>
-                    <div className="flex items-center gap-2 mb-3">
-                      <Sparkles size={14} className="text-pi-400 shrink-0" />
-                      <p className="text-pi-300 text-xs font-bold uppercase tracking-wider">Pi Intelligence — Why this match</p>
-                    </div>
-                    <ul className="space-y-2">
-                      {m.aiReasons.map((reason, j) => (
-                        <li key={j} className="flex items-start gap-2 text-sm text-slate-300 break-words">
-                          <span className="w-1.5 h-1.5 rounded-full bg-pi-400 flex-shrink-0 mt-1.5"></span>
-                          {reason}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
+        <div className="p-6 rounded-2xl border border-amber-500/20 bg-amber-500/5 text-sm text-slate-300 max-w-xl mx-auto">
+          <p className="font-semibold text-amber-200 mb-2">Live match graph is empty</p>
+          <p className="text-slate-400 text-xs leading-relaxed mb-4">
+            Matching only shows real Pi members. For investor demos, run{' '}
+            <code className="text-teal-300">supabase_seed_demo_members.sql</code> (or{' '}
+            <code className="text-teal-300">npm run seed:demo</code>) so the graph fills with 8 demo profiles.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <button type="button" onClick={() => navigate('/search')} className="text-teal-300 font-semibold text-xs hover:underline">
+              Search people →
+            </button>
+            <button type="button" onClick={() => navigate('/transparency')} className="text-teal-300 font-semibold text-xs hover:underline">
+              What’s live →
+            </button>
+            <button type="button" onClick={() => navigate('/demo')} className="text-teal-300 font-semibold text-xs hover:underline">
+              Scripted Investor Demo →
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -510,16 +510,29 @@ export default function MessagingPage() {
   const resizeComposer = useCallback(() => {
     const el = inputRef.current
     if (!el) return
-    el.style.height = 'auto'
-    // ~1 line min, ~6 lines max (Telegram-style grow)
+    // Force width constraint so long unbroken strings wrap before measuring height
+    const parent = el.parentElement
+    if (parent) {
+      el.style.width = `${parent.clientWidth}px`
+      el.style.maxWidth = `${parent.clientWidth}px`
+    }
+    el.style.height = '0px'
+    // ~1 line min (~40px), ~6 lines max (Telegram-style grow)
     const max = 144
-    el.style.height = `${Math.min(el.scrollHeight, max)}px`
+    const next = Math.max(40, Math.min(el.scrollHeight, max))
+    el.style.height = `${next}px`
     el.style.overflowY = el.scrollHeight > max ? 'auto' : 'hidden'
   }, [])
 
   useEffect(() => {
     resizeComposer()
-  }, [newMsg, resizeComposer])
+  }, [newMsg, selectedUser, resizeComposer])
+
+  useEffect(() => {
+    const onResize = () => resizeComposer()
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [resizeComposer])
 
   const insertEmoji = (emoji: string) => {
     const el = inputRef.current
@@ -986,7 +999,7 @@ export default function MessagingPage() {
                 accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.json,audio/*,video/mp4,video/webm"
                 onChange={handleFilePick}
               />
-              <div className="flex gap-1.5 sm:gap-2 items-end w-full max-w-full min-w-0">
+              <div className="flex gap-1.5 sm:gap-2 items-end w-full max-w-full min-w-0 overflow-hidden">
                 <button
                   type="button"
                   onMouseDown={e => e.preventDefault()}
@@ -1022,13 +1035,19 @@ export default function MessagingPage() {
                   }}
                   onError={msg => setUploadError(msg)}
                 />
-                <div className="flex-1 min-w-0 relative flex items-end bg-white/5 border border-white/10 rounded-2xl focus-within:border-pi-500/50 transition-colors">
+                <div className="flex-1 min-w-0 max-w-full overflow-hidden relative bg-white/5 border border-white/10 rounded-2xl focus-within:border-pi-500/50 transition-colors">
                   <textarea
                     ref={inputRef}
                     value={newMsg}
                     rows={1}
-                    onChange={e => setNewMsg(e.target.value)}
+                    wrap="soft"
+                    onChange={e => {
+                      setNewMsg(e.target.value)
+                      // Resize immediately so wrap + grow feel instant
+                      requestAnimationFrame(resizeComposer)
+                    }}
                     onPaste={handlePasteImage}
+                    onInput={resizeComposer}
                     onKeyDown={e => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault()
@@ -1038,8 +1057,16 @@ export default function MessagingPage() {
                     }}
                     onFocus={() => setPickerOpen(false)}
                     placeholder={replyTo ? `Reply…` : `Message…`}
-                    className="w-full min-w-0 max-h-36 bg-transparent px-3 sm:px-4 py-2.5 text-white placeholder-slate-600 text-sm focus:outline-none resize-none leading-5 break-words whitespace-pre-wrap"
-                    style={{ overflowY: 'hidden' }}
+                    className="block w-full max-w-full min-w-0 box-border bg-transparent px-3 sm:px-4 py-2.5 text-white placeholder-slate-600 text-sm focus:outline-none resize-none leading-5"
+                    style={{
+                      overflowX: 'hidden',
+                      overflowY: 'hidden',
+                      whiteSpace: 'pre-wrap',
+                      overflowWrap: 'anywhere',
+                      wordBreak: 'break-word',
+                      width: '100%',
+                      maxWidth: '100%',
+                    }}
                   />
                 </div>
                 <button

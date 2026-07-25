@@ -76,31 +76,32 @@ export default function OnboardingPage() {
 
       const started = Date.now()
       let preview: OnboardingPreview = { ...template, source: 'preview' }
-      if (user) {
-        try {
-          const me: Profile = {
-            id: user.id,
-            username: null,
-            full_name: user.email?.split('@')[0] || null,
-            avatar_url: null,
-            bio: null,
-            role,
-            location: null,
-            website: null,
-            skills: skillsArr,
-            interests,
-            goals,
-            ai_summary: template.summary,
-            experience: [],
-            followers_count: 0,
-            following_count: 0,
-            posts_count: 0,
-            created_at: new Date().toISOString(),
-          }
-          preview = await buildLiveOnboardingPreview(me, role, interests, goals, skillsArr)
-        } catch {
-          preview = { ...template, source: 'preview' }
-        }
+      try {
+        const me: Profile | null = user
+          ? {
+              id: user.id,
+              username: null,
+              full_name: user.email?.split('@')[0] || null,
+              avatar_url: null,
+              bio: null,
+              role,
+              location: null,
+              website: null,
+              skills: skillsArr,
+              interests,
+              goals,
+              ai_summary: template.summary,
+              experience: [],
+              followers_count: 0,
+              following_count: 0,
+              posts_count: 0,
+              created_at: new Date().toISOString(),
+            }
+          : null
+        // Guests still get live communities/opps/people when the network exists
+        preview = await buildLiveOnboardingPreview(me, role, interests, goals, skillsArr)
+      } catch {
+        preview = { ...template, source: 'preview' }
       }
 
       const wait = Math.max(0, 1800 - (Date.now() - started))

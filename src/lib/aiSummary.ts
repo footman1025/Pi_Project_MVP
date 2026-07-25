@@ -141,7 +141,7 @@ export type OnboardingPreview = ReturnType<typeof buildOnboardingPreview> & {
  * Falls back to template preview sections when the network is empty.
  */
 export async function buildLiveOnboardingPreview(
-  me: Profile,
+  me: Profile | null,
   role: string,
   interests: string[],
   goals: string[],
@@ -151,8 +151,32 @@ export async function buildLiveOnboardingPreview(
   let usedLive = false
   let usedPreview = false
 
+  const synthetic: Profile = me || {
+    id: '00000000-0000-0000-0000-000000000000',
+    username: null,
+    full_name: null,
+    avatar_url: null,
+    bio: null,
+    role,
+    location: null,
+    website: null,
+    skills,
+    interests,
+    goals,
+    ai_summary: base.summary,
+    experience: [],
+    followers_count: 0,
+    following_count: 0,
+    posts_count: 0,
+    created_at: new Date().toISOString(),
+  }
+
+  const profilesQuery = me
+    ? supabase.from('profiles').select('*').neq('id', me.id).limit(40)
+    : supabase.from('profiles').select('*').limit(40)
+
   const [profilesRes, communitiesRes, oppsRes] = await Promise.all([
-    supabase.from('profiles').select('*').neq('id', me.id).limit(40),
+    profilesQuery,
     supabase
       .from('communities')
       .select('id, name, members_count, category, icon')
@@ -163,7 +187,7 @@ export async function buildLiveOnboardingPreview(
 
   let matches = base.matches
   if (profilesRes.data && profilesRes.data.length > 0) {
-    const ranked = rankMatches(me, profilesRes.data as Profile[]).slice(0, 3)
+    const ranked = rankMatches(synthetic, profilesRes.data as Profile[]).slice(0, 3)
     if (ranked.length) {
       usedLive = true
       matches = ranked.map(m => ({
@@ -197,7 +221,7 @@ export async function buildLiveOnboardingPreview(
   let opportunities = base.opportunities
   if (oppsRes.items.length > 0) {
     const scored = oppsRes.items
-      .map(o => ({ ...o, score: scoreOpportunityForUser(me, o) }))
+      .map(o => ({ ...o, score: scoreOpportunityForUser(synthetic, o) }))
       .sort((a, b) => b.score - a.score)
       .slice(0, 3)
     if (scored.length) {
@@ -207,7 +231,7 @@ export async function buildLiveOnboardingPreview(
         title: o.title,
         prize: o.prize,
         icon: '🎯',
-        reason: `Twin fit ${o.score}% · ${o.category}`,
+        reason: `${oppsRes.isLive ? 'Live catalog' : 'Demo catalog'} · twin fit ${o.score}% · ${o.category}`,
       }))
     }
   } else {
