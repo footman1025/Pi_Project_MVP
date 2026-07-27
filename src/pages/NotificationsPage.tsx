@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase, Notification } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { Bell, Heart, MessageCircle, UserPlus, Loader2, CheckCheck } from 'lucide-react'
+import { Bell, Heart, MessageCircle, UserPlus, Loader2, CheckCheck, Sparkles, Briefcase } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 import StateMessage from '../components/StateMessage'
 import {
@@ -10,6 +10,7 @@ import {
   systemAlertPermission,
   systemAlertsSupported,
 } from '../lib/systemAlerts'
+import { enablePushNotifications, pushSupported } from '../lib/pushNotifications'
 
 function timeAgo(date: string) {
   const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
@@ -24,6 +25,8 @@ const typeConfig: Record<string, { icon: React.ElementType, color: string, bg: s
   comment: { icon: MessageCircle, color: 'text-pi-400', bg: 'bg-pi-500/15' },
   follow: { icon: UserPlus, color: 'text-emerald-400', bg: 'bg-emerald-500/15' },
   message: { icon: MessageCircle, color: 'text-amber-400', bg: 'bg-amber-500/15' },
+  ai_match: { icon: Sparkles, color: 'text-teal-300', bg: 'bg-teal-500/15' },
+  ai_opportunity: { icon: Briefcase, color: 'text-amber-300', bg: 'bg-amber-500/15' },
 }
 
 type NotifRow = Notification & {
@@ -110,6 +113,16 @@ export default function NotificationsPage() {
       else navigate('/search')
       return
     }
+    if (n.type === 'ai_match') {
+      const username = n.profiles?.username
+      if (username) navigate(`/p/${username}`, { state: { from: '/notifications' } })
+      else navigate('/match')
+      return
+    }
+    if (n.type === 'ai_opportunity') {
+      navigate('/opportunities')
+      return
+    }
     navigate('/feed')
   }
 
@@ -139,30 +152,36 @@ export default function NotificationsPage() {
               </span>
             )}
           </div>
-          <p className="text-slate-400 text-sm">Tap a message to open the chat directly.</p>
-          {systemAlertsSupported() && alertPerm !== 'granted' && alertPerm !== 'unsupported' && (
+          <p className="text-slate-400 text-sm">Likes, comments, messages — plus AI suggestions. Tap to open.</p>
+          {(systemAlertsSupported() || pushSupported()) && (
             <button
               type="button"
               onClick={async () => {
                 const ok = await ensureSystemAlertPermission()
                 setAlertPerm(systemAlertPermission())
-                if (ok) {
-                  // Quick confirmation toast via OS
-                  const { showPiSystemAlert } = await import('../lib/systemAlerts')
-                  showPiSystemAlert({
-                    title: 'Pi alerts enabled',
-                    body: 'You’ll get system alerts for messages, follows, likes, and comments.',
-                    path: '/notifications',
-                    tag: 'pi-alerts-enabled',
-                    force: true,
-                  })
+                if (user?.id) {
+                  const push = await enablePushNotifications(user.id)
+                  if (push.ok || ok) {
+                    const { showPiSystemAlert } = await import('../lib/systemAlerts')
+                    showPiSystemAlert({
+                      title: 'Pi alerts enabled',
+                      body: push.reason === 'local-only'
+                        ? 'System alerts on. Add VAPID keys on the server for closed-app push.'
+                        : 'Push enabled for likes, comments, messages, and AI suggestions.',
+                      path: '/notifications',
+                      tag: 'pi-alerts-enabled',
+                      force: true,
+                    })
+                  }
                 }
               }}
               className="mt-2 text-xs font-semibold text-teal-300 hover:text-teal-200 underline underline-offset-2"
             >
               {alertPerm === 'denied'
-                ? 'System alerts blocked — enable Pi in browser site settings'
-                : 'Enable system alerts (desktop notifications)'}
+                ? 'Alerts blocked — enable Pi in browser site settings'
+                : alertPerm === 'granted'
+                  ? 'Refresh push / system alerts'
+                  : 'Enable push notifications (phone · tablet · desktop)'}
             </button>
           )}
         </div>

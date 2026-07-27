@@ -236,7 +236,7 @@ export default function DashboardPage() {
                     className="w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-2xl border border-white/5 hover:border-pi-500/20 transition-all group min-w-0 text-left"
                     style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.4), rgba(14,20,25,0.6))' }}
                   >
-                    <UserAvatar url={p.avatar_url} name={name} id={p.id} size={44} rounded="rounded-2xl" />
+                    <UserAvatar url={p.avatar_url} name={name} id={p.id} size={44} rounded="rounded-2xl" username={p.username} from="/dashboard" />
                     <div className="flex-1 min-w-0 overflow-hidden">
                       <div className="flex items-center gap-2 mb-0.5 min-w-0">
                         <p className="font-semibold text-white text-sm truncate">{name}</p>

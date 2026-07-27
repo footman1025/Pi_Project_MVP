@@ -129,21 +129,16 @@ export default function MatchmakingPage() {
                 <div className="p-4 sm:p-5 min-w-0">
                   {/* Header: identity + match % */}
                   <div className="flex items-start gap-3 min-w-0">
-                    <button
-                      type="button"
-                      className="flex-shrink-0 rounded-2xl overflow-hidden ring-1 ring-white/10 hover:ring-pi-500/40 transition-all"
-                      onClick={() => p.username && navigate(`/p/${p.username}`, { state: { from: '/match' } })}
-                      aria-label={`Open ${name}'s profile`}
-                    >
                       <UserAvatar
                         url={p.avatar_url}
                         name={name}
                         id={p.id}
+                        username={p.username}
+                        from="/match"
                         size={56}
                         rounded="rounded-2xl"
-                        className="shadow-lg shadow-pi-500/15"
+                        className="shadow-lg shadow-pi-500/15 ring-1 ring-white/10"
                       />
-                    </button>
                     <div className="flex-1 min-w-0 overflow-hidden">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">

@@ -629,7 +629,7 @@ export default function MessagingPage() {
                 searchResults.map(p => (
                   <button key={p.id} onClick={() => { setSearchQuery(''); selectConversation(p) }}
                     className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl hover:bg-white/5 transition-all text-left">
-                    <UserAvatar url={p.avatar_url} name={p.full_name} id={p.id} size={36} />
+                    <UserAvatar url={p.avatar_url} name={p.full_name} id={p.id} username={p.username} from="/messages" size={36} />
                     <div className="flex-1 min-w-0">
                       <p className="text-white text-sm font-semibold truncate">{p.full_name}</p>
                       <p className="text-slate-500 text-xs truncate">{p.role || 'Pi Member'}</p>
@@ -653,7 +653,7 @@ export default function MessagingPage() {
             conversations.map(c => (
               <button key={c.id} onClick={() => selectConversation(c)}
                 className={`flex items-center gap-3 w-full px-4 py-3 transition-all text-left ${selectedUser?.id === c.id ? 'bg-pi-500/10 border-r-2 border-pi-500' : 'hover:bg-white/5'}`}>
-                <UserAvatar url={c.avatar_url} name={c.full_name} id={c.id} size={40} />
+                    <UserAvatar url={c.avatar_url} name={c.full_name} id={c.id} username={c.username} from="/messages" size={40} />
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-sm font-semibold truncate">{c.full_name}</p>
                   <p className="text-slate-500 text-xs truncate">{c.role || 'Pi Member'}</p>
@@ -682,6 +682,8 @@ export default function MessagingPage() {
                 url={selectedUser.avatar_url}
                 name={selectedUser.full_name}
                 id={selectedUser.id}
+                username={selectedUser.username}
+                from="/messages"
                 size={36}
               />
               <div className="min-w-0 flex-1">
@@ -837,6 +839,8 @@ export default function MessagingPage() {
                         url={isMe ? profile?.avatar_url : selectedUser.avatar_url}
                         name={isMe ? profile?.full_name : selectedUser.full_name}
                         id={isMe ? user.id : selectedUser.id}
+                        username={isMe ? profile?.username : selectedUser.username}
+                        from="/messages"
                         size={24}
                         rounded="rounded-lg"
                       />

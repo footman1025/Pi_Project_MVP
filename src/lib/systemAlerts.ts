@@ -44,6 +44,10 @@ function titleForType(type: string): string {
       return 'New like on Pi'
     case 'comment':
       return 'New comment on Pi'
+    case 'ai_match':
+      return 'Pi Intelligence'
+    case 'ai_opportunity':
+      return 'Pi Opportunity'
     default:
       return 'Pi notification'
   }
@@ -52,10 +56,16 @@ function titleForType(type: string): string {
 function pathForNotification(row: {
   type?: string
   actor_id?: string | null
+  message?: string | null
 }): string {
   if (row.type === 'message' && row.actor_id) return `/messages?u=${row.actor_id}`
-  if (row.type === 'follow' && row.actor_id) return `/notifications`
+  if (row.type === 'follow') return '/notifications'
   if (row.type === 'like' || row.type === 'comment') return '/feed'
+  if (row.type === 'ai_match') {
+    // Prefer profile if message mentions @ later; Matching is the safe landing
+    return '/match'
+  }
+  if (row.type === 'ai_opportunity') return '/opportunities'
   return '/notifications'
 }
 
@@ -110,10 +120,26 @@ export function showSystemAlertForRow(row: {
 }) {
   const type = row.type || 'notification'
   const body = (row.message || '').trim() || 'You have a new update on Pi.'
-  showPiSystemAlert({
+  const path = pathForNotification(row)
+  const payload = {
     title: titleForType(type),
     body,
-    path: pathForNotification(row),
+    path,
     tag: row.id ? `pi-notif-${row.id}` : `pi-${type}-${row.actor_id || 'x'}`,
+  }
+
+  void import('./pushNotifications').then(async ({ showLocalPush }) => {
+    if ('serviceWorker' in navigator) {
+      try {
+        const reg = await navigator.serviceWorker.ready
+        if (reg?.active) {
+          await showLocalPush(payload)
+          return
+        }
+      } catch {
+        /* fall through */
+      }
+    }
+    showPiSystemAlert(payload)
   })
 }

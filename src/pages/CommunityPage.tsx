@@ -242,6 +242,8 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
                   url={post.profiles?.avatar_url}
                   name={displayName(post.profiles)}
                   id={post.author_id}
+                  username={post.profiles?.username}
+                  from="/communities"
                   size={32}
                 />
                 <div>

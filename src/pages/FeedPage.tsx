@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { notifyPostAuthorOfLike, notifyPostAuthorOfComment } from '../lib/notifications'
 import { displayName } from '../lib/posts'
 import { uploadPostImage } from '../lib/postImageUpload'
-import { Heart, MessageCircle, Share2, Send, Image, Loader2, Sparkles, X } from 'lucide-react'
+import { Heart, MessageCircle, Share2, Send, Image, Loader2, Sparkles, X, Pencil, Trash2, Check } from 'lucide-react'
 import UserAvatar from '../components/UserAvatar'
 import LoadingSpinner from '../components/LoadingSpinner'
 import StateMessage from '../components/StateMessage'
@@ -21,24 +21,30 @@ function timeAgo(date: string) {
 function PostCard({ post, onLike, onComment, actorName }: {
   post: Post
   onLike: (id: string, liked: boolean) => void
-  onComment: (id: string) => void
+  onComment: (id: string, delta?: number) => void
   actorName: string
 }) {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [comments, setComments] = useState<Comment[]>([])
   const [showComments, setShowComments] = useState(false)
   const [commentText, setCommentText] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [loadingComments, setLoadingComments] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editText, setEditText] = useState('')
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const name = displayName(post.profiles)
   const role = post.profiles?.role || ''
+  const authorUsername = post.profiles?.username || null
 
   const loadComments = async () => {
     setLoadingComments(true)
     const { data } = await supabase
       .from('comments')
-      .select('*, profiles(full_name, role, avatar_url)')
+      .select('*, profiles(full_name, username, role, avatar_url)')
       .eq('post_id', post.id)
       .order('created_at', { ascending: true })
     setComments(data || [])
@@ -62,9 +68,55 @@ function PostCard({ post, onLike, onComment, actorName }: {
       await notifyPostAuthorOfComment(post.id, user.id, actorName)
       setCommentText('')
       await loadComments()
-      onComment(post.id)
+      onComment(post.id, 1)
     }
     setSubmitting(false)
+  }
+
+  const startEdit = (c: Comment) => {
+    setEditingId(c.id)
+    setEditText(c.content)
+  }
+
+  const cancelEdit = () => {
+    setEditingId(null)
+    setEditText('')
+  }
+
+  const saveEdit = async (commentId: string) => {
+    if (!user || !editText.trim()) return
+    setSavingEdit(true)
+    const { error } = await supabase
+      .from('comments')
+      .update({ content: editText.trim(), updated_at: new Date().toISOString() })
+      .eq('id', commentId)
+      .eq('author_id', user.id)
+    if (!error) {
+      setComments(prev => prev.map(c =>
+        c.id === commentId
+          ? { ...c, content: editText.trim(), updated_at: new Date().toISOString() }
+          : c,
+      ))
+      cancelEdit()
+    }
+    setSavingEdit(false)
+  }
+
+  const deleteComment = async (commentId: string) => {
+    if (!user) return
+    if (!window.confirm('Delete this comment?')) return
+    setDeletingId(commentId)
+    const { error } = await supabase
+      .from('comments')
+      .delete()
+      .eq('id', commentId)
+      .eq('author_id', user.id)
+    if (!error) {
+      setComments(prev => prev.filter(c => c.id !== commentId))
+      onComment(post.id, -1)
+      if (editingId === commentId) cancelEdit()
+    }
+    setDeletingId(null)
   }
 
   return (
@@ -75,10 +127,19 @@ function PostCard({ post, onLike, onComment, actorName }: {
           url={post.profiles?.avatar_url}
           name={name}
           id={post.author_id}
+          username={authorUsername}
+          from="/feed"
           size={40}
         />
-        <div className="flex-1">
-          <p className="text-white font-semibold text-sm">{name}</p>
+        <div className="flex-1 min-w-0">
+          <button
+            type="button"
+            disabled={!authorUsername}
+            onClick={() => authorUsername && navigate(`/p/${authorUsername}`, { state: { from: '/feed' } })}
+            className={`text-white font-semibold text-sm text-left truncate ${authorUsername ? 'hover:text-pi-300 cursor-pointer' : ''}`}
+          >
+            {name}
+          </button>
           <div className="flex items-center gap-2 text-xs text-slate-500">
             {role && <span>{role}</span>}
             {role && <span>·</span>}
@@ -125,22 +186,101 @@ function PostCard({ post, onLike, onComment, actorName }: {
           ) : (
             <div className="space-y-3 mb-3">
               {comments.length === 0 && <p className="text-slate-500 text-xs text-center py-2">No comments yet. Be the first!</p>}
-              {comments.map(c => (
-                <div key={c.id} className="flex gap-2">
-                  <UserAvatar
-                    url={c.profiles?.avatar_url}
-                    name={c.profiles?.full_name}
-                    id={c.author_id}
-                    size={28}
-                    rounded="rounded-lg"
-                  />
-                  <div className="flex-1 bg-white/5 rounded-xl px-3 py-2">
-                    <span className="text-white text-xs font-semibold">{c.profiles?.full_name || 'Member'} </span>
-                    <span className="text-slate-300 text-xs">{c.content}</span>
-                    <p className="text-slate-600 text-xs mt-0.5">{timeAgo(c.created_at)}</p>
+              {comments.map(c => {
+                const isOwn = user?.id === c.author_id
+                const cName = c.profiles?.full_name || 'Member'
+                const cUser = c.profiles?.username || null
+                const isEditing = editingId === c.id
+                return (
+                  <div key={c.id} className="flex gap-2 group/comment">
+                    <UserAvatar
+                      url={c.profiles?.avatar_url}
+                      name={cName}
+                      id={c.author_id}
+                      username={cUser}
+                      from="/feed"
+                      size={28}
+                      rounded="rounded-lg"
+                    />
+                    <div className="flex-1 bg-white/5 rounded-xl px-3 py-2 min-w-0">
+                      {isEditing ? (
+                        <div className="space-y-2">
+                          <textarea
+                            value={editText}
+                            onChange={e => setEditText(e.target.value)}
+                            rows={2}
+                            className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-pi-500/50 resize-none"
+                            autoFocus
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              disabled={savingEdit || !editText.trim()}
+                              onClick={() => void saveEdit(c.id)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-white disabled:opacity-40"
+                              style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+                            >
+                              {savingEdit ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              onClick={cancelEdit}
+                              className="px-2.5 py-1 rounded-lg text-[11px] font-medium text-slate-400 border border-white/10 hover:text-white"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-start gap-2">
+                            <div className="flex-1 min-w-0">
+                              <button
+                                type="button"
+                                disabled={!cUser}
+                                onClick={() => cUser && navigate(`/p/${cUser}`, { state: { from: '/feed' } })}
+                                className={`text-white text-xs font-semibold ${cUser ? 'hover:text-pi-300' : ''}`}
+                              >
+                                {cName}
+                              </button>
+                              {' '}
+                              <span className="text-slate-300 text-xs break-words">{c.content}</span>
+                            </div>
+                            {isOwn && (
+                              <div className="flex gap-0.5 shrink-0 opacity-100 sm:opacity-0 sm:group-hover/comment:opacity-100 transition-opacity">
+                                <button
+                                  type="button"
+                                  onClick={() => startEdit(c)}
+                                  className="p-1 rounded-md text-slate-500 hover:text-teal-300 hover:bg-white/5"
+                                  title="Edit comment"
+                                  aria-label="Edit comment"
+                                >
+                                  <Pencil size={12} />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={deletingId === c.id}
+                                  onClick={() => void deleteComment(c.id)}
+                                  className="p-1 rounded-md text-slate-500 hover:text-red-400 hover:bg-white/5 disabled:opacity-40"
+                                  title="Delete comment"
+                                  aria-label="Delete comment"
+                                >
+                                  {deletingId === c.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-slate-600 text-xs mt-0.5">
+                            {timeAgo(c.created_at)}
+                            {c.updated_at && c.updated_at !== c.created_at ? ' · edited' : ''}
+                          </p>
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
           {user && (
@@ -383,8 +523,10 @@ export default function FeedPage() {
     setPosts(ps => ps.map(p => p.id === postId ? { ...p, liked: !liked, likes_count: liked ? p.likes_count - 1 : p.likes_count + 1 } : p))
   }
 
-  const handleComment = (postId: string) => {
-    setPosts(ps => ps.map(p => p.id === postId ? { ...p, comments_count: p.comments_count + 1 } : p))
+  const handleComment = (postId: string, delta = 1) => {
+    setPosts(ps => ps.map(p => p.id === postId
+      ? { ...p, comments_count: Math.max(0, p.comments_count + delta) }
+      : p))
   }
 
   return (

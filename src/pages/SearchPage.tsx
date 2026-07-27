@@ -245,6 +245,8 @@ export default function SearchPage() {
                       url={p.avatar_url}
                       name={p.full_name}
                       id={p.id}
+                      username={p.username}
+                      from="/search"
                       size={44}
                       rounded="rounded-2xl"
                     />
@@ -336,6 +338,8 @@ export default function SearchPage() {
                         url={p.profiles?.avatar_url}
                         name={p.profiles?.full_name}
                         id={p.author_id}
+                        username={p.profiles?.username}
+                        from="/search"
                         size={32}
                       />
                       <div>

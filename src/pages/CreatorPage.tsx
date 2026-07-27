@@ -161,7 +161,7 @@ export default function CreatorPage() {
                 style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.5), rgba(14,20,25,0.7))' }}
               >
                 <div className="flex items-center gap-3 mb-3">
-                  <UserAvatar url={p.avatar_url} name={name} id={p.id} size={48} rounded="rounded-2xl" />
+                    <UserAvatar url={p.avatar_url} name={name} id={p.id} username={p.username} from="/creators" size={48} rounded="rounded-2xl" />
                   <div className="min-w-0 flex-1">
                     <p className="text-white font-bold truncate">{name}</p>
                     <p className="text-slate-400 text-xs truncate">{p.role || 'Creator'}</p>

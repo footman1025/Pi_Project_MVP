@@ -15,6 +15,8 @@ import {
   ensureSystemAlertPermission,
   showSystemAlertForRow,
 } from '../lib/systemAlerts'
+import { registerPiServiceWorker, enablePushNotifications } from '../lib/pushNotifications'
+import { maybeSendAiSuggestions } from '../lib/aiSuggestions'
 
 const navItems = [
   { to: '/dashboard', icon: LayoutGrid, label: 'Dashboard' },
@@ -77,10 +79,17 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
     // Unlock Web Audio + request OS notification permission after first tap
     const unlock = () => {
       void unlockConnectSound()
-      void ensureSystemAlertPermission()
+      void ensureSystemAlertPermission().then((ok) => {
+        if (ok && user?.id) void enablePushNotifications(user.id)
+      })
     }
     window.addEventListener('pointerdown', unlock, { once: true })
     window.addEventListener('keydown', unlock, { once: true })
+
+    void registerPiServiceWorker()
+    if (profile) {
+      void maybeSendAiSuggestions(profile)
+    }
 
     const onAlertClick = (e: Event) => {
       const path = (e as CustomEvent<{ path?: string }>).detail?.path
@@ -114,7 +123,7 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
       window.removeEventListener('pi:system-alert-click', onAlertClick)
       supabase.removeChannel(channel)
     }
-  }, [user, navigate])
+  }, [user, profile, navigate])
 
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'User'
   const isMessages = location.pathname.startsWith('/messages')

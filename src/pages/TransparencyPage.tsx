@@ -13,7 +13,7 @@ type Row = {
 const rows: Row[] = [
   { area: 'Auth & profiles', kind: 'live', detail: 'Supabase auth, onboarding save, public profiles, follow graph' },
   { area: 'Feed & communities', kind: 'live', detail: 'Posts, likes, comments, images; join communities and post' },
-  { area: 'Messages & alerts', kind: 'live', detail: 'Realtime DMs, media, voice notes; in-app + browser notifications' },
+  { area: 'Messages & alerts', kind: 'live', detail: 'Realtime DMs + in-app alerts; Web Push / PWA for likes, comments, messages; AI match & opportunity suggestions' },
   { area: 'Digital Twin', kind: 'live', detail: 'Rules-based twin from profile signals (not a full LLM twin yet)' },
   { area: 'Matching', kind: 'partial', detail: 'Live ranked graph when members exist; honest empty state (no fake cards) until seed/invite' },
   { area: 'Opportunities catalog', kind: 'partial', detail: 'Seeded Supabase catalog + twin fit scores; run supabase_opportunities.sql; apply = Phase 2' },

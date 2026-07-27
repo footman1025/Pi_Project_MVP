@@ -54,6 +54,7 @@ export type Comment = {
   author_id: string
   content: string
   created_at: string
+  updated_at?: string | null
   profiles?: Profile
 }
 

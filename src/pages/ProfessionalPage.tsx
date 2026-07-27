@@ -124,7 +124,7 @@ export default function ProfessionalPage() {
               >
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                   <div className="flex items-center gap-4 min-w-0 flex-1">
-                    <UserAvatar url={p.avatar_url} name={name} id={p.id} size={56} rounded="rounded-2xl" />
+                    <UserAvatar url={p.avatar_url} name={name} id={p.id} username={p.username} from="/professionals" size={56} rounded="rounded-2xl" />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-bold text-white text-lg truncate">{name}</h3>
