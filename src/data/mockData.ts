@@ -20,18 +20,18 @@ export const mockMatches = [
   },
   {
     id: 2,
-    name: 'Sarah Chen',
+    name: 'Chiara Benedetti',
     role: 'Angel Investor',
-    avatar: 'S',
+    avatar: 'C',
     color: 'from-pink-500 to-rose-600',
     match: 95,
     tags: ['AI-Native', 'Series A', 'Global Platforms'],
     description: 'Interested in AI-native platforms with global potential.',
-    location: 'London, UK',
+    location: 'Milan, Italy',
     aiReasons: [
-      'Actively investing in AI-native B2C social platforms',
+      'Actively investing in AI-native European social platforms',
       "Portfolio focus matches Pi's unified ecosystem vision",
-      'Based in London — aligned with your competition location',
+      'Based in Milan — strong EU network overlap with your market',
     ],
   },
   {

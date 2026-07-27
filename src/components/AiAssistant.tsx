@@ -20,7 +20,7 @@ function getAiReply(text: string, displayName: string): string {
   }
 
   if (lower.includes('investor') || lower.includes('funding') || lower.includes('angel') || lower.includes('vc')) {
-    return `Top demo matches for investor outreach: Sarah Chen (95% — AI-native B2C), plus several angels focused on social platforms. Open Matching or Investor Demo to review fit reasons and request an intro path.`
+    return `Top demo matches for investor outreach: Giulia Conti (95% — AI-native scientific founder), plus several angels focused on deep-tech platforms. Open Matching or Investor Demo to review fit reasons and request an intro path.`
   }
 
   if (lower.includes('match') || lower.includes('collaborat') || lower.includes('connect') || lower.includes('people')) {

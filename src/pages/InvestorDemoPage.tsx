@@ -5,7 +5,7 @@ import {
   Target, TrendingUp, Users, LayoutDashboard
 } from 'lucide-react'
 import {
-  sarahDemo, sarahMatches, sarahOpportunities
+  giuliaDemo, giuliaMatches, giuliaOpportunities
 } from '../data/investorDemo'
 import { track } from '../lib/analytics'
 
@@ -37,7 +37,7 @@ export default function InvestorDemoPage() {
     return () => clearTimeout(t)
   }, [stage, auto])
 
-  const s = sarahDemo
+  const s = giuliaDemo
 
   return (
     <div className="min-h-screen" style={{ background: '#06090f' }}>
@@ -197,10 +197,10 @@ export default function InvestorDemoPage() {
                 <h2 className="text-xl font-extrabold text-white">Pi Intelligence Engine</h2>
               </div>
               <p className="text-slate-400 text-sm mb-5">
-                Not “people you may like” — the 5 people globally who can accelerate Sarah’s goal, and why.
+                Not “people you may like” — the 5 people globally who can accelerate Giulia’s goal, and why.
               </p>
               <div className="space-y-3">
-                {sarahMatches.map(m => (
+                {giuliaMatches.map(m => (
                   <div key={m.name} className="rounded-2xl border border-white/8 p-4 sm:p-5"
                     style={{ background: 'rgba(14,20,30,0.7)' }}>
                     <div className="flex items-start gap-3">
@@ -239,7 +239,7 @@ export default function InvestorDemoPage() {
                 <h2 className="text-xl font-extrabold text-white">Opportunity Intelligence</h2>
               </div>
               <div className="grid sm:grid-cols-2 gap-3">
-                {sarahOpportunities.map(o => (
+                {giuliaOpportunities.map(o => (
                   <div key={o.title} className="rounded-2xl border border-white/8 p-4"
                     style={{ background: 'rgba(14,20,30,0.7)' }}>
                     <div className="flex items-center justify-between gap-2 mb-1">

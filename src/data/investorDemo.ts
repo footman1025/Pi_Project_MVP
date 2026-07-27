@@ -34,23 +34,24 @@ export type InvestorHit = {
   contactPath: string
 }
 
-export const sarahDemo = {
-  name: 'Sarah Chen',
+/** Primary investor-demo founder persona (Italian origin). */
+export const giuliaDemo = {
+  name: 'Giulia Conti',
   title: 'AI Researcher · Founder',
   tagline: 'Building multimodal AI for scientific discovery',
-  location: 'Berlin, Europe',
-  username: 'sarah_chen_ai',
-  avatar: 'S',
+  location: 'Milan, Italy',
+  username: 'giulia_conti_ai',
+  avatar: 'G',
   skills: ['Machine Learning', 'Multimodal AI', 'Python', 'Research', 'Fundraising'],
   goals: ['Raise seed round', 'Find technical co-founder', 'Publish applied research'],
   interests: ['Artificial Intelligence', 'Health Tech', 'Startups'],
   experience: [
-    { title: 'Research Scientist', company: 'Max Planck Institute', years: '2021–2024' },
-    { title: 'ML Engineer', company: 'DeepMind Intern', years: '2020' },
+    { title: 'Research Scientist', company: 'Politecnico di Milano', years: '2021–2024' },
+    { title: 'ML Engineer', company: 'European AI Lab Intern', years: '2020' },
   ],
   twin: {
     summary:
-      'Sarah’s AI Digital Twin represents a research-driven founder with deep multimodal ML expertise, European network density, and a clear seed-stage fundraising goal. Pi Intelligence prioritizes complementary technical co-founders, sector-aligned angels, and grant/accelerator paths that amplify scientific credibility.',
+      'Giulia’s AI Digital Twin represents a research-driven Italian founder with deep multimodal ML expertise, strong European network density, and a clear seed-stage fundraising goal. Pi Intelligence prioritizes complementary technical co-founders, sector-aligned angels, and grant/accelerator paths that amplify scientific credibility.',
     personality: ['Analytical', 'Mission-driven', 'Collaborative', 'High agency'],
     ambitions: ['Category-defining AI lab', 'Bridge academia ↔ industry', 'Global research network'],
     actions: [
@@ -70,7 +71,7 @@ export const sarahDemo = {
     traits: [
       { label: 'Domain', value: 'Multimodal AI / Science' },
       { label: 'Stage', value: 'Pre-seed → Seed' },
-      { label: 'Geography', value: 'EU · Berlin hub' },
+      { label: 'Geography', value: 'EU · Milan hub' },
       { label: 'Network mode', value: 'Investors + builders' },
     ] as TwinTrait[],
   },
@@ -88,7 +89,10 @@ export const sarahDemo = {
   },
 }
 
-export const sarahMatches: DemoMatch[] = [
+/** @deprecated Use giuliaDemo — kept as alias for older imports */
+export const sarahDemo = giuliaDemo
+
+export const giuliaMatches: DemoMatch[] = [
   {
     name: 'Elena Vogt',
     role: 'Angel Investor · Deep Tech',
@@ -99,7 +103,7 @@ export const sarahMatches: DemoMatch[] = [
       'Thesis matches multimodal + science tooling',
       'Can open Max Planck / Fraunhofer intros',
     ],
-    accelerate: 'Shortens fundraising cycle by connecting Sarah to operators who already underwrite scientific AI risk.',
+    accelerate: 'Shortens fundraising cycle by connecting Giulia to operators who already underwrite scientific AI risk.',
   },
   {
     name: 'Marcus Hale',
@@ -133,7 +137,7 @@ export const sarahMatches: DemoMatch[] = [
     why: [
       'Former lab lead in multimodal learning',
       'Strong publication + grant coaching',
-      'Career path alignment for Sarah',
+      'Career path alignment for Giulia',
     ],
     accelerate: 'Improves grant win-rate and scientific narrative for investors.',
   },
@@ -147,17 +151,19 @@ export const sarahMatches: DemoMatch[] = [
       'Warm intros to operators and angels',
       'High engagement community',
     ],
-    accelerate: 'Amplifies Sarah’s visibility inside the exact buyer/investor graph she needs.',
+    accelerate: 'Amplifies Giulia’s visibility inside the exact buyer/investor graph she needs.',
   },
 ]
 
-export const sarahOpportunities: DemoOpportunity[] = [
+export const sarahMatches = giuliaMatches
+
+export const giuliaOpportunities: DemoOpportunity[] = [
   {
     title: 'EU Deep Tech Seed Syndicate',
     type: 'Funding',
     prize: '€400k–€750k',
     match: 96,
-    why: 'Fits her AI × science profile, Berlin base, and pre-seed traction narrative.',
+    why: 'Fits her AI × science profile, Milan base, and pre-seed traction narrative.',
     path: 'Pi Twin → Investor Dashboard shortlist → warm intro via Elena Vogt',
   },
   {
@@ -186,9 +192,11 @@ export const sarahOpportunities: DemoOpportunity[] = [
   },
 ]
 
+export const sarahOpportunities = giuliaOpportunities
+
 export const investorSearchPresets = [
   'Find AI robotics startups in Europe raising €500k',
-  'Multimodal AI founders in Berlin pre-seed',
+  'Multimodal AI founders in Milan pre-seed',
   'Health tech AI with scientific founders',
   'EU deep-tech angels investing in research spinouts',
 ]
@@ -211,13 +219,13 @@ export const investorHits: Record<string, InvestorHit[]> = {
       name: 'Helix Multimodal',
       stage: 'Seed',
       sector: 'Scientific AI',
-      geography: 'Europe · Berlin',
+      geography: 'Europe · Milan',
       raising: '€600k',
       traction: '3 research lab deployments',
       tech: 'Multimodal models for discovery workflows',
       match: 92,
-      founders: 'Sarah Chen (AI researcher) · TBD technical co-founder',
-      contactPath: 'Direct via Sarah Digital Twin · Investor Dashboard',
+      founders: 'Giulia Conti (AI researcher) · TBD technical co-founder',
+      contactPath: 'Direct via Giulia Digital Twin · Investor Dashboard',
     },
     {
       name: 'Orbit Assist',
@@ -243,7 +251,7 @@ export function runInvestorSearch(query: string): InvestorHit[] {
       if (q.includes('europe') && /europe/i.test(h.geography)) score += 2
       if (q.includes('robot') && /robot/i.test(h.sector + h.tech)) score += 3
       if (q.includes('500') && h.raising.includes('500')) score += 2
-      if (q.includes('berlin') && /berlin/i.test(h.geography)) score += 3
+      if ((q.includes('berlin') || q.includes('milan')) && /berlin|milan/i.test(h.geography)) score += 3
       if (q.includes('health') && /health|scientific|discovery/i.test(h.sector + h.tech)) score += 2
       if (q.includes('multimodal') && /multimodal/i.test(h.tech + h.sector)) score += 3
       return { ...h, match: Math.min(99, score) }
