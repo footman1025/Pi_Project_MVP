@@ -35,6 +35,7 @@ function PostCard({ post, onLike, onComment, actorName }: {
   const [editText, setEditText] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const name = displayName(post.profiles)
   const role = post.profiles?.role || ''
@@ -104,7 +105,6 @@ function PostCard({ post, onLike, onComment, actorName }: {
 
   const deleteComment = async (commentId: string) => {
     if (!user) return
-    if (!window.confirm('Delete this comment?')) return
     setDeletingId(commentId)
     const { error } = await supabase
       .from('comments')
@@ -117,7 +117,10 @@ function PostCard({ post, onLike, onComment, actorName }: {
       if (editingId === commentId) cancelEdit()
     }
     setDeletingId(null)
+    setConfirmDeleteId(null)
   }
+
+  const confirmDeleteComment = comments.find(c => c.id === confirmDeleteId)
 
   return (
     <div className="p-5 rounded-2xl border border-white/5 hover:border-white/10 transition-all"
@@ -261,7 +264,7 @@ function PostCard({ post, onLike, onComment, actorName }: {
                                 <button
                                   type="button"
                                   disabled={deletingId === c.id}
-                                  onClick={() => void deleteComment(c.id)}
+                                  onClick={() => setConfirmDeleteId(c.id)}
                                   className="p-1 rounded-md text-slate-500 hover:text-red-400 hover:bg-white/5 disabled:opacity-40"
                                   title="Delete comment"
                                   aria-label="Delete comment"
@@ -296,6 +299,56 @@ function PostCard({ post, onLike, onComment, actorName }: {
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {confirmDeleteId && (
+        <div
+          className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/70 p-4"
+          onClick={() => !deletingId && setConfirmDeleteId(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-comment-title"
+            className="w-full max-w-sm rounded-2xl border border-white/10 shadow-2xl overflow-hidden"
+            style={{ background: 'linear-gradient(160deg, #12182b, #0a0f1c)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="p-5">
+              <div className="w-11 h-11 rounded-xl bg-red-500/15 border border-red-500/25 flex items-center justify-center mb-4">
+                <Trash2 size={18} className="text-red-400" />
+              </div>
+              <h3 id="delete-comment-title" className="text-white font-bold text-lg mb-1">Delete comment?</h3>
+              <p className="text-slate-400 text-sm leading-relaxed mb-3">
+                This can’t be undone. The comment will be removed from this post.
+              </p>
+              {confirmDeleteComment?.content && (
+                <p className="text-slate-500 text-xs line-clamp-3 mb-5 px-3 py-2 rounded-xl bg-white/5 border border-white/5">
+                  “{confirmDeleteComment.content}”
+                </p>
+              )}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={!!deletingId}
+                  onClick={() => setConfirmDeleteId(null)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-300 border border-white/10 hover:bg-white/5 disabled:opacity-40"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!!deletingId}
+                  onClick={() => confirmDeleteId && void deleteComment(confirmDeleteId)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-red-500/90 hover:bg-red-500 disabled:opacity-40 inline-flex items-center justify-center gap-2"
+                >
+                  {deletingId ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
