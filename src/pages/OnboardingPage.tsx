@@ -8,6 +8,7 @@ import { buildLiveOnboardingPreview, buildOnboardingPreview, OnboardingPreview }
 import { Profile } from '../lib/supabase'
 import { track } from '../lib/analytics'
 import StatusBadge from '../components/StatusBadge'
+import CommunityIcon from '../components/CommunityIcon'
 
 const steps = [
   'What best describes you?',
@@ -314,7 +315,7 @@ export default function OnboardingPage() {
                 <div className="space-y-2">
                   {aiResults.communities.map((c, i) => (
                     <div key={i} className="flex items-center gap-3">
-                      <span className="text-xl flex-shrink-0">{c.icon}</span>
+                      <CommunityIcon name={c.name} size="sm" />
                       <div className="flex-1 min-w-0">
                         <p className="text-white text-xs font-semibold">{c.name} <span className="text-slate-500 font-normal">· {c.members}</span></p>
                         <p className="text-slate-500 text-xs truncate">{c.reason}</p>

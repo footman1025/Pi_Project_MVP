@@ -7,6 +7,7 @@ import {
   FileText, Briefcase, CalendarDays, Flame
 } from 'lucide-react'
 import UserAvatar from '../components/UserAvatar'
+import CommunityIcon from '../components/CommunityIcon'
 
 const searchTypes = ['All', 'People', 'Communities', 'Posts']
 
@@ -302,10 +303,7 @@ export default function SearchPage() {
                     onClick={() => navigate('/communities')}
                     className="flex items-center gap-4 p-4 rounded-2xl border border-white/5 hover:border-pi-500/20 transition-all cursor-pointer"
                     style={{ background: 'rgba(14,20,25,0.3)' }}>
-                    <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
-                      style={{ background: 'rgba(20,184,166,0.15)', border: '1px solid rgba(20,184,166,0.2)' }}>
-                      {c.icon || '🌐'}
-                    </div>
+                    <CommunityIcon name={c.name} category={c.category} size="md" />
                     <div className="flex-1 min-w-0">
                       <p className="text-white font-semibold text-sm truncate">{c.name}</p>
                       <p className="text-slate-500 text-xs">{c.members_count.toLocaleString()} members · {c.category}</p>

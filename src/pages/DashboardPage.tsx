@@ -6,6 +6,7 @@ import { supabase, Profile } from '../lib/supabase'
 import { MatchResult, rankMatches, scoreOpportunityForUser } from '../lib/matching'
 import { fetchOpportunities, OpportunityItem } from '../lib/opportunities'
 import MockIcon from '../components/MockIcon'
+import CommunityIcon from '../components/CommunityIcon'
 import UserAvatar from '../components/UserAvatar'
 import StatusBadge from '../components/StatusBadge'
 import { buildDigitalTwin } from '../lib/digitalTwin'
@@ -332,9 +333,7 @@ export default function DashboardPage() {
                   className="w-full flex items-center gap-3 p-3 rounded-xl border border-white/5 hover:border-pi-500/20 transition-all min-w-0 text-left"
                   onClick={() => navigate('/communities')}
                 >
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-pi-500 to-teal-600 flex items-center justify-center flex-shrink-0 text-sm">
-                    {c.icon || '◎'}
-                  </div>
+                  <CommunityIcon name={c.name} category={c.category} size="sm" />
                   <div className="flex-1 min-w-0 overflow-hidden">
                     <p className="text-white text-sm font-medium truncate">{c.name}</p>
                     <p className="text-slate-500 text-xs">

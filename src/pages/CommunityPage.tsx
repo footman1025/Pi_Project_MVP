@@ -3,6 +3,7 @@ import { supabase, Community, Post } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { UsersRound, Sparkles, Loader2, Send, MessageCircle, Search as SearchIcon } from 'lucide-react'
 import UserAvatar from '../components/UserAvatar'
+import CommunityIcon from '../components/CommunityIcon'
 import StatusBadge from '../components/StatusBadge'
 import { displayName } from '../lib/posts'
 import { rankCommunitiesForUser } from '../lib/communityRank'
@@ -179,10 +180,7 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
 
       <div className="p-6 rounded-2xl border border-white/5 mb-6" style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.5), rgba(14,20,25,0.7))' }}>
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl"
-            style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
-            {community.icon || '◎'}
-          </div>
+          <CommunityIcon name={community.name} category={community.category} size="lg" />
           <div className="flex-1">
             <h2 className="font-display text-2xl font-extrabold text-white">{community.name}</h2>
             <p className="text-slate-400 text-sm">{membersCount.toLocaleString()} members · {community.category}</p>
@@ -444,9 +442,12 @@ export default function CommunityPage() {
                 style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.5), rgba(14,20,25,0.7))' }}>
                 <div className="p-5 cursor-pointer" onClick={() => setSelected(c)}>
                   <div className="flex items-center gap-4 mb-4">
-                    <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${c.category === 'Technology' ? 'from-pi-500 to-teal-600' : c.category === 'Business' ? 'from-blue-500 to-cyan-600' : c.category === 'Creator' ? 'from-pink-500 to-rose-600' : c.category === 'Design' ? 'from-amber-500 to-orange-600' : c.category === 'Finance' ? 'from-green-500 to-emerald-600' : c.category === 'Health' ? 'from-red-500 to-pink-600' : c.category === 'Music' ? 'from-teal-500 to-pi-600' : 'from-pi-500 to-teal-600'} flex items-center justify-center flex-shrink-0 text-xl group-hover:scale-110 transition-transform`}>
-                      {c.icon || '◎'}
-                    </div>
+                    <CommunityIcon
+                      name={c.name}
+                      category={c.category}
+                      size="md"
+                      className="group-hover:scale-110 transition-transform"
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-bold text-white">{c.name}</h3>
