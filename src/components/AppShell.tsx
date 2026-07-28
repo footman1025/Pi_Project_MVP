@@ -4,7 +4,7 @@ import {
   LayoutGrid, Sparkles, Briefcase, Rocket,
   UsersRound, Building2, SearchCheck, Telescope,
   LogOut, Bell, Menu, X, BotMessageSquare, ScanFace,
-  Newspaper, MessageCircle, UserCog, ShieldCheck, Activity
+  Newspaper, MessageCircle, UserCog, ShieldCheck, Activity, Inbox
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -33,6 +33,8 @@ const navItems = [
   { to: '/vision', icon: Telescope, label: 'Vision' },
   { to: '/transparency', icon: ShieldCheck, label: 'What’s live' },
   { to: '/traction', icon: Activity, label: 'Traction' },
+  { to: '/handoffs', icon: Inbox, label: 'Handoffs' },
+  { to: '/connect', icon: BotMessageSquare, label: 'Meet Pi AI' },
 ]
 
 const mobileTabs = [

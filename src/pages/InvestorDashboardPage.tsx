@@ -146,9 +146,19 @@ export default function InvestorDashboardPage() {
           ))}
         </div>
 
-        <p className="text-center text-slate-600 text-xs mt-8">
+        <p className="text-center text-slate-600 text-xs mt-8 mb-3">
           Demo data for investor storytelling · live deal flow connects to Pi’s verified human graph as the network grows
         </p>
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => navigate('/connect')}
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-white text-sm"
+            style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+          >
+            Meet Pi AI · Contact & Partnership
+          </button>
+        </div>
       </div>
     </div>
   )

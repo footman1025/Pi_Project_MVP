@@ -94,6 +94,7 @@ export default function LandingPage() {
           <a href="#why" className="hover:text-white transition-colors">Why Pi</a>
           <a href="#features" className="hover:text-white transition-colors">Features</a>
           <button onClick={() => navigate('/demo')} className="hover:text-teal-300 transition-colors text-teal-400/90 font-medium">Investor Demo</button>
+          <button onClick={() => navigate('/connect')} className="hover:text-white transition-colors">Meet Pi AI</button>
           <button onClick={() => navigate('/transparency')} className="hover:text-white transition-colors">What’s live</button>
         </div>
 

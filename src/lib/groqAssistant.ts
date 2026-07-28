@@ -60,6 +60,7 @@ Pi helps people discover collaborators, investors, communities, and opportunitie
 - /profile/edit — edit profile (skills, goals, experience, avatar) — improves twin & matches
 - /demo — Investor Demo Mode (walkthrough: twin → matches → opportunities)
 - /investor — investor-facing dashboard view
+- /connect — AI-first Contact & Partnership (Pi AI greets first; Speak with a Human handoff)
 - /p/:username — public SEO profile pages
 - Auth: /login, /signup, /forgot-password, /onboarding
 
@@ -93,6 +94,15 @@ export async function askGroqAssistant(
     goals?: string[] | null
   },
 ): Promise<string> {
+  return askGroqWithSystem(history, userMessage, buildSystemPrompt(ctx))
+}
+
+/** Low-level Groq call with a custom system prompt (Connect agent, etc.). */
+export async function askGroqWithSystem(
+  history: ChatTurn[],
+  userMessage: string,
+  systemPrompt: string,
+): Promise<string> {
   if (!hasGroqKey()) {
     throw new Error('Groq is not enabled. Add VITE_GROQ_API_KEY (or VITE_GROQ_ENABLED=true) to .env.local and restart.')
   }
@@ -100,7 +110,7 @@ export async function askGroqAssistant(
   const model = viteEnv('VITE_GROQ_MODEL')?.trim() || DEFAULT_MODEL
 
   const messages = [
-    { role: 'system' as const, content: buildSystemPrompt(ctx) },
+    { role: 'system' as const, content: systemPrompt },
     ...history.slice(-12),
     { role: 'user' as const, content: userMessage },
   ]
@@ -120,7 +130,6 @@ export async function askGroqAssistant(
     let errText = ''
     try {
       const j = await res.json()
-      // Groq shape: { error: { message, type, code } } — not a plain string
       const err = j?.error
       if (typeof err === 'string') errText = err
       else if (err && typeof err === 'object') {

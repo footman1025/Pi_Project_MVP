@@ -447,13 +447,13 @@ export default function InvestorDemoPage() {
                     style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
                     Open Investor Dashboard <ArrowRight size={16} />
                   </button>
-                  <button onClick={() => navigate('/transparency')}
+                  <button onClick={() => navigate('/connect')}
                     className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold text-slate-200 text-sm border border-white/10 hover:bg-white/5">
-                    What’s live
+                    Meet Pi AI · Contact
                   </button>
-                  <button onClick={() => navigate('/signup')}
+                  <button onClick={() => navigate('/transparency')}
                     className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold text-teal-200 text-sm border border-teal-500/30 hover:bg-teal-500/10">
-                    Start on Pi
+                    What’s live
                   </button>
                 </div>
               </div>

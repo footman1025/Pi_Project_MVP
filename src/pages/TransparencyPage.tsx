@@ -11,6 +11,7 @@ type Row = {
 }
 
 const rows: Row[] = [
+  { area: 'Contact & Partnership (Meet Pi AI)', kind: 'live', detail: '/connect — AI greets first, guides intent, Speak with a Human + summarized handoff to Investors/Partnerships/Enterprise/Support/Community/Hiring/Media; team inbox at /handoffs' },
   { area: 'Traction metrics & validation', kind: 'live', detail: 'product_events + product_feedback; Traction page (activation, retention, intros, opp interest, would-use-again); in-app feedback widget' },
   { area: 'Auth & profiles', kind: 'live', detail: 'Supabase auth, onboarding save, public profiles, follow graph' },
   { area: 'Feed & communities', kind: 'live', detail: 'Posts, likes, comments, images; join communities and post' },

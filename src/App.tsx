@@ -32,6 +32,8 @@ import InvestorDemoPage from './pages/InvestorDemoPage'
 import InvestorDashboardPage from './pages/InvestorDashboardPage'
 import DigitalTwinPage from './pages/DigitalTwinPage'
 import TractionPage from './pages/TractionPage'
+import ConnectPage from './pages/ConnectPage'
+import HandoffsPage from './pages/HandoffsPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth()
@@ -64,16 +66,17 @@ export default function App() {
 
   const isProfilePath = location.pathname.startsWith('/p/')
   const isTransparencyPath = location.pathname === '/transparency'
-  // Logged-in members see profiles / transparency inside AppShell. Guests get public layout.
+  const isConnectPath = location.pathname === '/connect'
+  // Logged-in members see profiles / transparency / connect inside AppShell. Guests get public layout.
   const isPublic =
     ALWAYS_PUBLIC.includes(location.pathname) ||
-    ((isProfilePath || isTransparencyPath) && !session && !authLoading)
+    ((isProfilePath || isTransparencyPath || isConnectPath) && !session && !authLoading)
 
   useEffect(() => { window.scrollTo(0, 0) }, [location.pathname])
   useEffect(() => { trackPageView(location.pathname) }, [location.pathname])
 
   // Wait for auth before deciding public vs app shell for dual-mode URLs
-  if ((isProfilePath || isTransparencyPath) && authLoading) {
+  if ((isProfilePath || isTransparencyPath || isConnectPath) && authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-dark-950">
         <LoadingSpinner size="lg" label="Loading Pi…" />
@@ -93,6 +96,7 @@ export default function App() {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/demo" element={<InvestorDemoPage />} />
           <Route path="/investor" element={<InvestorDashboardPage />} />
+          <Route path="/connect" element={<ConnectPage />} />
           <Route path="/transparency" element={<TransparencyPage />} />
           <Route path="/p/:username" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
@@ -116,6 +120,8 @@ export default function App() {
               <Route path="/profile/edit" element={<ProfileEditPage />} />
               <Route path="/twin" element={<DigitalTwinPage />} />
               <Route path="/traction" element={<TractionPage />} />
+              <Route path="/handoffs" element={<HandoffsPage />} />
+              <Route path="/connect" element={<ConnectPage />} />
               <Route path="/p/:username" element={<ProfilePage />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
