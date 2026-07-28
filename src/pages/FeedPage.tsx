@@ -9,6 +9,7 @@ import { Heart, MessageCircle, Share2, Send, Image, Loader2, Sparkles, X, Pencil
 import UserAvatar from '../components/UserAvatar'
 import LoadingSpinner from '../components/LoadingSpinner'
 import StateMessage from '../components/StateMessage'
+import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 
 function timeAgo(date: string) {
   const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
@@ -18,10 +19,11 @@ function timeAgo(date: string) {
   return `${Math.floor(s / 86400)}d ago`
 }
 
-function PostCard({ post, onLike, onComment, actorName }: {
+function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
   post: Post
   onLike: (id: string, liked: boolean) => void
   onComment: (id: string, delta?: number) => void
+  onDeletePost: (id: string) => Promise<{ error?: string }>
   actorName: string
 }) {
   const { user } = useAuth()
@@ -35,11 +37,15 @@ function PostCard({ post, onLike, onComment, actorName }: {
   const [editText, setEditText] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [confirmDeleteCommentId, setConfirmDeleteCommentId] = useState<string | null>(null)
+  const [confirmDeletePost, setConfirmDeletePost] = useState(false)
+  const [deletingPost, setDeletingPost] = useState(false)
+  const [actionError, setActionError] = useState('')
 
   const name = displayName(post.profiles)
   const role = post.profiles?.role || ''
   const authorUsername = post.profiles?.username || null
+  const isOwnPost = !!user && user.id === post.author_id
 
   const loadComments = async () => {
     setLoadingComments(true)
@@ -60,6 +66,7 @@ function PostCard({ post, onLike, onComment, actorName }: {
   const submitComment = async () => {
     if (!commentText.trim() || !user) return
     setSubmitting(true)
+    setActionError('')
     const { error } = await supabase.from('comments').insert({
       post_id: post.id,
       author_id: user.id,
@@ -70,6 +77,8 @@ function PostCard({ post, onLike, onComment, actorName }: {
       setCommentText('')
       await loadComments()
       onComment(post.id, 1)
+    } else {
+      setActionError(error.message)
     }
     setSubmitting(false)
   }
@@ -77,6 +86,7 @@ function PostCard({ post, onLike, onComment, actorName }: {
   const startEdit = (c: Comment) => {
     setEditingId(c.id)
     setEditText(c.content)
+    setActionError('')
   }
 
   const cancelEdit = () => {
@@ -87,6 +97,7 @@ function PostCard({ post, onLike, onComment, actorName }: {
   const saveEdit = async (commentId: string) => {
     if (!user || !editText.trim()) return
     setSavingEdit(true)
+    setActionError('')
     const { error } = await supabase
       .from('comments')
       .update({ content: editText.trim(), updated_at: new Date().toISOString() })
@@ -99,6 +110,12 @@ function PostCard({ post, onLike, onComment, actorName }: {
           : c,
       ))
       cancelEdit()
+    } else {
+      setActionError(
+        /policy|permission|rls/i.test(error.message)
+          ? 'Could not edit — run supabase_comment_edit.sql in Supabase.'
+          : error.message,
+      )
     }
     setSavingEdit(false)
   }
@@ -106,21 +123,43 @@ function PostCard({ post, onLike, onComment, actorName }: {
   const deleteComment = async (commentId: string) => {
     if (!user) return
     setDeletingId(commentId)
-    const { error } = await supabase
+    setActionError('')
+    const { error, count } = await supabase
       .from('comments')
-      .delete()
+      .delete({ count: 'exact' })
       .eq('id', commentId)
       .eq('author_id', user.id)
-    if (!error) {
+    if (!error && (count === null || count > 0)) {
       setComments(prev => prev.filter(c => c.id !== commentId))
       onComment(post.id, -1)
       if (editingId === commentId) cancelEdit()
+      setConfirmDeleteCommentId(null)
+    } else {
+      setActionError(
+        error
+          ? (/policy|permission|rls/i.test(error.message)
+            ? 'Could not delete comment — run supabase_post_comment_delete.sql in Supabase.'
+            : error.message)
+          : 'Delete failed — you can only delete your own comments.',
+      )
     }
     setDeletingId(null)
-    setConfirmDeleteId(null)
   }
 
-  const confirmDeleteComment = comments.find(c => c.id === confirmDeleteId)
+  const deletePost = async () => {
+    setDeletingPost(true)
+    setActionError('')
+    const res = await onDeletePost(post.id)
+    if (res.error) {
+      setActionError(res.error)
+      setDeletingPost(false)
+      return
+    }
+    setConfirmDeletePost(false)
+    setDeletingPost(false)
+  }
+
+  const confirmDeleteComment = comments.find(c => c.id === confirmDeleteCommentId)
 
   return (
     <div className="p-5 rounded-2xl border border-white/5 hover:border-white/10 transition-all"
@@ -149,6 +188,17 @@ function PostCard({ post, onLike, onComment, actorName }: {
             <span>{timeAgo(post.created_at)}</span>
           </div>
         </div>
+        {isOwnPost && (
+          <button
+            type="button"
+            onClick={() => { setActionError(''); setConfirmDeletePost(true) }}
+            className="p-2 rounded-xl text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
+            title="Delete post"
+            aria-label="Delete post"
+          >
+            <Trash2 size={16} />
+          </button>
+        )}
       </div>
 
       {post.content?.trim() && (
@@ -163,6 +213,12 @@ function PostCard({ post, onLike, onComment, actorName }: {
             className="w-full max-h-[480px] object-cover bg-black/40"
             loading="lazy"
           />
+        </div>
+      )}
+
+      {actionError && (
+        <div className="mb-3 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+          {actionError}
         </div>
       )}
 
@@ -195,7 +251,7 @@ function PostCard({ post, onLike, onComment, actorName }: {
                 const cUser = c.profiles?.username || null
                 const isEditing = editingId === c.id
                 return (
-                  <div key={c.id} className="flex gap-2 group/comment">
+                  <div key={c.id} className="flex gap-2">
                     <UserAvatar
                       url={c.profiles?.avatar_url}
                       name={cName}
@@ -251,25 +307,25 @@ function PostCard({ post, onLike, onComment, actorName }: {
                               <span className="text-slate-300 text-xs break-words">{c.content}</span>
                             </div>
                             {isOwn && (
-                              <div className="flex gap-0.5 shrink-0 opacity-100 sm:opacity-0 sm:group-hover/comment:opacity-100 transition-opacity">
+                              <div className="flex gap-0.5 shrink-0">
                                 <button
                                   type="button"
                                   onClick={() => startEdit(c)}
-                                  className="p-1 rounded-md text-slate-500 hover:text-teal-300 hover:bg-white/5"
+                                  className="p-1.5 rounded-md text-slate-400 hover:text-teal-300 hover:bg-white/5"
                                   title="Edit comment"
                                   aria-label="Edit comment"
                                 >
-                                  <Pencil size={12} />
+                                  <Pencil size={13} />
                                 </button>
                                 <button
                                   type="button"
                                   disabled={deletingId === c.id}
-                                  onClick={() => setConfirmDeleteId(c.id)}
-                                  className="p-1 rounded-md text-slate-500 hover:text-red-400 hover:bg-white/5 disabled:opacity-40"
+                                  onClick={() => { setActionError(''); setConfirmDeleteCommentId(c.id) }}
+                                  className="p-1.5 rounded-md text-slate-400 hover:text-red-400 hover:bg-white/5 disabled:opacity-40"
                                   title="Delete comment"
                                   aria-label="Delete comment"
                                 >
-                                  {deletingId === c.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                                  {deletingId === c.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
                                 </button>
                               </div>
                             )}
@@ -302,54 +358,26 @@ function PostCard({ post, onLike, onComment, actorName }: {
         </div>
       )}
 
-      {confirmDeleteId && (
-        <div
-          className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/70 p-4"
-          onClick={() => !deletingId && setConfirmDeleteId(null)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="delete-comment-title"
-            className="w-full max-w-sm rounded-2xl border border-white/10 shadow-2xl overflow-hidden"
-            style={{ background: 'linear-gradient(160deg, #12182b, #0a0f1c)' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="p-5">
-              <div className="w-11 h-11 rounded-xl bg-red-500/15 border border-red-500/25 flex items-center justify-center mb-4">
-                <Trash2 size={18} className="text-red-400" />
-              </div>
-              <h3 id="delete-comment-title" className="text-white font-bold text-lg mb-1">Delete comment?</h3>
-              <p className="text-slate-400 text-sm leading-relaxed mb-3">
-                This can’t be undone. The comment will be removed from this post.
-              </p>
-              {confirmDeleteComment?.content && (
-                <p className="text-slate-500 text-xs line-clamp-3 mb-5 px-3 py-2 rounded-xl bg-white/5 border border-white/5">
-                  “{confirmDeleteComment.content}”
-                </p>
-              )}
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  disabled={!!deletingId}
-                  onClick={() => setConfirmDeleteId(null)}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-300 border border-white/10 hover:bg-white/5 disabled:opacity-40"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={!!deletingId}
-                  onClick={() => confirmDeleteId && void deleteComment(confirmDeleteId)}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-red-500/90 hover:bg-red-500 disabled:opacity-40 inline-flex items-center justify-center gap-2"
-                >
-                  {deletingId ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                  Delete
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {confirmDeleteCommentId && (
+        <ConfirmDeleteDialog
+          title="Delete comment?"
+          description="This can’t be undone. The comment will be removed from this post."
+          preview={confirmDeleteComment?.content}
+          deleting={!!deletingId}
+          onCancel={() => !deletingId && setConfirmDeleteCommentId(null)}
+          onConfirm={() => void deleteComment(confirmDeleteCommentId)}
+        />
+      )}
+
+      {confirmDeletePost && (
+        <ConfirmDeleteDialog
+          title="Delete post?"
+          description="This can’t be undone. The post and its comments will be removed."
+          preview={post.content}
+          deleting={deletingPost}
+          onCancel={() => !deletingPost && setConfirmDeletePost(false)}
+          onConfirm={() => void deletePost()}
+        />
       )}
     </div>
   )
@@ -582,6 +610,28 @@ export default function FeedPage() {
       : p))
   }
 
+  const handleDeletePost = async (postId: string): Promise<{ error?: string }> => {
+    if (!user) return { error: 'Sign in to delete posts.' }
+    const { error, count } = await supabase
+      .from('posts')
+      .delete({ count: 'exact' })
+      .eq('id', postId)
+      .eq('author_id', user.id)
+
+    if (error) {
+      return {
+        error: /policy|permission|rls/i.test(error.message)
+          ? 'Could not delete — run supabase_post_comment_delete.sql in Supabase.'
+          : error.message,
+      }
+    }
+    if (count === 0) {
+      return { error: 'Delete failed — you can only delete your own posts.' }
+    }
+    setPosts(ps => ps.filter(p => p.id !== postId))
+    return {}
+  }
+
   return (
     <div className="p-6 max-w-2xl mx-auto">
       <div className="mb-6">
@@ -668,7 +718,14 @@ export default function FeedPage() {
       ) : (
         <div className="space-y-4">
           {posts.map(post => (
-            <PostCard key={post.id} post={post} onLike={handleLike} onComment={handleComment} actorName={actorName} />
+            <PostCard
+              key={post.id}
+              post={post}
+              onLike={handleLike}
+              onComment={handleComment}
+              onDeletePost={handleDeletePost}
+              actorName={actorName}
+            />
           ))}
         </div>
       )}

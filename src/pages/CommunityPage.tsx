@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase, Community, Post } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { UsersRound, Sparkles, Loader2, Send, MessageCircle, Search as SearchIcon } from 'lucide-react'
+import { UsersRound, Sparkles, Loader2, Send, MessageCircle, Search as SearchIcon, Trash2 } from 'lucide-react'
 import UserAvatar from '../components/UserAvatar'
 import CommunityIcon from '../components/CommunityIcon'
 import StatusBadge from '../components/StatusBadge'
+import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import { displayName } from '../lib/posts'
 import { rankCommunitiesForUser } from '../lib/communityRank'
 import { track } from '../lib/analytics'
@@ -21,6 +22,8 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
   const [joiningLoading, setJoiningLoading] = useState(false)
   const [error, setError] = useState('')
   const [membersCount, setMembersCount] = useState(community.members_count)
+  const [confirmDeletePostId, setConfirmDeletePostId] = useState<string | null>(null)
+  const [deletingPost, setDeletingPost] = useState(false)
 
   useEffect(() => {
     fetchPosts()
@@ -168,6 +171,34 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
     }
   }
 
+  const handleDeletePost = async (postId: string) => {
+    if (!user) return
+    setDeletingPost(true)
+    setError('')
+    const { error: delErr, count } = await supabase
+      .from('posts')
+      .delete({ count: 'exact' })
+      .eq('id', postId)
+      .eq('author_id', user.id)
+    setDeletingPost(false)
+    if (delErr) {
+      setError(
+        /policy|permission|rls/i.test(delErr.message)
+          ? 'Could not delete — run supabase_post_comment_delete.sql in Supabase.'
+          : delErr.message,
+      )
+      return
+    }
+    if (count === 0) {
+      setError('Delete failed — you can only delete your own posts.')
+      return
+    }
+    setPosts(ps => ps.filter(p => p.id !== postId))
+    setConfirmDeletePostId(null)
+  }
+
+  const confirmPost = posts.find(p => p.id === confirmDeletePostId)
+
   const timeAgo = (date: string) => {
     const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
     if (s < 60) return `${s}s ago`
@@ -248,13 +279,24 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
                   from="/communities"
                   size={32}
                 />
-                <div>
+                <div className="flex-1 min-w-0">
                   <p className="text-white text-sm font-semibold">{displayName(post.profiles)}</p>
                   {post.profiles?.username && post.profiles?.full_name && (
                     <p className="text-slate-500 text-xs">@{post.profiles.username}</p>
                   )}
                   <p className="text-slate-500 text-xs">{timeAgo(post.created_at)}</p>
                 </div>
+                {user?.id === post.author_id && (
+                  <button
+                    type="button"
+                    onClick={() => { setError(''); setConfirmDeletePostId(post.id) }}
+                    className="p-2 rounded-xl text-slate-500 hover:text-red-400 hover:bg-red-500/10 shrink-0"
+                    title="Delete post"
+                    aria-label="Delete post"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                )}
               </div>
               <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-wrap">{post.content}</p>
               <div className="flex items-center gap-4 mt-3 pt-3 border-t border-white/5 text-xs text-slate-500">
@@ -264,6 +306,17 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
             </div>
           ))}
         </div>
+      )}
+
+      {confirmDeletePostId && (
+        <ConfirmDeleteDialog
+          title="Delete post?"
+          description="This can’t be undone. The post will be removed from this community."
+          preview={confirmPost?.content}
+          deleting={deletingPost}
+          onCancel={() => !deletingPost && setConfirmDeletePostId(null)}
+          onConfirm={() => void handleDeletePost(confirmDeletePostId)}
+        />
       )}
     </div>
   )
