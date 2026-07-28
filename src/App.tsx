@@ -31,6 +31,7 @@ import ProfileEditPage from './pages/ProfileEditPage'
 import InvestorDemoPage from './pages/InvestorDemoPage'
 import InvestorDashboardPage from './pages/InvestorDashboardPage'
 import DigitalTwinPage from './pages/DigitalTwinPage'
+import TractionPage from './pages/TractionPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth()
@@ -114,6 +115,7 @@ export default function App() {
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/profile/edit" element={<ProfileEditPage />} />
               <Route path="/twin" element={<DigitalTwinPage />} />
+              <Route path="/traction" element={<TractionPage />} />
               <Route path="/p/:username" element={<ProfilePage />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>

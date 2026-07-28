@@ -1,17 +1,21 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Briefcase, Sparkles, Clock4, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Briefcase, Sparkles, Clock4, ChevronDown, ChevronUp, Loader2, Heart } from 'lucide-react'
 import MockIcon from '../components/MockIcon'
 import StatusBadge from '../components/StatusBadge'
 import { useAuth } from '../contexts/AuthContext'
 import { opportunityReasonForUser, scoreOpportunityForUser } from '../lib/matching'
 import { fetchOpportunities, OpportunityItem } from '../lib/opportunities'
+import { track } from '../lib/analytics'
 
 const categories = ['All', 'Competition', 'Funding', 'Community', 'Co-founder', 'Talent', 'Accelerator']
 
 export default function OpportunityPage() {
+  const navigate = useNavigate()
   const { profile } = useAuth()
   const [active, setActive] = useState('All')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [interested, setInterested] = useState<Set<string>>(new Set())
   const [items, setItems] = useState<OpportunityItem[]>([])
   const [isLive, setIsLive] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -25,6 +29,7 @@ export default function OpportunityPage() {
       setItems(res.items)
       setIsLive(res.isLive)
       setLoading(false)
+      track('opportunity_view', { count: res.items.length, live: res.isLive })
     })()
     return () => { cancelled = true }
   }, [])
@@ -40,6 +45,11 @@ export default function OpportunityPage() {
       }))
       .sort((a, b) => b.personalizedMatch - a.personalizedMatch),
   [filtered, profile])
+
+  const markInterest = (o: OpportunityItem & { personalizedMatch: number }) => {
+    setInterested(prev => new Set(prev).add(o.id))
+    track('opportunity_interest', { id: o.id, title: o.title, match: o.personalizedMatch, live: isLive })
+  }
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -60,6 +70,7 @@ export default function OpportunityPage() {
             size="md"
           />
           <StatusBadge kind="live" label="Match % = live from your profile signals" size="md" />
+          <StatusBadge kind="partial" label="Mark interest = tracked now" size="md" />
           <StatusBadge kind="soon" label="Apply / marketplace = Phase 2" size="md" />
         </div>
       </div>
@@ -105,15 +116,35 @@ export default function OpportunityPage() {
                   </div>
                 </div>
 
-                <button
-                  onClick={() => setExpandedId(expandedId === o.id ? null : o.id)}
-                  className="mt-4 w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-pi-300 bg-black/20 border border-pi-500/20 hover:bg-pi-500/10 transition-all">
-                  <div className="flex items-center gap-1.5">
+                <div className="mt-4 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => markInterest(o)}
+                    disabled={interested.has(o.id)}
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                      interested.has(o.id)
+                        ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300'
+                        : 'text-white'
+                    }`}
+                    style={interested.has(o.id) ? {} : { background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+                  >
+                    <Heart size={12} />
+                    {interested.has(o.id) ? 'Interest saved' : 'Mark interest'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = expandedId === o.id ? null : o.id
+                      if (next) track('opportunity_expand', { id: o.id, match: o.personalizedMatch })
+                      setExpandedId(next)
+                    }}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-pi-300 bg-black/20 border border-pi-500/20 hover:bg-pi-500/10"
+                  >
                     <Sparkles size={12} />
-                    Why Pi recommends this for you
-                  </div>
-                  {expandedId === o.id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                </button>
+                    Why
+                    {expandedId === o.id ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  </button>
+                </div>
               </div>
 
               {expandedId === o.id && (
@@ -124,6 +155,13 @@ export default function OpportunityPage() {
                       <p className="text-pi-300 text-xs font-bold uppercase tracking-wider">Pi Intelligence</p>
                     </div>
                     <p className="text-slate-300 text-sm leading-relaxed">{o.personalizedReason}</p>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/twin')}
+                      className="mt-3 text-xs text-teal-300 font-semibold hover:underline"
+                    >
+                      Improve twin signals for better fit →
+                    </button>
                   </div>
                 </div>
               )}

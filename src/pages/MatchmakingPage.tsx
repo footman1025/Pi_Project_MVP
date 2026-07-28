@@ -7,6 +7,8 @@ import { MatchResult, rankMatches } from '../lib/matching'
 import { playConnectSound } from '../lib/connectSound'
 import UserAvatar from '../components/UserAvatar'
 import StatusBadge from '../components/StatusBadge'
+import { track } from '../lib/analytics'
+import { isProfileActivated } from '../lib/traction'
 
 export default function MatchmakingPage() {
   const navigate = useNavigate()
@@ -43,11 +45,14 @@ export default function MatchmakingPage() {
       if (cancelled) return
 
       if (data && data.length > 0) {
-        setMatches(rankMatches(profile, data).slice(0, 12))
+        const ranked = rankMatches(profile, data).slice(0, 12)
+        setMatches(ranked)
         setUsingLive(true)
+        track('match_view', { count: ranked.length, live: true })
       } else {
         setMatches([])
         setUsingLive(false)
+        track('match_view', { count: 0, live: false })
       }
       setLoading(false)
     }
@@ -67,6 +72,7 @@ export default function MatchmakingPage() {
   }
 
   const liveFiltered = matches.filter(m => roleFilter(m.profile.role, filter))
+  const profileReady = isProfileActivated(profile)
 
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto overflow-x-hidden w-full min-w-0">
@@ -89,6 +95,14 @@ export default function MatchmakingPage() {
             </span>
           )}
         </p>
+        {!profileReady && (
+          <div className="mt-3 p-3 rounded-xl border border-amber-500/25 bg-amber-500/5 text-xs text-slate-300 flex flex-wrap items-center gap-2">
+            <span>Your twin signals look thin — stronger profile = better match quality.</span>
+            <button type="button" onClick={() => navigate('/profile/edit')} className="text-teal-300 font-semibold hover:underline">
+              Strengthen profile →
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-2 mb-6 -mx-1 px-1 scrollbar-none">
@@ -205,11 +219,16 @@ export default function MatchmakingPage() {
 
                   <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mt-4 pt-4 border-t border-white/5">
                     <button
-                      onClick={() => p.username ? navigate(`/p/${p.username}`, { state: { from: '/match' } }) : navigate('/messages')}
+                      onClick={() => {
+                        track('match_connect', { target: p.id, match: m.match })
+                        if (p.username) navigate(`/p/${p.username}`, { state: { from: '/match' } })
+                        else navigate('/messages')
+                      }}
                       className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white pi-mark">
                       <UserRoundPlus size={14} className="shrink-0" /> Connect
                     </button>
                     <button onClick={() => {
+                      track('match_message', { target: p.id, match: m.match })
                       void playConnectSound()
                       navigate(`/messages?u=${p.id}`)
                     }}
@@ -217,7 +236,11 @@ export default function MatchmakingPage() {
                       <MessageCircle size={14} className="shrink-0" /> Message
                     </button>
                     <button
-                      onClick={() => setExpandedId(expandedId === id ? null : id)}
+                      onClick={() => {
+                        const next = expandedId === id ? null : id
+                        if (next) track('match_expand', { target: p.id, match: m.match })
+                        setExpandedId(next)
+                      }}
                       className="col-span-2 sm:ml-auto flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-pi-300 bg-pi-500/10 border border-pi-500/20 hover:bg-pi-500/15">
                       <Sparkles size={12} className="shrink-0" />
                       Why this match?

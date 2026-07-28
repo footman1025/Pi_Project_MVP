@@ -7,6 +7,7 @@ import CommunityIcon from '../components/CommunityIcon'
 import StatusBadge from '../components/StatusBadge'
 import { displayName } from '../lib/posts'
 import { rankCommunitiesForUser } from '../lib/communityRank'
+import { track } from '../lib/analytics'
 
 const categories = ['All', 'Technology', 'Business', 'Creator', 'Design', 'Finance', 'Health', 'Music']
 
@@ -115,6 +116,7 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
         await supabase.from('communities').update({ members_count: next }).eq('id', community.id)
         setMembersCount(next)
         setJoined(true)
+        track('community_join', { id: community.id, name: community.name })
       }
     } catch (e: any) {
       setError(e?.message || 'Could not update membership')
@@ -138,6 +140,7 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
           .insert({ community_id: community.id, user_id: user.id })
         setJoined(true)
         setMembersCount(c => c + 1)
+        track('community_join', { id: community.id, name: community.name, via: 'post' })
       }
 
       const { data, error: insertError } = await supabase
@@ -147,6 +150,7 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
         .single()
 
       if (insertError || !data) throw new Error(insertError?.message || 'Failed to create post')
+      track('community_post', { id: community.id, name: community.name })
 
       const newItem: Post = {
         ...(data as Post),

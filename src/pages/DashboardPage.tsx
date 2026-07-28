@@ -9,6 +9,7 @@ import MockIcon from '../components/MockIcon'
 import CommunityIcon from '../components/CommunityIcon'
 import UserAvatar from '../components/UserAvatar'
 import StatusBadge from '../components/StatusBadge'
+import CoreLoopGuide from '../components/CoreLoopGuide'
 import { buildDigitalTwin } from '../lib/digitalTwin'
 import DigitalTwinCard from '../components/DigitalTwinCard'
 import { hasGroqKey } from '../lib/groqAssistant'
@@ -172,8 +173,17 @@ export default function DashboardPage() {
             size="md"
           />
           <StatusBadge kind="partial" label="Creators / Professionals = live members + Soon tools" size="md" />
+          <button
+            type="button"
+            onClick={() => navigate('/traction')}
+            className="text-[11px] font-bold text-teal-300 border border-teal-500/30 bg-teal-500/10 px-2.5 py-1 rounded-full hover:bg-teal-500/15"
+          >
+            Traction metrics →
+          </button>
         </div>
       </div>
+
+      <CoreLoopGuide />
 
       {twin && (
         <div className="mb-6 sm:mb-8 min-w-0">

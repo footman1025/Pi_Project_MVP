@@ -154,6 +154,9 @@ export default function ProfileEditPage() {
     if (error) { setError(error.message); return }
     await refreshProfile()
     track('profile_saved', { has_summary: !!aiSummary, skills: skillsArr.length })
+    if (role && (skillsArr.length + interests.length + goals.length >= 3 || bio.trim().length > 20)) {
+      track('profile_complete', { skills: skillsArr.length, interests: interests.length, goals: goals.length })
+    }
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
   }
