@@ -9,6 +9,7 @@ import { fetchHubProfiles } from '../lib/hubProfiles'
 import { MatchResult } from '../lib/matching'
 import UserAvatar from '../components/UserAvatar'
 import StatusBadge from '../components/StatusBadge'
+import ProfileName from '../components/ProfileName'
 
 const professionalTypes = [
   { label: 'Lawyers', icon: Scale, desc: 'IP, startup, contract law', color: 'from-cyan-500 to-teal-600' },
@@ -127,7 +128,7 @@ export default function ProfessionalPage() {
                     <UserAvatar url={p.avatar_url} name={name} id={p.id} username={p.username} from="/professionals" size={56} rounded="rounded-2xl" />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-bold text-white text-lg truncate">{name}</h3>
+                        <ProfileName name={name} username={p.username} from="/professionals" className="font-bold text-white text-lg truncate" />
                         <span className="text-xs font-extrabold text-teal-300">{m.match}% match</span>
                       </div>
                       <p className="text-slate-400 text-sm mb-1 truncate">{p.role || 'Professional'}</p>

@@ -7,6 +7,7 @@ import { MatchResult, rankMatches } from '../lib/matching'
 import { playConnectSound } from '../lib/connectSound'
 import UserAvatar from '../components/UserAvatar'
 import StatusBadge from '../components/StatusBadge'
+import ProfileName from '../components/ProfileName'
 import { track } from '../lib/analytics'
 import { isProfileActivated } from '../lib/traction'
 
@@ -156,8 +157,12 @@ export default function MatchmakingPage() {
                     <div className="flex-1 min-w-0 overflow-hidden">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <h3 className="font-bold text-white text-base sm:text-lg cursor-pointer hover:text-pi-300 truncate"
-                            onClick={() => p.username && navigate(`/p/${p.username}`, { state: { from: '/match' } })}>{name}</h3>
+                          <ProfileName
+                            name={name}
+                            username={p.username}
+                            from="/match"
+                            className="font-bold text-white text-base sm:text-lg truncate block"
+                          />
                           {p.role && (
                             <span className="inline-block mt-1 text-[11px] sm:text-xs text-slate-500 font-medium px-2 py-0.5 bg-white/5 rounded-full max-w-full truncate">
                               {p.role}

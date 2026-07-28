@@ -9,6 +9,7 @@ import { fetchHubProfiles } from '../lib/hubProfiles'
 import { MatchResult } from '../lib/matching'
 import UserAvatar from '../components/UserAvatar'
 import StatusBadge from '../components/StatusBadge'
+import ProfileName from '../components/ProfileName'
 
 const creatorFeatures = [
   { icon: Clapperboard, label: 'Go Live', desc: 'Host live sessions with your audience', color: 'from-red-500 to-pink-600', to: '/feed', soon: true },
@@ -163,7 +164,7 @@ export default function CreatorPage() {
                 <div className="flex items-center gap-3 mb-3">
                     <UserAvatar url={p.avatar_url} name={name} id={p.id} username={p.username} from="/creators" size={48} rounded="rounded-2xl" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-white font-bold truncate">{name}</p>
+                    <ProfileName name={name} username={p.username} from="/creators" className="text-white font-bold truncate block" />
                     <p className="text-slate-400 text-xs truncate">{p.role || 'Creator'}</p>
                   </div>
                   <span className="text-sm font-extrabold text-teal-300 shrink-0">{m.match}%</span>

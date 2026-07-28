@@ -5,12 +5,14 @@ import { useAuth } from '../contexts/AuthContext'
 import { Bell, Heart, MessageCircle, UserPlus, Loader2, CheckCheck, Sparkles, Briefcase } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 import StateMessage from '../components/StateMessage'
+import ProfileName from '../components/ProfileName'
 import {
   ensureSystemAlertPermission,
   systemAlertPermission,
   systemAlertsSupported,
 } from '../lib/systemAlerts'
 import { enablePushNotifications, pushSupported } from '../lib/pushNotifications'
+import { profilePath } from '../lib/urls'
 
 function timeAgo(date: string) {
   const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
@@ -40,26 +42,24 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true)
   const [markingAll, setMarkingAll] = useState(false)
   const [alertPerm, setAlertPerm] = useState(() => systemAlertPermission())
-  const badgeCleared = useRef(false)
+  const [pushHint, setPushHint] = useState('')
+  const pushTried = useRef(false)
 
   useEffect(() => {
     if (user) fetchNotifications()
   }, [user])
 
-  // Opening the bell clears the unread badge; items stay visible so you can tap into chat
+  // Soft re-enable push once per visit (helps when permission was granted but subscription missing)
   useEffect(() => {
-    if (!user || loading || badgeCleared.current) return
-    if (notifications.length === 0) return
-    badgeCleared.current = true
-    supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('user_id', user.id)
-      .eq('is_read', false)
-      .then(() => {
-        window.dispatchEvent(new CustomEvent('pi:notifications-read'))
-      })
-  }, [user, loading, notifications.length])
+    if (!user?.id || pushTried.current) return
+    pushTried.current = true
+    if (!pushSupported()) return
+    if (systemAlertPermission() === 'denied') return
+    void enablePushNotifications(user.id).then(r => {
+      if (r.ok) setPushHint(r.reason === 'local-only' ? 'Local alerts on' : 'Push connected')
+      else if (r.reason === 'denied') setPushHint('Alerts blocked in browser settings')
+    })
+  }, [user?.id])
 
   useEffect(() => {
     if (!user) return
@@ -76,12 +76,11 @@ export default function NotificationsPage() {
   }, [user])
 
   const fetchNotifications = async () => {
-    // Only show unread — once you've seen/cleared them they stay hidden
+    // Keep recent history (read + unread) so opening the page doesn’t wipe the list
     const { data } = await supabase
       .from('notifications')
       .select('*, profiles!notifications_actor_id_fkey(full_name, role, username)')
       .eq('user_id', user!.id)
-      .eq('is_read', false)
       .order('created_at', { ascending: false })
       .limit(50)
     setNotifications((data as NotifRow[]) || [])
@@ -92,31 +91,37 @@ export default function NotificationsPage() {
     if (!user) return
     setMarkingAll(true)
     await supabase.from('notifications').update({ is_read: true }).eq('user_id', user.id).eq('is_read', false)
-    setNotifications([])
+    setNotifications(list => list.map(n => ({ ...n, is_read: true })))
     window.dispatchEvent(new CustomEvent('pi:notifications-read'))
     setMarkingAll(false)
   }
 
   const openNotification = async (n: NotifRow) => {
-    // Hide immediately after tap
-    setNotifications(list => list.filter(x => x.id !== n.id))
-    await supabase.from('notifications').update({ is_read: true }).eq('id', n.id)
-    window.dispatchEvent(new CustomEvent('pi:notifications-read'))
+    if (!n.is_read) {
+      await supabase.from('notifications').update({ is_read: true }).eq('id', n.id)
+      setNotifications(list => list.map(x => x.id === n.id ? { ...x, is_read: true } : x))
+      window.dispatchEvent(new CustomEvent('pi:notifications-read'))
+    }
 
     if (n.type === 'message' && n.actor_id) {
       navigate(`/messages?u=${n.actor_id}`)
       return
     }
-    if (n.type === 'follow') {
-      const username = n.profiles?.username
-      if (username) navigate(`/p/${username}`)
-      else navigate('/search')
-      return
-    }
-    if (n.type === 'ai_match') {
-      const username = n.profiles?.username
-      if (username) navigate(`/p/${username}`, { state: { from: '/notifications' } })
-      else navigate('/match')
+    if (n.type === 'follow' || n.type === 'ai_match' || n.type === 'like' || n.type === 'comment') {
+      const path = profilePath(n.profiles?.username)
+      if (path) {
+        navigate(path, { state: { from: '/notifications' } })
+        return
+      }
+      if (n.type === 'ai_match') {
+        navigate('/match')
+        return
+      }
+      if (n.type === 'like' || n.type === 'comment') {
+        navigate('/feed')
+        return
+      }
+      navigate('/search')
       return
     }
     if (n.type === 'ai_opportunity') {
@@ -125,6 +130,8 @@ export default function NotificationsPage() {
     }
     navigate('/feed')
   }
+
+  const unreadCount = notifications.filter(n => !n.is_read).length
 
   if (!user) {
     return (
@@ -146,13 +153,14 @@ export default function NotificationsPage() {
           <div className="flex items-center gap-2 mb-1">
             <Bell size={22} className="text-pi-400" />
             <h1 className="font-display text-3xl font-extrabold text-white">Notifications</h1>
-            {notifications.length > 0 && (
+            {unreadCount > 0 && (
               <span className="ml-1 px-2 py-0.5 rounded-full text-xs font-bold text-white bg-pi-500">
-                {notifications.length}
+                {unreadCount}
               </span>
             )}
           </div>
-          <p className="text-slate-400 text-sm">Likes, comments, messages — plus AI suggestions. Tap to open.</p>
+          <p className="text-slate-400 text-sm">Likes, comments, messages — plus AI suggestions. Tap to open the person or chat.</p>
+          {pushHint && <p className="text-[11px] text-teal-400/80 mt-1">{pushHint}</p>}
           {(systemAlertsSupported() || pushSupported()) && (
             <button
               type="button"
@@ -162,6 +170,9 @@ export default function NotificationsPage() {
                 if (user?.id) {
                   const push = await enablePushNotifications(user.id)
                   if (push.ok || ok) {
+                    setPushHint(push.reason === 'local-only'
+                      ? 'System alerts on. Deploy VAPID for closed-app push.'
+                      : 'Push enabled — keep Pi installed / allowed in browser.')
                     const { showPiSystemAlert } = await import('../lib/systemAlerts')
                     showPiSystemAlert({
                       title: 'Pi alerts enabled',
@@ -172,6 +183,8 @@ export default function NotificationsPage() {
                       tag: 'pi-alerts-enabled',
                       force: true,
                     })
+                  } else {
+                    setPushHint(push.reason === 'denied' ? 'Permission denied — enable in browser site settings' : (push.reason || 'Could not enable'))
                   }
                 }
               }}
@@ -185,11 +198,11 @@ export default function NotificationsPage() {
             </button>
           )}
         </div>
-        {notifications.length > 0 && (
+        {unreadCount > 0 && (
           <button onClick={markAllRead} disabled={markingAll}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-slate-300 border border-white/10 hover:border-white/20 hover:text-white transition-all disabled:opacity-50">
             {markingAll ? <Loader2 size={14} className="animate-spin" /> : <CheckCheck size={14} />}
-            Clear all
+            Mark all read
           </button>
         )}
       </div>
@@ -200,7 +213,7 @@ export default function NotificationsPage() {
         <StateMessage
           variant="empty"
           title="You're all caught up"
-          description="No new notifications. When someone messages you, tap it here to open the chat."
+          description="No notifications yet. When someone messages or interacts, it shows here — and as a push if enabled."
           icon={Bell}
         />
       ) : (
@@ -208,13 +221,16 @@ export default function NotificationsPage() {
           {notifications.map(n => {
             const cfg = typeConfig[n.type] || typeConfig.like
             const Icon = cfg.icon
+            const unread = !n.is_read
             return (
               <button
                 key={n.id}
                 type="button"
                 onClick={() => openNotification(n)}
-                className="flex items-start gap-4 p-4 rounded-2xl border transition-all cursor-pointer hover:border-white/10 w-full text-left border-pi-500/20"
-                style={{ background: 'rgba(20,184,166,0.08)' }}
+                className={`flex items-start gap-4 p-4 rounded-2xl border transition-all cursor-pointer hover:border-white/10 w-full text-left ${
+                  unread ? 'border-pi-500/20' : 'border-white/5'
+                }`}
+                style={{ background: unread ? 'rgba(20,184,166,0.08)' : 'rgba(14,20,25,0.4)' }}
               >
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${cfg.bg}`}>
                   <Icon size={16} className={cfg.color} />
@@ -222,16 +238,25 @@ export default function NotificationsPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-slate-200 leading-relaxed">
                     {n.profiles?.full_name && (
-                      <span className="text-white font-semibold">{n.profiles.full_name} </span>
+                      <ProfileName
+                        name={n.profiles.full_name}
+                        username={n.profiles.username}
+                        from="/notifications"
+                        className="text-white font-semibold inline"
+                      />
                     )}
+                    {' '}
                     {n.message || `${n.type}d your post`}
                   </p>
                   <p className="text-xs text-slate-500 mt-1">
                     {timeAgo(n.created_at)}
                     {n.type === 'message' && <span className="text-teal-400/80"> · Open chat</span>}
+                    {(n.type === 'follow' || n.type === 'like' || n.type === 'comment') && n.profiles?.username && (
+                      <span className="text-teal-400/80"> · Open profile</span>
+                    )}
                   </p>
                 </div>
-                <div className="w-2 h-2 rounded-full bg-pi-500 flex-shrink-0 mt-1.5" />
+                {unread && <div className="w-2 h-2 rounded-full bg-pi-500 flex-shrink-0 mt-1.5" />}
               </button>
             )
           })}

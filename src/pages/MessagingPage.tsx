@@ -6,6 +6,7 @@ import { notifyUserOfMessage } from '../lib/notifications'
 import { playConnectSound } from '../lib/connectSound'
 import { Send, Search, Loader2, MessageCircle, Smile, Paperclip, FileText, Download, ExternalLink, X, Pin, Forward, Trash2, Copy } from 'lucide-react'
 import UserAvatar from '../components/UserAvatar'
+import ProfileName from '../components/ProfileName'
 import MessagePicker from '../components/MessagePicker'
 import MessageContextMenu, { CopiedToast, type MessageMenuAction } from '../components/MessageContextMenu'
 import MediaCaptureButtons from '../components/MediaCaptureButtons'
@@ -687,7 +688,12 @@ export default function MessagingPage() {
                 size={36}
               />
               <div className="min-w-0 flex-1">
-                <p className="text-white font-semibold text-sm truncate">{selectedUser.full_name}</p>
+                <ProfileName
+                  name={selectedUser.full_name}
+                  username={selectedUser.username}
+                  from="/messages"
+                  className="text-white font-semibold text-sm truncate block"
+                />
                 <p className="text-slate-500 text-xs truncate">{selectedUser.role || 'Pi Member'}</p>
               </div>
               <div className="ml-auto flex items-center gap-1.5 flex-shrink-0">
@@ -1131,7 +1137,7 @@ export default function MessagingPage() {
                           onClick={() => forwardToUser(c, forwardMsg)}
                           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl hover:bg-white/5 text-left"
                         >
-                          <UserAvatar url={c.avatar_url} name={c.full_name} id={c.id} size={36} />
+                          <UserAvatar url={c.avatar_url} name={c.full_name} id={c.id} username={c.username} from="/messages" size={36} />
                           <div className="min-w-0">
                             <p className="text-white text-sm font-semibold truncate">{c.full_name}</p>
                             <p className="text-slate-500 text-xs truncate">{c.role || 'Pi Member'}</p>

@@ -196,7 +196,7 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
           </button>
 
           <div className="flex items-center gap-3 px-3 py-3 mt-2 rounded-xl bg-white/3">
-            <UserAvatar url={profile?.avatar_url} name={displayName} id={user?.id} size={32} />
+            <UserAvatar url={profile?.avatar_url} name={displayName} id={user?.id} username={profile?.username} from="/dashboard" size={32} />
             <div className="flex-1 min-w-0">
               <p className="text-white text-xs font-semibold truncate">{displayName}</p>
               <p className="text-slate-500 text-xs truncate">{profile?.role || 'Pi Member'}</p>
@@ -239,7 +239,7 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
           </NavLink>
 
           <NavLink to="/profile/edit" className="hover:opacity-80 transition-opacity hidden sm:block">
-            <UserAvatar url={profile?.avatar_url} name={displayName} id={user?.id} size={36} />
+            <UserAvatar url={profile?.avatar_url} name={displayName} id={user?.id} username={profile?.username} from="/dashboard" size={36} />
           </NavLink>
         </header>
 

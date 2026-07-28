@@ -7,6 +7,7 @@ import { displayName } from '../lib/posts'
 import { uploadPostImage } from '../lib/postImageUpload'
 import { Heart, MessageCircle, Share2, Send, Image, Loader2, Sparkles, X, Pencil, Trash2, Check } from 'lucide-react'
 import UserAvatar from '../components/UserAvatar'
+import ProfileName from '../components/ProfileName'
 import LoadingSpinner from '../components/LoadingSpinner'
 import StateMessage from '../components/StateMessage'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
@@ -174,14 +175,12 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
           size={40}
         />
         <div className="flex-1 min-w-0">
-          <button
-            type="button"
-            disabled={!authorUsername}
-            onClick={() => authorUsername && navigate(`/p/${authorUsername}`, { state: { from: '/feed' } })}
-            className={`text-white font-semibold text-sm text-left truncate ${authorUsername ? 'hover:text-pi-300 cursor-pointer' : ''}`}
-          >
-            {name}
-          </button>
+          <ProfileName
+            name={name}
+            username={authorUsername}
+            from="/feed"
+            className="text-white font-semibold text-sm truncate block"
+          />
           <div className="flex items-center gap-2 text-xs text-slate-500">
             {role && <span>{role}</span>}
             {role && <span>·</span>}
@@ -295,14 +294,12 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
                         <>
                           <div className="flex items-start gap-2">
                             <div className="flex-1 min-w-0">
-                              <button
-                                type="button"
-                                disabled={!cUser}
-                                onClick={() => cUser && navigate(`/p/${cUser}`, { state: { from: '/feed' } })}
-                                className={`text-white text-xs font-semibold ${cUser ? 'hover:text-pi-300' : ''}`}
-                              >
-                                {cName}
-                              </button>
+                              <ProfileName
+                                name={cName}
+                                username={cUser}
+                                from="/feed"
+                                className="text-white text-xs font-semibold"
+                              />
                               {' '}
                               <span className="text-slate-300 text-xs break-words">{c.content}</span>
                             </div>

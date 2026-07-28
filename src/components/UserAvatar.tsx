@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { avatarGradient, avatarInitial } from '../lib/avatar'
+import { profilePath } from '../lib/urls'
+import { supabase } from '../lib/supabase'
+
+const usernameCache = new Map<string, string>()
 
 interface Props {
   url?: string | null
@@ -15,7 +19,7 @@ interface Props {
   rounded?: string
 }
 
-/** Shows profile photo when available, otherwise initial on a colored background. */
+/** Shows profile photo when available, otherwise initial. Tap opens account when username (or resolvable id) exists. */
 export default function UserAvatar({
   url,
   name,
@@ -28,18 +32,52 @@ export default function UserAvatar({
 }: Props) {
   const navigate = useNavigate()
   const [broken, setBroken] = useState(false)
+  const [resolvedUser, setResolvedUser] = useState<string | null>(username?.trim() || null)
   const letter = avatarInitial(name)
-  const canOpen = !!username?.trim()
 
   useEffect(() => {
     setBroken(false)
   }, [url])
 
+  useEffect(() => {
+    const direct = username?.trim() || null
+    if (direct) {
+      setResolvedUser(direct)
+      if (id) usernameCache.set(id, direct)
+      return
+    }
+    if (!id) {
+      setResolvedUser(null)
+      return
+    }
+    const cached = usernameCache.get(id)
+    if (cached) {
+      setResolvedUser(cached)
+      return
+    }
+    let cancelled = false
+    supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return
+        const u = data?.username?.trim() || null
+        if (u) usernameCache.set(id, u)
+        setResolvedUser(u)
+      })
+    return () => { cancelled = true }
+  }, [username, id])
+
+  const path = profilePath(resolvedUser)
+  const canOpen = !!path
+
   const openProfile = (e: React.MouseEvent) => {
-    if (!canOpen) return
+    if (!path) return
     e.stopPropagation()
     e.preventDefault()
-    navigate(`/p/${username!.trim()}`, from ? { state: { from } } : undefined)
+    navigate(path, from ? { state: { from } } : undefined)
   }
 
   const showImg = !!url && !broken
@@ -81,8 +119,8 @@ export default function UserAvatar({
       onClick={openProfile}
       className={`flex-shrink-0 p-0 border-0 bg-transparent ${interactive}`}
       style={{ width: size, height: size }}
-      aria-label={`Open ${name || username}'s profile`}
-      title={`View @${username}`}
+      aria-label={`Open ${name || resolvedUser}'s profile`}
+      title={`View @${resolvedUser}`}
     >
       {inner}
     </button>

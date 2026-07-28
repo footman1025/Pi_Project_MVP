@@ -272,7 +272,7 @@ export default function ProfileEditPage() {
                 <Globe2 size={11} /> Website
               </label>
               <input value={website} onChange={e => setWebsite(e.target.value)}
-                placeholder="yourwebsite.com"
+                placeholder="linkedin.com/in/you or yoursite.com"
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-pi-500/50 transition-colors" />
             </div>
           </div>

@@ -10,20 +10,4 @@ export function validatePassword(password: string): string | null {
   return null
 }
 
-export function normalizeWebsite(raw: string): string {
-  const v = raw.trim()
-  if (!v) return ''
-  if (/^https?:\/\//i.test(v)) return v
-  return `https://${v}`
-}
-
-export function isValidWebsite(raw: string): boolean {
-  const v = raw.trim()
-  if (!v) return true
-  try {
-    const u = new URL(normalizeWebsite(v))
-    return !!u.hostname && u.hostname.includes('.')
-  } catch {
-    return false
-  }
-}
+export { normalizeWebsite, isValidWebsite, externalHref, profilePath } from './urls'

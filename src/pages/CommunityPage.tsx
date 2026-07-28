@@ -6,6 +6,7 @@ import UserAvatar from '../components/UserAvatar'
 import CommunityIcon from '../components/CommunityIcon'
 import StatusBadge from '../components/StatusBadge'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
+import ProfileName from '../components/ProfileName'
 import { displayName } from '../lib/posts'
 import { rankCommunitiesForUser } from '../lib/communityRank'
 import { track } from '../lib/analytics'
@@ -280,7 +281,12 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
                   size={32}
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="text-white text-sm font-semibold">{displayName(post.profiles)}</p>
+                  <ProfileName
+                    name={displayName(post.profiles)}
+                    username={post.profiles?.username}
+                    from="/communities"
+                    className="text-white text-sm font-semibold"
+                  />
                   {post.profiles?.username && post.profiles?.full_name && (
                     <p className="text-slate-500 text-xs">@{post.profiles.username}</p>
                   )}

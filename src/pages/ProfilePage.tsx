@@ -16,11 +16,14 @@ import {
   isFollowing,
 } from '../lib/follows'
 import UserAvatar from '../components/UserAvatar'
+import { externalHref, absoluteProfileUrl } from '../lib/urls'
 
 function applySeo(profile: Profile, username: string) {
   const title = `${profile.full_name || username} — ${profile.role || 'Pi Member'} | Pi`
   const description = profile.bio || profile.ai_summary || `${profile.full_name || username} on Pi`
-  const url = `${window.location.origin}/p/${username}`
+  const safeUser = encodeURIComponent(username.trim())
+  const url = `${window.location.origin}/p/${safeUser}`
+  const websiteAbs = externalHref(profile.website)
   const tags = [...(profile.skills || []), ...(profile.interests || [])].slice(0, 8)
 
   document.title = title
@@ -59,7 +62,7 @@ function applySeo(profile: Profile, username: string) {
     jobTitle: profile.role || undefined,
     description,
     url,
-    sameAs: profile.website ? [profile.website] : [url],
+    sameAs: websiteAbs ? [websiteAbs, url] : [url],
     knowsAbout: tags.length ? tags : undefined,
     address: profile.location
       ? { '@type': 'PostalAddress', addressLocality: profile.location }
@@ -93,7 +96,14 @@ function applySeo(profile: Profile, username: string) {
 }
 
 export default function ProfilePage() {
-  const { username = '' } = useParams<{ username: string }>()
+  const { username: rawUsername = '' } = useParams<{ username: string }>()
+  const username = (() => {
+    try {
+      return decodeURIComponent(rawUsername).trim().replace(/^@/, '')
+    } catch {
+      return rawUsername.trim().replace(/^@/, '')
+    }
+  })()
   const navigate = useNavigate()
   const location = useLocation()
   const { session, profile: authProfile, user } = useAuth()
@@ -105,9 +115,11 @@ export default function ProfilePage() {
   const [followLoading, setFollowLoading] = useState(false)
   const [followError, setFollowError] = useState('')
   const [seo, setSeo] = useState<ReturnType<typeof applySeo> | null>(null)
+  const [copied, setCopied] = useState(false)
 
   const isLoggedIn = !!session
   const isOwn = !!(user && profile && user.id === profile.id)
+  const siteHref = externalHref(profile?.website)
 
   useEffect(() => {
     let cancelled = false
@@ -317,18 +329,32 @@ export default function ProfilePage() {
                   <p className="text-pi-300 font-semibold mb-2 text-sm sm:text-base truncate">{profile.role || 'Pi Member'}</p>
                   <div className="flex flex-wrap items-center gap-2 text-slate-400 text-sm mb-3">
                     {profile.location && <><MapPin size={14} className="shrink-0" /><span className="break-words">{profile.location}</span></>}
-                    {profile.website && (
+                    {siteHref && (
                       <>
                         {profile.location && <span className="mx-1">·</span>}
                         <Globe2 size={14} className="shrink-0" />
-                        <a href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`}
-                          target="_blank" rel="noreferrer" className="hover:text-pi-300 transition-colors truncate max-w-[140px] sm:max-w-[180px]">
-                          {profile.website}
+                        <a href={siteHref}
+                          target="_blank" rel="noopener noreferrer" className="hover:text-pi-300 transition-colors truncate max-w-[140px] sm:max-w-[180px]">
+                          {profile.website?.replace(/^https?:\/\//i, '')}
                         </a>
                       </>
                     )}
                     {profile.username && (
-                      <span className="text-slate-500 truncate">@{profile.username}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const link = absoluteProfileUrl(profile.username)
+                          if (!link) return
+                          void navigator.clipboard?.writeText(link).then(() => {
+                            setCopied(true)
+                            setTimeout(() => setCopied(false), 2000)
+                          })
+                        }}
+                        className="text-slate-500 truncate hover:text-teal-300 text-left"
+                        title="Copy profile link for LinkedIn"
+                      >
+                        @{profile.username}{copied ? ' · copied' : ''}
+                      </button>
                     )}
                   </div>
                   <p className="text-slate-300 text-sm leading-relaxed break-words [overflow-wrap:anywhere]">
