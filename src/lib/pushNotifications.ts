@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { PI_NOTIF_BADGE_PATH, PI_NOTIF_ICON_PATH, notificationBadgeUrl, notificationIconUrl } from './notificationBrand'
 
 const VAPID_PUBLIC = (import.meta.env.VITE_VAPID_PUBLIC_KEY || '').trim()
 
@@ -24,6 +25,8 @@ export async function registerPiServiceWorker() {
   if (!('serviceWorker' in navigator)) return null
   try {
     const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+    // Force update so new Pi PNG icons apply after deploy
+    void reg.update()
     await navigator.serviceWorker.ready
 
     // Deep-link navigation from notification click
@@ -109,6 +112,8 @@ export async function showLocalPush(payload: {
         body: payload.body,
         path: payload.path || '/notifications',
         tag: payload.tag,
+        icon: PI_NOTIF_ICON_PATH,
+        badge: PI_NOTIF_BADGE_PATH,
       })
       return
     }
@@ -119,7 +124,8 @@ export async function showLocalPush(payload: {
   try {
     const n = new Notification(payload.title, {
       body: payload.body,
-      icon: '/pi-icon.svg',
+      icon: notificationIconUrl(),
+      badge: notificationBadgeUrl(),
       tag: payload.tag,
       data: { path: payload.path },
     })

@@ -1,4 +1,5 @@
 /** Native OS / browser system alerts (Web Notifications API). */
+import { notificationBadgeUrl, notificationIconUrl } from './notificationBrand'
 
 export type PiAlertPayload = {
   title: string
@@ -9,8 +10,6 @@ export type PiAlertPayload = {
   /** Prefer showing even when the Pi tab is focused */
   force?: boolean
 }
-
-const ICON = '/pi-icon.svg'
 
 export function systemAlertsSupported() {
   return typeof window !== 'undefined' && 'Notification' in window
@@ -88,8 +87,8 @@ export function showPiSystemAlert(payload: PiAlertPayload) {
   try {
     const n = new Notification(payload.title, {
       body: payload.body,
-      icon: ICON,
-      badge: ICON,
+      icon: notificationIconUrl(),
+      badge: notificationBadgeUrl(),
       tag: payload.tag || `pi-${Date.now()}`,
       data: { path: payload.path || '/notifications' },
     })

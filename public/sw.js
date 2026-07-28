@@ -1,4 +1,17 @@
-/* Pi service worker — push + notification click → open deep link */
+/* Pi service worker — push + notification click → open deep link
+ * Chrome requires PNG icons (SVG falls back to browser icon).
+ */
+const PI_ICON = '/pi-logo-192.png'
+const PI_BADGE = '/pi-badge-96.png'
+
+function abs(path) {
+  try {
+    return new URL(path, self.location.origin).href
+  } catch {
+    return path
+  }
+}
+
 self.addEventListener('install', (event) => {
   self.skipWaiting()
 })
@@ -13,6 +26,8 @@ self.addEventListener('push', (event) => {
     body: 'You have a new update on Pi.',
     path: '/notifications',
     tag: 'pi-push',
+    icon: PI_ICON,
+    badge: PI_BADGE,
   }
   try {
     if (event.data) {
@@ -28,11 +43,15 @@ self.addEventListener('push', (event) => {
     }
   }
 
+  const icon = abs(data.icon || PI_ICON)
+  const badge = abs(data.badge || PI_BADGE)
+
   event.waitUntil(
     self.registration.showNotification(data.title || 'Pi', {
       body: data.body || '',
-      icon: '/pi-icon.svg',
-      badge: '/pi-icon.svg',
+      icon,
+      badge,
+      image: undefined,
       tag: data.tag || 'pi-push',
       data: { path: data.path || '/notifications' },
       renotify: true,
@@ -66,12 +85,12 @@ self.addEventListener('notificationclick', (event) => {
 self.addEventListener('message', (event) => {
   const msg = event.data
   if (!msg || msg.type !== 'pi:show-notification') return
-  const { title, body, path, tag } = msg
+  const { title, body, path, tag, icon, badge } = msg
   event.waitUntil(
     self.registration.showNotification(title || 'Pi', {
       body: body || '',
-      icon: '/pi-icon.svg',
-      badge: '/pi-icon.svg',
+      icon: abs(icon || PI_ICON),
+      badge: abs(badge || PI_BADGE),
       tag: tag || `pi-local-${Date.now()}`,
       data: { path: path || '/notifications' },
     }),

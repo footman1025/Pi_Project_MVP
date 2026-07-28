@@ -102,7 +102,18 @@ export default async function handler(req, res) {
       return
     }
 
-    const payload = JSON.stringify({ title, body: notifBody, path, tag })
+    const origin = (
+      process.env.VITE_PUBLIC_APP_URL ||
+      process.env.PUBLIC_APP_URL ||
+      (typeof req.headers?.origin === 'string' ? req.headers.origin : '') ||
+      (typeof req.headers?.referer === 'string' ? (() => { try { return new URL(req.headers.referer).origin } catch { return '' } })() : '') ||
+      ''
+    ).replace(/\/$/, '')
+    // Absolute PNG icons — Chrome ignores SVG and falls back to the browser icon
+    const icon = body.icon || (origin ? `${origin}/pi-logo-192.png` : '/pi-logo-192.png')
+    const badge = body.badge || (origin ? `${origin}/pi-badge-96.png` : '/pi-badge-96.png')
+
+    const payload = JSON.stringify({ title, body: notifBody, path, tag, icon, badge })
     let sent = 0
     const stale = []
 
