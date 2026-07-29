@@ -2,11 +2,16 @@
   "name": "Pi",
   "short_name": "Pi",
   "description": "One Platform. Infinite Opportunities. AI-native ecosystem for connection and opportunity.",
-  "start_url": "/",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "id": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#080d1a",
   "theme_color": "#14b8a6",
   "orientation": "portrait-primary",
+  "lang": "en",
+  "categories": ["social", "business", "productivity"],
   "icons": [
     {
       "src": "/pi-logo-192.png",
@@ -15,16 +20,16 @@
       "purpose": "any"
     },
     {
-      "src": "/pi-logo-192.png",
+      "src": "/pi-logo-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "/pi-icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
+      "src": "/pi-logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

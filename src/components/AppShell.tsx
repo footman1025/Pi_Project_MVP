@@ -114,7 +114,9 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
           }
           // Alien ring on connect + when someone messages you
           if (row?.type === 'follow' || row?.type === 'message') void playConnectSound()
-          // Native Windows / macOS / browser system toast
+          // Skip OS toast for AI suggestions here — push already delivers them with a stable tag
+          // (avoids “same alert twice”: push + realtime local toast)
+          if (row?.type === 'ai_match' || row?.type === 'ai_opportunity') return
           showSystemAlertForRow(row)
         })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },

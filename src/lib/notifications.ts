@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { sendPushToUser } from './pushNotifications'
+import { sendEmailToUser } from './emailNotifications'
 
 export type NotifType = 'like' | 'comment' | 'follow' | 'message' | 'ai_match' | 'ai_opportunity'
 
@@ -14,7 +15,7 @@ type NotifyInput = {
   title?: string
 }
 
-function defaultPath(type: NotifType, actorId: string, postId?: string | null) {
+function defaultPath(type: NotifType, actorId: string, _postId?: string | null) {
   if (type === 'message') return `/messages?u=${actorId}`
   if (type === 'follow') return '/notifications'
   if (type === 'like' || type === 'comment') return '/feed'
@@ -42,7 +43,7 @@ function defaultTitle(type: NotifType) {
   }
 }
 
-/** Create an in-app notification + deliver Web Push when possible. */
+/** Create an in-app notification + Web Push (cellphone) + email if opted in. */
 export async function createNotification({
   userId,
   actorId,
@@ -68,13 +69,31 @@ export async function createNotification({
     .maybeSingle()
 
   const deepLink = path || defaultPath(type, actorId, postId)
-  await sendPushToUser({
-    userId,
-    title: title || defaultTitle(type),
-    body: message,
-    path: deepLink,
-    tag: data?.id ? `pi-notif-${data.id}` : `pi-${type}-${Date.now()}`,
-  })
+  const notifTitle = title || defaultTitle(type)
+  const pushTag =
+    type === 'ai_match'
+      ? 'pi-ai-match'
+      : type === 'ai_opportunity'
+        ? 'pi-ai-opp'
+        : data?.id
+          ? `pi-notif-${data.id}`
+          : `pi-${type}-${Date.now()}`
+
+  await Promise.all([
+    sendPushToUser({
+      userId,
+      title: notifTitle,
+      body: message,
+      path: deepLink,
+      tag: pushTag,
+    }),
+    sendEmailToUser({
+      userId,
+      title: notifTitle,
+      body: message,
+      path: deepLink,
+    }),
+  ])
 }
 
 export async function notifyPostAuthorOfLike(

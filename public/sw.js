@@ -54,7 +54,8 @@ self.addEventListener('push', (event) => {
       image: undefined,
       tag: data.tag || 'pi-push',
       data: { path: data.path || '/notifications' },
-      renotify: true,
+      // Same tag replaces older alert (prevents stacking identical AI suggestions)
+      renotify: data.tag === 'pi-ai-match' || data.tag === 'pi-ai-opp' ? false : true,
     }),
   )
 })

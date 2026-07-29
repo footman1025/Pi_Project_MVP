@@ -2,10 +2,11 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase, Notification } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { Bell, Heart, MessageCircle, UserPlus, Loader2, CheckCheck, Sparkles, Briefcase } from 'lucide-react'
+import { Bell, Heart, MessageCircle, UserPlus, Loader2, CheckCheck, Sparkles, Briefcase, Mail, Smartphone } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 import StateMessage from '../components/StateMessage'
 import ProfileName from '../components/ProfileName'
+import InstallPiBanner from '../components/InstallPiBanner'
 import {
   ensureSystemAlertPermission,
   systemAlertPermission,
@@ -13,6 +14,11 @@ import {
 } from '../lib/systemAlerts'
 import { enablePushNotifications, pushSupported } from '../lib/pushNotifications'
 import { profilePath } from '../lib/urls'
+import {
+  fetchNotificationPrefs,
+  saveNotificationPrefs,
+  type NotificationPrefs,
+} from '../lib/emailNotifications'
 
 function timeAgo(date: string) {
   const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
@@ -44,10 +50,43 @@ export default function NotificationsPage() {
   const [alertPerm, setAlertPerm] = useState(() => systemAlertPermission())
   const [pushHint, setPushHint] = useState('')
   const pushTried = useRef(false)
+  const [emailPrefs, setEmailPrefs] = useState<NotificationPrefs>({
+    email_enabled: false,
+    email: null,
+    push_enabled: true,
+  })
+  const [emailDraft, setEmailDraft] = useState('')
+  const [emailSaving, setEmailSaving] = useState(false)
+  const [emailHint, setEmailHint] = useState('')
 
   useEffect(() => {
-    if (user) fetchNotifications()
+    if (user) {
+      fetchNotifications()
+      void fetchNotificationPrefs(user.id).then(p => {
+        setEmailPrefs(p)
+        setEmailDraft(p.email || user.email || '')
+      })
+    }
   }, [user])
+
+  const saveEmailPrefs = async (next: Partial<NotificationPrefs> & { email?: string | null }) => {
+    if (!user) return
+    setEmailSaving(true)
+    setEmailHint('')
+    const merged = {
+      email_enabled: next.email_enabled ?? emailPrefs.email_enabled,
+      email: next.email !== undefined ? next.email : (emailDraft || null),
+      push_enabled: next.push_enabled ?? emailPrefs.push_enabled,
+    }
+    const res = await saveNotificationPrefs(user.id, merged)
+    if (res.error) {
+      setEmailHint(res.error)
+    } else {
+      setEmailPrefs(merged)
+      setEmailHint(merged.email_enabled ? 'Email alerts on' : 'Email alerts off')
+    }
+    setEmailSaving(false)
+  }
 
   // Soft re-enable push once per visit (helps when permission was granted but subscription missing)
   useEffect(() => {
@@ -148,6 +187,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
+      <InstallPiBanner />
       <div className="flex items-center justify-between mb-8">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -205,6 +245,65 @@ export default function NotificationsPage() {
             Mark all read
           </button>
         )}
+      </div>
+
+      <div
+        className="mb-6 rounded-2xl border border-white/8 p-4 space-y-3"
+        style={{ background: 'rgba(14,20,25,0.55)' }}
+      >
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-teal-500/15 flex items-center justify-center shrink-0">
+            <Smartphone size={16} className="text-teal-300" />
+          </div>
+          <div>
+            <p className="text-white text-sm font-semibold">Phone / tablet / desktop</p>
+            <p className="text-slate-500 text-xs leading-relaxed mt-0.5">
+              Cellphone alerts use <span className="text-slate-300">Web Push</span> (enable above + Install Pi).
+              No SMS — browser/PWA is the phone channel.
+            </p>
+          </div>
+        </div>
+        <div className="border-t border-white/5 pt-3 flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
+            <Mail size={16} className="text-amber-300" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <p className="text-white text-sm font-semibold">Email alerts</p>
+              <label className="inline-flex items-center gap-2 text-xs text-slate-300 cursor-pointer ml-auto">
+                <input
+                  type="checkbox"
+                  checked={emailPrefs.email_enabled}
+                  disabled={emailSaving}
+                  onChange={e => void saveEmailPrefs({ email_enabled: e.target.checked, email: emailDraft || null })}
+                  className="rounded border-white/20 bg-black/40 text-teal-500 focus:ring-teal-500/40"
+                />
+                Opt in
+              </label>
+            </div>
+            <p className="text-slate-500 text-xs leading-relaxed mb-2">
+              Optional. Same events as push (likes, comments, messages, AI suggestions) — only if you enable this.
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="email"
+                value={emailDraft}
+                onChange={e => setEmailDraft(e.target.value)}
+                placeholder={user.email || 'you@email.com'}
+                className="flex-1 min-w-0 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-teal-500/40"
+              />
+              <button
+                type="button"
+                disabled={emailSaving}
+                onClick={() => void saveEmailPrefs({ email_enabled: emailPrefs.email_enabled, email: emailDraft || null })}
+                className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-200 border border-white/10 hover:border-white/20 disabled:opacity-50"
+              >
+                {emailSaving ? <Loader2 size={14} className="animate-spin" /> : 'Save'}
+              </button>
+            </div>
+            {emailHint && <p className="text-[11px] text-teal-400/80 mt-1.5">{emailHint}</p>}
+          </div>
+        </div>
       </div>
 
       {loading ? (

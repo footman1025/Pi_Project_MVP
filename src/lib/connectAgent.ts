@@ -66,7 +66,7 @@ export function connectOfflineReply(text: string, teamHint?: ConnectTeam | null)
   }
 
   if (/demo|walkthrough|pitch/.test(lower)) {
-    return `Open Investor Demo at /demo for the ~5 minute story (what Pi is, who it’s for, why AI is central), then /investor for the opportunity graph. Want a human follow-up? Tap Speak with a Human — I’ll route you (likely ${teamLabel}).`
+    return `Open Investor Demo at /demo for the ~5 minute story (what Pi is, who it’s for, why AI is central), then /investor for the company view (vision, Twin, metrics, roadmap, architecture) plus Demo opportunity-graph search. Want a human follow-up? Tap Speak with a Human — I’ll route you (likely ${teamLabel}).`
   }
 
   if (/human|person|call|meeting|speak/.test(lower)) {
@@ -74,7 +74,7 @@ export function connectOfflineReply(text: string, teamHint?: ConnectTeam | null)
   }
 
   if (team === 'investors') {
-    return `For investors: start with /demo (walkthrough) and /investor (graph search). We prioritize traction and honest Live vs Demo labeling (/transparency). I can route you to Investors when you’re ready for a human conversation.`
+    return `For investors: start with /demo (walkthrough) and /investor (company narrative + Demo deal-flow search). We prioritize traction and honest Live vs Demo labeling (/transparency). I can route you to Investors when you’re ready for a human conversation.`
   }
 
   if (team === 'partnerships') {
@@ -141,7 +141,7 @@ export async function submitHandoff(input: {
   summary: string
   transcript: ConnectMessage[]
   userId?: string | null
-}): Promise<{ error?: string; id?: string }> {
+}): Promise<{ error?: string; id?: string; emailNote?: string }> {
   const { data, error } = await supabase
     .from('contact_handoffs')
     .insert({
@@ -165,5 +165,37 @@ export async function submitHandoff(input: {
         : error.message,
     }
   }
-  return { id: data?.id }
+
+  // Email visitor confirmation + team alert (Resend). Non-blocking if misconfigured.
+  let emailNote: string | undefined
+  if (data?.id) {
+    try {
+      const r = await fetch('/api/handoff-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ handoffId: data.id }),
+      })
+      const json = (await r.json().catch(() => ({}))) as {
+        visitorSent?: boolean
+        teamSent?: boolean
+        sentTo?: string | null
+        warnings?: string[]
+        error?: string
+      }
+      if (!r.ok) {
+        emailNote = json.error || 'Email API not ready — handoff saved in team inbox.'
+      } else if (json.visitorSent && json.sentTo) {
+        emailNote = `Confirmation emailed to ${json.sentTo}.`
+        if (json.warnings?.length) emailNote += ` (${json.warnings[0]})`
+      } else if (json.warnings?.length) {
+        emailNote = json.warnings[0]
+      } else if (json.teamSent) {
+        emailNote = 'Team was notified by email.'
+      }
+    } catch {
+      emailNote = 'Could not reach email API — handoff saved in team inbox.'
+    }
+  }
+
+  return { id: data?.id, emailNote }
 }

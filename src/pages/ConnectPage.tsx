@@ -51,6 +51,7 @@ export default function ConnectPage() {
   const [team, setTeam] = useState<ConnectTeam>('partnerships')
   const [sending, setSending] = useState(false)
   const [done, setDone] = useState(false)
+  const [emailNote, setEmailNote] = useState('')
   const [error, setError] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -136,14 +137,19 @@ export default function ConnectPage() {
     }
     track('connect_handoff_submitted', { team })
     setDone(true)
+    setEmailNote(res.emailNote || '')
+    const emailBit = res.emailNote
+      ? ` ${res.emailNote}`
+      : ' A confirmation email was sent if email delivery is configured.'
     setMessages(m => [
       ...m,
       {
         role: 'ai',
         text:
           `Done — I’ve passed your context to ${CONNECT_TEAMS.find(t => t.id === team)?.label}. ` +
-          'A human will continue from this summary so you don’t repeat yourself. ' +
-          'Meanwhile you can explore /demo or /transparency.',
+          'A human will continue from this summary so you don’t repeat yourself.' +
+          emailBit +
+          ' Meanwhile you can explore /demo or /transparency.',
       },
     ])
   }
@@ -267,8 +273,11 @@ export default function ConnectPage() {
           {humanOpen ? (
             <div className="border-t border-white/10 p-4 space-y-3" style={{ background: 'rgba(0,0,0,0.25)' }}>
               {done ? (
-                <div className="flex items-center gap-2 text-emerald-300 text-sm py-2">
-                  <Check size={16} /> Handoff sent with full conversation context.
+                <div className="text-emerald-300 text-sm py-2 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Check size={16} /> Handoff saved to the team inbox with full conversation context.
+                  </div>
+                  {emailNote && <p className="text-xs text-slate-400 pl-6">{emailNote}</p>}
                 </div>
               ) : (
                 <>
@@ -277,7 +286,7 @@ export default function ConnectPage() {
                     <p className="text-white text-sm font-bold">Speak with a Human</p>
                   </div>
                   <p className="text-slate-500 text-xs leading-relaxed">
-                    Pi AI will attach a summary of this chat. Choose a team — we’ll grow routing as Pi scales.
+                    Pi AI attaches a chat summary. We’ll email confirmation to <span className="text-slate-300">whatever address you type below</span> — not only a fixed team address.
                   </p>
                   <div className="grid sm:grid-cols-2 gap-2">
                     <input

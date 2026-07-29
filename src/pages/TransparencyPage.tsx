@@ -11,19 +11,21 @@ type Row = {
 }
 
 const rows: Row[] = [
-  { area: 'Contact & Partnership (Meet Pi AI)', kind: 'live', detail: '/connect — AI greets first, guides intent, Speak with a Human + summarized handoff to Investors/Partnerships/Enterprise/Support/Community/Hiring/Media; team inbox at /handoffs' },
+  { area: 'Contact & Partnership (Meet Pi AI)', kind: 'live', detail: '/connect — AI greets first, guides intent, Speak with a Human saves to /handoffs + emails visitor confirmation and HANDOFF_NOTIFY_EMAIL (Resend); team inbox at /handoffs' },
   { area: 'Traction metrics & validation', kind: 'live', detail: 'product_events + product_feedback; Traction page (activation, retention, intros, opp interest, would-use-again); in-app feedback widget' },
   { area: 'Auth & profiles', kind: 'live', detail: 'Supabase auth, onboarding save, public profiles, follow graph' },
   { area: 'Feed & communities', kind: 'live', detail: 'Posts, likes, comments, images; join communities and post' },
-  { area: 'Messages & alerts', kind: 'live', detail: 'Realtime DMs + in-app alerts; Web Push / PWA for likes, comments, messages; AI match & opportunity suggestions' },
-  { area: 'Digital Twin', kind: 'live', detail: 'Rules-based twin from profile signals (not a full LLM twin yet)' },
+  { area: 'Messages & alerts', kind: 'live', detail: 'Realtime DMs + in-app; Web Push / Install Pi for cellphone; AI suggestions with 12h cooldown (no duplicate spam); optional email alerts (opt-in on Notifications — needs RESEND_API_KEY + supabase_notification_preferences.sql)' },
+  { area: 'Digital Twin', kind: 'live', detail: 'Rules-based twin from profile signals (not a full LLM twin yet); investor storytelling on /investor + /demo' },
   { area: 'Matching', kind: 'partial', detail: 'Live ranked graph when members exist; honest empty state (no fake cards) until seed/invite' },
   { area: 'Opportunities catalog', kind: 'partial', detail: 'Seeded Supabase catalog + twin fit scores; run supabase_opportunities.sql; apply = Phase 2' },
   { area: 'Demo member seed', kind: 'partial', detail: 'Run supabase_seed_demo_members.sql or npm run seed:demo for an 8-person live graph' },
   { area: 'Creators / Professionals', kind: 'partial', detail: 'Live member discovery + Message/Profile; tips, courses, booking = Soon' },
   { area: 'Communities ranking', kind: 'live', detail: 'Twin-scored reasons from your interests/goals — not hardcoded mock blurbs' },
   { area: 'AI Assistant', kind: 'partial', detail: 'Groq when enabled server-side; otherwise guided keyword answers' },
-  { area: 'Investor Demo / Investor search', kind: 'demo', detail: 'Scripted walkthrough for storytelling — intentionally not live deal flow' },
+  { area: 'Investor Dashboard (/investor)', kind: 'partial', detail: 'Company narrative: vision, Twin story, metrics maturity, roadmap, architecture, AI, market + Demo opportunity-graph search' },
+  { area: 'Investor Demo walkthrough', kind: 'demo', detail: '/demo scripted story (Why Pi → Twin → matches → opps) — intentionally not live deal flow' },
+  { area: 'Investor opportunity graph search', kind: 'demo', detail: 'Deal-flow search on /investor — storytelling only, labeled Demo' },
   { area: 'Stripe / tips / courses', kind: 'soon', detail: 'Monetization and payments planned after Investor Readiness' },
   { area: 'Enterprise workspace', kind: 'soon', detail: 'B2B investor intelligence and org tools are later-phase' },
   { area: 'Pi Earth / Autopilot', kind: 'soon', detail: 'Product concepts on the landing page — not shipped' },
@@ -95,6 +97,13 @@ export default function TransparencyPage() {
               className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold text-slate-200 text-sm border border-white/10 hover:border-white/20"
             >
               Traction metrics
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/investor')}
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold text-slate-200 text-sm border border-white/10 hover:border-white/20"
+            >
+              Investor Dashboard
             </button>
             <button
               type="button"
