@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import UserAvatar from '../components/UserAvatar'
+import HeroOpportunityGraph from '../components/HeroOpportunityGraph'
 import { supabase } from '../lib/supabase'
 
 const pillars = [
@@ -234,14 +235,14 @@ export default function LandingPage() {
         )}
       </nav>
 
-      {/* Hero — brand first, one composition */}
+      {/* Hero — brand first, one composition + animated graph */}
       <section className="relative min-h-[100svh] flex flex-col justify-center px-4 sm:px-6 pt-24 pb-16 overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
           <div
             className="absolute inset-0 opacity-[0.35]"
             style={{
               background:
-                'radial-gradient(ellipse 90% 60% at 50% 20%, rgba(20,184,166,0.35), transparent 55%), radial-gradient(ellipse 50% 40% at 80% 70%, rgba(13,148,136,0.2), transparent)',
+                'radial-gradient(ellipse 90% 60% at 35% 25%, rgba(20,184,166,0.32), transparent 55%), radial-gradient(ellipse 55% 45% at 85% 55%, rgba(13,148,136,0.28), transparent)',
             }}
           />
           <div
@@ -253,60 +254,56 @@ export default function LandingPage() {
               maskImage: 'radial-gradient(ellipse 70% 60% at 50% 40%, black, transparent)',
             }}
           />
-          {/* Full-bleed brand mark as visual plane */}
-          <div
-            className="absolute right-[-8%] top-[18%] text-[min(42vw,28rem)] font-display font-extrabold leading-none select-none pointer-events-none"
-            style={{
-              background: 'linear-gradient(160deg, rgba(20,184,166,0.18), rgba(20,184,166,0.02))',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              animation: 'piFloat 12s ease-in-out infinite',
-            }}
-            aria-hidden
-          >
-            π
-          </div>
         </div>
 
-        <div className="relative max-w-6xl mx-auto w-full">
-          <p
-            className="font-display text-6xl sm:text-7xl md:text-8xl font-extrabold tracking-tight text-white mb-6"
-            style={{ animation: 'piRise 0.9s ease-out both' }}
-          >
-            Pi
-          </p>
-          <h1
-            className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-white/95 max-w-2xl leading-[1.15] mb-5"
-            style={{ animation: 'piRise 0.9s ease-out 0.08s both' }}
-          >
-            One platform for people, opportunity, and AI that actually acts.
-          </h1>
-          <p
-            className="text-base sm:text-lg text-slate-400 max-w-xl leading-relaxed mb-9"
-            style={{ animation: 'piRise 0.9s ease-out 0.16s both' }}
-          >
-            Digital Twin matching, communities, and opportunity intelligence — built as one ecosystem.
-          </p>
+        <div className="relative max-w-6xl mx-auto w-full grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] gap-10 lg:gap-6 items-center">
+          <div className="min-w-0">
+            <p
+              className="font-display text-6xl sm:text-7xl md:text-8xl font-extrabold tracking-tight text-white mb-6"
+              style={{ animation: 'piRise 0.9s ease-out both' }}
+            >
+              Pi
+            </p>
+            <h1
+              className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-white/95 max-w-2xl leading-[1.15] mb-5"
+              style={{ animation: 'piRise 0.9s ease-out 0.08s both' }}
+            >
+              One platform for people, opportunity, and AI that actually acts.
+            </h1>
+            <p
+              className="text-base sm:text-lg text-slate-400 max-w-xl leading-relaxed mb-9"
+              style={{ animation: 'piRise 0.9s ease-out 0.16s both' }}
+            >
+              Digital Twin matching, communities, and opportunity intelligence — built as one ecosystem.
+            </p>
+            <div
+              className="flex flex-col sm:flex-row gap-3"
+              style={{ animation: 'piRise 0.9s ease-out 0.24s both' }}
+            >
+              <button
+                type="button"
+                onClick={() => navigate(isLoggedIn ? '/dashboard' : '/signup')}
+                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-2xl font-bold text-white text-base transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)', boxShadow: '0 12px 40px rgba(20,184,166,0.28)' }}
+              >
+                {isLoggedIn ? 'Open dashboard' : 'Get started'}
+                <ArrowRight size={18} />
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/demo')}
+                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-2xl font-semibold text-teal-100 text-base border border-teal-500/25 hover:bg-teal-500/10 transition-colors"
+              >
+                Investor Demo
+              </button>
+            </div>
+          </div>
+
           <div
-            className="flex flex-col sm:flex-row gap-3"
-            style={{ animation: 'piRise 0.9s ease-out 0.24s both' }}
+            className="relative flex justify-center lg:justify-end mt-4 lg:mt-0"
+            style={{ animation: 'piRise 1.1s ease-out 0.2s both' }}
           >
-            <button
-              type="button"
-              onClick={() => navigate(isLoggedIn ? '/dashboard' : '/signup')}
-              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-2xl font-bold text-white text-base transition-transform hover:scale-[1.02] active:scale-[0.98]"
-              style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)', boxShadow: '0 12px 40px rgba(20,184,166,0.28)' }}
-            >
-              {isLoggedIn ? 'Open dashboard' : 'Get started'}
-              <ArrowRight size={18} />
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/demo')}
-              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-2xl font-semibold text-teal-100 text-base border border-teal-500/25 hover:bg-teal-500/10 transition-colors"
-            >
-              Investor Demo
-            </button>
+            <HeroOpportunityGraph />
           </div>
         </div>
 
@@ -315,9 +312,62 @@ export default function LandingPage() {
             from { opacity: 0; transform: translateY(18px); }
             to { opacity: 1; transform: translateY(0); }
           }
-          @keyframes piFloat {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-18px); }
+          @keyframes heroGraphBreathe {
+            0%, 100% { transform: scale(1); opacity: 0.7; }
+            50% { transform: scale(1.08); opacity: 1; }
+          }
+          @keyframes heroGraphSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+          @keyframes heroGraphSpinRev {
+            from { transform: rotate(360deg); }
+            to { transform: rotate(0deg); }
+          }
+          @keyframes heroGraphNode {
+            0%, 100% { transform: translateY(0); opacity: 0.9; }
+            50% { transform: translateY(-5px); opacity: 1; }
+          }
+          @keyframes heroGraphEdge {
+            0%, 100% { stroke-opacity: 0.35; }
+            50% { stroke-opacity: 0.9; }
+          }
+          @keyframes heroGraphCoreRing {
+            0%, 100% { transform: scale(1); opacity: 0.55; }
+            50% { transform: scale(1.18); opacity: 0.2; }
+          }
+          .hero-graph-breathe {
+            animation: heroGraphBreathe 6s ease-in-out infinite;
+            transform-origin: center;
+          }
+          .hero-graph-spin-slow {
+            animation: heroGraphSpin 48s linear infinite;
+          }
+          .hero-graph-spin-rev {
+            animation: heroGraphSpinRev 36s linear infinite;
+          }
+          .hero-graph-node {
+            animation: heroGraphNode 4.5s ease-in-out infinite;
+            transform-box: fill-box;
+            transform-origin: center;
+          }
+          .hero-graph-edge {
+            animation: heroGraphEdge 3.2s ease-in-out infinite;
+          }
+          .hero-graph-core-ring {
+            transform-box: fill-box;
+            transform-origin: center;
+            animation: heroGraphCoreRing 3.8s ease-in-out infinite;
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .hero-graph-breathe,
+            .hero-graph-spin-slow,
+            .hero-graph-spin-rev,
+            .hero-graph-node,
+            .hero-graph-edge,
+            .hero-graph-core-ring {
+              animation: none !important;
+            }
           }
         `}</style>
       </section>
