@@ -1,30 +1,45 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Sparkles, UsersRound, Globe2, BadgeCheck, ShieldCheck, TrendingUp, UserCog, LogOut, ChevronDown, Bell, LayoutGrid, UserCircle2, Bot, SearchCheck, Link2, Rocket } from 'lucide-react'
+import {
+  ArrowRight, Sparkles, UsersRound, Globe2, BadgeCheck, ShieldCheck, TrendingUp,
+  UserCog, LogOut, ChevronDown, Bell, LayoutGrid, Bot, SearchCheck, Menu, X,
+} from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import UserAvatar from '../components/UserAvatar'
 import { supabase } from '../lib/supabase'
 
-const features = [
-  { icon: Sparkles, title: 'AI-Powered Matching', desc: 'Our intelligent engine connects you with the right people, communities and opportunities — automatically.', color: 'text-indigo-400' },
-  { icon: UsersRound, title: 'Creator Economy', desc: 'Monetize your expertise through courses, communities, live streams, and digital products in one place.', color: 'text-pink-400' },
-  { icon: Globe2, title: 'Professional Growth', desc: 'Connect with professionals, investors, and collaborators across borders through AI-enhanced discovery.', color: 'text-emerald-400' },
-  { icon: BadgeCheck, title: 'SEO Discoverability', desc: 'Public profiles and communities are search-engine indexed — grow organically without paid ads.', color: 'text-amber-400' },
-  { icon: ShieldCheck, title: 'Communities', desc: 'Join or build niche communities across technology, business, arts and more with AI-curated content.', color: 'text-violet-400' },
-  { icon: TrendingUp, title: 'Opportunity Hub', desc: 'Discover startup competitions, funding rounds, co-founders, mentors and freelance projects in one feed.', color: 'text-cyan-400' },
+const pillars = [
+  {
+    icon: Bot,
+    title: 'Digital Twin',
+    desc: 'Skills and goals become an AI representation that ranks people and opportunities — with reasons you can audit.',
+  },
+  {
+    icon: Sparkles,
+    title: 'Intelligent matching',
+    desc: 'Ranked intros based on what accelerates your goals — not a noisy feed optimized for time-on-app.',
+  },
+  {
+    icon: TrendingUp,
+    title: 'Opportunity layer',
+    desc: 'Funding, roles, grants, and collaborations scored against your Twin in one catalog.',
+  },
 ]
 
-const stats = [
-  { value: '2.3M+', label: 'Monthly searches for Pi profiles', demo: true },
-  { value: '98%', label: 'Average match accuracy', demo: true },
-  { value: '150+', label: 'Countries supported', demo: true },
-  { value: '$1B+', label: 'Opportunities listed', demo: true },
+const featureRows = [
+  { icon: UsersRound, title: 'Communities', desc: 'Twin-ranked hubs. Join, post, and grow density around real interests.' },
+  { icon: SearchCheck, title: 'Discoverability', desc: 'Public profiles and feature pages built for organic search from day one.' },
+  { icon: Globe2, title: 'Global graph', desc: 'Connect across borders with one identity layer and honest Live vs Demo labeling.' },
+  { icon: ShieldCheck, title: 'Trust & clarity', desc: 'Engineering Transparency so investors and members see what’s real.' },
+  { icon: BadgeCheck, title: 'Creator & pro paths', desc: 'Discover members now; monetization tools mature with the product.' },
+  { icon: Bot, title: 'Meet Pi AI', desc: 'First contact that understands intent, then hands off to humans with context.' },
 ]
 
 export default function LandingPage() {
   const navigate = useNavigate()
   const { session, profile, user, signOut } = useAuth()
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -32,7 +47,6 @@ export default function LandingPage() {
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'You'
   const resolvedAvatar = avatarUrl || profile?.avatar_url || null
 
-  // Close account menu when clicking anywhere outside it
   useEffect(() => {
     if (!dropdownOpen) return
     const onPointerDown = (e: MouseEvent | TouchEvent) => {
@@ -47,12 +61,10 @@ export default function LandingPage() {
     }
   }, [dropdownOpen])
 
-  // Keep local avatar in sync when AuthContext profile updates
   useEffect(() => {
     if (profile?.avatar_url) setAvatarUrl(profile.avatar_url)
   }, [profile?.avatar_url])
 
-  // Ensure latest avatar is loaded on the public landing header
   useEffect(() => {
     if (!user?.id) {
       setAvatarUrl(null)
@@ -77,36 +89,50 @@ export default function LandingPage() {
     navigate('/')
   }
 
-  return (
-    <div className="min-h-screen" style={{ background: '#080d1a' }}>
-      {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center px-6 py-4 border-b border-white/5"
-        style={{ background: 'rgba(8,13,26,0.9)', backdropFilter: 'blur(16px)' }}>
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-black text-lg"
-            style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
-            π
-          </div>
-          <span className="text-white font-bold text-xl">Pi</span>
-        </div>
-        <div className="flex-1" />
-        <div className="hidden md:flex items-center gap-6 text-sm text-slate-400 mr-8">
-          <a href="#why" className="hover:text-white transition-colors">Why Pi</a>
-          <a href="#features" className="hover:text-white transition-colors">Features</a>
-          <button onClick={() => navigate('/features')} className="hover:text-white transition-colors">SEO Hub</button>
-          <button onClick={() => navigate('/demo')} className="hover:text-teal-300 transition-colors text-teal-400/90 font-medium">Investor Demo</button>
-          <button onClick={() => navigate('/grow')} className="hover:text-white transition-colors">Grow</button>
-          <button onClick={() => navigate('/connect')} className="hover:text-white transition-colors">Meet Pi AI</button>
-          <button onClick={() => navigate('/transparency')} className="hover:text-white transition-colors">What’s live</button>
-        </div>
+  const navLink = (label: string, action: () => void) => (
+    <button
+      type="button"
+      onClick={() => { action(); setMobileOpen(false) }}
+      className="text-sm text-slate-400 hover:text-white transition-colors"
+    >
+      {label}
+    </button>
+  )
 
-        {isLoggedIn ? (
-          /* ── Logged-in state — avatar dropdown only ── */
-          <div className="flex items-center gap-2">
+  return (
+    <div className="min-h-screen overflow-x-hidden" style={{ background: '#06090f' }}>
+      {/* Nav */}
+      <nav
+        className="fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 py-3.5 border-b border-white/[0.06]"
+        style={{ background: 'rgba(6,9,15,0.82)', backdropFilter: 'blur(18px)' }}
+      >
+        <div className="max-w-6xl mx-auto flex items-center gap-3">
+          <button type="button" onClick={() => navigate('/')} className="flex items-center gap-2.5 group">
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-lg transition-transform group-hover:scale-105"
+              style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+            >
+              π
+            </div>
+            <span className="font-display text-white font-bold text-lg tracking-tight">Pi</span>
+          </button>
+
+          <div className="flex-1" />
+
+          <div className="hidden lg:flex items-center gap-6 mr-4">
+            {navLink('Why', () => document.getElementById('why')?.scrollIntoView({ behavior: 'smooth' }))}
+            {navLink('Product', () => document.getElementById('product')?.scrollIntoView({ behavior: 'smooth' }))}
+            {navLink('Demo', () => navigate('/demo'))}
+            {navLink('Grow', () => navigate('/grow'))}
+            {navLink('Connect', () => navigate('/connect'))}
+          </div>
+
+          {isLoggedIn ? (
             <div className="relative" ref={dropdownRef}>
               <button
+                type="button"
                 onClick={() => setDropdownOpen(o => !o)}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all"
+                className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] transition-all"
               >
                 <UserAvatar
                   key={resolvedAvatar || user?.id || 'nav'}
@@ -116,213 +142,211 @@ export default function LandingPage() {
                   size={28}
                   rounded="rounded-lg"
                 />
-                <span className="text-white text-sm font-medium hidden sm:inline max-w-[120px] truncate">{displayName}</span>
-                <ChevronDown size={14} className={`text-slate-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                <span className="text-white text-sm font-medium hidden sm:inline max-w-[100px] truncate">{displayName}</span>
+                <ChevronDown size={14} className={`text-slate-500 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
               </button>
-
-              {/* Dropdown menu */}
               {dropdownOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl border border-white/10 shadow-2xl z-20 overflow-hidden animate-slide-up"
-                    style={{ background: 'linear-gradient(135deg, #0d1224, #080d1a)' }}>
-
-                    {/* User info header */}
-                    <div className="px-4 py-3 border-b border-white/5">
-                      <div className="flex items-center gap-3">
-                        <UserAvatar
-                          key={`dd-${resolvedAvatar || user?.id || 'x'}`}
-                          url={resolvedAvatar}
-                          name={displayName}
-                          id={user?.id}
-                          size={40}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white font-semibold text-sm truncate">{displayName}</p>
-                          <p className="text-slate-500 text-xs truncate">{user?.email}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Menu items */}
-                    <div className="p-2">
-                      <button
-                        onClick={() => { navigate('/dashboard'); setDropdownOpen(false) }}
-                        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all text-left"
-                      >
-                        <LayoutGrid size={16} className="text-pi-400" />
-                        Dashboard
-                      </button>
-                      <button
-                        onClick={() => { navigate('/feed'); setDropdownOpen(false) }}
-                        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all text-left"
-                      >
-                        <Sparkles size={16} className="text-violet-400" />
-                        My Feed
-                      </button>
-                      <button
-                        onClick={() => { navigate('/notifications'); setDropdownOpen(false) }}
-                        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all text-left"
-                      >
-                        <Bell size={16} className="text-amber-400" />
-                        Notifications
-                      </button>
-                      <button
-                        onClick={() => { navigate('/profile/edit'); setDropdownOpen(false) }}
-                        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all text-left"
-                      >
-                        <UserCog size={16} className="text-emerald-400" />
-                        Edit Profile
-                      </button>
-
-                      <div className="my-1 border-t border-white/5" />
-
-                      <button
-                        onClick={handleSignOut}
-                        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all text-left"
-                      >
-                        <LogOut size={16} />
-                        Sign Out
-                      </button>
-                    </div>
+                <div
+                  className="absolute right-0 top-full mt-2 w-56 rounded-2xl border border-white/10 shadow-2xl z-20 overflow-hidden"
+                  style={{ background: 'linear-gradient(160deg, #0d1220, #06090f)' }}
+                >
+                  <div className="px-4 py-3 border-b border-white/5">
+                    <p className="text-white font-semibold text-sm truncate">{displayName}</p>
+                    <p className="text-slate-500 text-xs truncate">{user?.email}</p>
                   </div>
+                  <div className="p-1.5">
+                    {[
+                      { to: '/dashboard', icon: LayoutGrid, label: 'Dashboard', color: 'text-teal-400' },
+                      { to: '/feed', icon: Sparkles, label: 'Feed', color: 'text-cyan-400' },
+                      { to: '/notifications', icon: Bell, label: 'Notifications', color: 'text-amber-400' },
+                      { to: '/profile/edit', icon: UserCog, label: 'Edit profile', color: 'text-emerald-400' },
+                    ].map(item => (
+                      <button
+                        key={item.to}
+                        type="button"
+                        onClick={() => { navigate(item.to); setDropdownOpen(false) }}
+                        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:text-white hover:bg-white/5 text-left"
+                      >
+                        <item.icon size={15} className={item.color} />
+                        {item.label}
+                      </button>
+                    ))}
+                    <div className="my-1 border-t border-white/5" />
+                    <button
+                      type="button"
+                      onClick={handleSignOut}
+                      className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-red-400 hover:bg-red-500/10 text-left"
+                    >
+                      <LogOut size={15} /> Sign out
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
-          </div>
-        ) : (
-          /* Logged-out state */
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigate('/login')}
-              className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-300 hover:text-white border border-white/10 hover:border-white/20 transition-all"
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => navigate('/signup')}
-              className="px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
-              style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
-            >
-              Get Started
-            </button>
+          ) : (
+            <div className="hidden sm:flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="px-3.5 py-2 rounded-xl text-sm font-semibold text-slate-300 hover:text-white border border-white/10"
+              >
+                Sign in
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/signup')}
+                className="px-3.5 py-2 rounded-xl text-sm font-bold text-white"
+                style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+              >
+                Get started
+              </button>
+            </div>
+          )}
+
+          <button
+            type="button"
+            className="lg:hidden p-2 text-slate-400 hover:text-white"
+            onClick={() => setMobileOpen(o => !o)}
+            aria-label="Menu"
+          >
+            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
+
+        {mobileOpen && (
+          <div className="lg:hidden mt-3 pb-2 flex flex-col gap-3 border-t border-white/5 pt-3">
+            {navLink('Why', () => document.getElementById('why')?.scrollIntoView({ behavior: 'smooth' }))}
+            {navLink('Product', () => document.getElementById('product')?.scrollIntoView({ behavior: 'smooth' }))}
+            {navLink('Demo', () => navigate('/demo'))}
+            {navLink('Grow', () => navigate('/grow'))}
+            {navLink('Connect', () => navigate('/connect'))}
+            {!isLoggedIn && (
+              <button
+                type="button"
+                onClick={() => { navigate('/signup'); setMobileOpen(false) }}
+                className="mt-1 px-4 py-2.5 rounded-xl text-sm font-bold text-white text-center"
+                style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+              >
+                Get started
+              </button>
+            )}
           </div>
         )}
       </nav>
 
-      {/* Hero */}
-      <section className="relative min-h-screen flex items-center justify-center px-6 pt-20 overflow-hidden">
-        {/* Background glow */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full opacity-20"
-            style={{ background: 'radial-gradient(circle, #14b8a6 0%, transparent 70%)' }} />
-          <div className="absolute top-1/3 left-1/4 w-[300px] h-[300px] rounded-full opacity-10"
-            style={{ background: 'radial-gradient(circle, #0d9488 0%, transparent 70%)' }} />
-          <div className="absolute top-1/3 right-1/4 w-[300px] h-[300px] rounded-full opacity-10"
-            style={{ background: 'radial-gradient(circle, #0f766e 0%, transparent 70%)' }} />
-          {/* Grid */}
-          <div className="absolute inset-0 opacity-5"
-            style={{ backgroundImage: 'linear-gradient(rgba(20,184,166,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(20,184,166,0.5) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
+      {/* Hero — brand first, one composition */}
+      <section className="relative min-h-[100svh] flex flex-col justify-center px-4 sm:px-6 pt-24 pb-16 overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none">
+          <div
+            className="absolute inset-0 opacity-[0.35]"
+            style={{
+              background:
+                'radial-gradient(ellipse 90% 60% at 50% 20%, rgba(20,184,166,0.35), transparent 55%), radial-gradient(ellipse 50% 40% at 80% 70%, rgba(13,148,136,0.2), transparent)',
+            }}
+          />
+          <div
+            className="absolute inset-0 opacity-[0.07]"
+            style={{
+              backgroundImage:
+                'linear-gradient(rgba(94,234,212,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(94,234,212,0.5) 1px, transparent 1px)',
+              backgroundSize: '72px 72px',
+              maskImage: 'radial-gradient(ellipse 70% 60% at 50% 40%, black, transparent)',
+            }}
+          />
+          {/* Full-bleed brand mark as visual plane */}
+          <div
+            className="absolute right-[-8%] top-[18%] text-[min(42vw,28rem)] font-display font-extrabold leading-none select-none pointer-events-none"
+            style={{
+              background: 'linear-gradient(160deg, rgba(20,184,166,0.18), rgba(20,184,166,0.02))',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              animation: 'piFloat 12s ease-in-out infinite',
+            }}
+            aria-hidden
+          >
+            π
+          </div>
         </div>
 
-        <div className="relative max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-pi-500/30 bg-pi-500/10 text-pi-300 text-sm font-medium mb-8 animate-fade-in">
-            <Sparkles size={14} />
-            AI-Native Platform · Now in Private Beta
-          </div>
-
-          <h1 className="text-5xl md:text-7xl font-black text-white leading-tight mb-6 animate-slide-up">
-            One Platform.{' '}
-            <span className="block" style={{ background: 'linear-gradient(135deg, #5eead4, #2dd4bf, #99f6e4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              Infinite Opportunities.
-            </span>
+        <div className="relative max-w-6xl mx-auto w-full">
+          <p
+            className="font-display text-6xl sm:text-7xl md:text-8xl font-extrabold tracking-tight text-white mb-6"
+            style={{ animation: 'piRise 0.9s ease-out both' }}
+          >
+            Pi
+          </p>
+          <h1
+            className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-white/95 max-w-2xl leading-[1.15] mb-5"
+            style={{ animation: 'piRise 0.9s ease-out 0.08s both' }}
+          >
+            One platform for people, opportunity, and AI that actually acts.
           </h1>
-
-          <p className="text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed animate-fade-in">
-            Pi is an AI-native human opportunity operating system — identity, matching, and opportunity intelligence in one layer.
+          <p
+            className="text-base sm:text-lg text-slate-400 max-w-xl leading-relaxed mb-9"
+            style={{ animation: 'piRise 0.9s ease-out 0.16s both' }}
+          >
+            Digital Twin matching, communities, and opportunity intelligence — built as one ecosystem.
           </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+          <div
+            className="flex flex-col sm:flex-row gap-3"
+            style={{ animation: 'piRise 0.9s ease-out 0.24s both' }}
+          >
             <button
-              onClick={() => navigate('/signup')}
-              className="flex items-center gap-2 px-8 py-4 rounded-2xl font-bold text-white text-lg transition-all hover:scale-105 active:scale-95 shadow-2xl"
-              style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)', boxShadow: '0 0 40px rgba(20,184,166,0.4)' }}
+              type="button"
+              onClick={() => navigate(isLoggedIn ? '/dashboard' : '/signup')}
+              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-2xl font-bold text-white text-base transition-transform hover:scale-[1.02] active:scale-[0.98]"
+              style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)', boxShadow: '0 12px 40px rgba(20,184,166,0.28)' }}
             >
-              Get Started Free
-              <ArrowRight size={20} />
+              {isLoggedIn ? 'Open dashboard' : 'Get started'}
+              <ArrowRight size={18} />
             </button>
             <button
+              type="button"
               onClick={() => navigate('/demo')}
-              className="flex items-center gap-2 px-8 py-4 rounded-2xl font-bold text-teal-200 text-lg border border-teal-500/30 hover:bg-teal-500/10 transition-all"
+              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-2xl font-semibold text-teal-100 text-base border border-teal-500/25 hover:bg-teal-500/10 transition-colors"
             >
-              <Sparkles size={18} /> Investor Demo Mode
+              Investor Demo
             </button>
           </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
-            {stats.map((s, i) => (
-              <div key={i} className="text-center p-4 rounded-2xl border border-white/5 relative"
-                style={{ background: 'rgba(20,184,166,0.05)' }}>
-                {s.demo && (
-                  <span className="absolute top-2 right-2 text-xs px-1.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/25 text-amber-400 font-semibold">
-                    Demo
-                  </span>
-                )}
-                <p className="text-2xl font-black" style={{ background: 'linear-gradient(135deg, #5eead4, #99f6e4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{s.value}</p>
-                <p className="text-xs text-slate-400 mt-1">{s.label}</p>
-              </div>
-            ))}
-          </div>
         </div>
+
+        <style>{`
+          @keyframes piRise {
+            from { opacity: 0; transform: translateY(18px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes piFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-18px); }
+          }
+        `}</style>
       </section>
 
-      {/* Why Pi */}
-      <section id="why" className="py-24 px-6">
-        <div className="max-w-4xl mx-auto text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-black text-white mb-4">
-            Why <span style={{ background: 'linear-gradient(135deg, #5eead4, #99f6e4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Pi</span>?
-          </h2>
-          <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-            The internet fragmented our digital lives. We use different apps for every part of who we are. Pi unifies them with intelligence at the core.
-          </p>
-        </div>
-
-        <div className="max-w-5xl mx-auto grid md:grid-cols-3 gap-6">
-          {[
-            { emoji: '📱', title: 'Before Pi', items: ['Instagram for social', 'LinkedIn for work', 'Discord for communities', 'ChatGPT for AI', 'Zoom for calls', 'Upwork for freelance'], bad: true },
-            { emoji: '⚡', title: 'The Problem', items: ['Fragmented identity', 'Missed opportunities', 'No intelligent matching', 'Multiple subscriptions', 'Context switching fatigue', 'No unified discovery'], bad: true },
-            { emoji: 'π', title: 'With Pi', items: ['One intelligent profile', 'AI-powered matching', 'Unified communities', 'Creator monetization', 'Professional growth', 'Organic SEO discovery'], bad: false },
-          ].map((col, i) => (
-            <div key={i} className={`p-6 rounded-2xl border ${col.bad ? 'border-white/5' : 'border-pi-500/30'}`}
-              style={{ background: col.bad ? 'rgba(255,255,255,0.02)' : 'rgba(20,184,166,0.08)' }}>
-              <div className="text-3xl mb-4">{col.emoji}</div>
-              <h3 className={`font-bold text-lg mb-4 ${col.bad ? 'text-slate-400' : 'text-white'}`}>{col.title}</h3>
-              <ul className="space-y-2">
-                {col.items.map((item, j) => (
-                  <li key={j} className={`text-sm flex items-center gap-2 ${col.bad ? 'text-slate-500' : 'text-slate-300'}`}>
-                    <span>{col.bad ? '✗' : '✓'}</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Features */}
-      <section id="features" className="py-24 px-6" style={{ background: 'rgba(20,184,166,0.03)' }}>
+      {/* Why — one job */}
+      <section id="why" className="relative px-4 sm:px-6 py-20 sm:py-28 border-t border-white/[0.05]">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-black text-white mb-4">Everything in One Ecosystem</h2>
-            <p className="text-lg text-slate-400">Built from the ground up with AI as the intelligence layer — not an add-on feature.</p>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map(({ icon: Icon, title, desc, color }, i) => (
-              <div key={i} className="p-6 rounded-2xl border border-white/5 hover:border-pi-500/20 transition-all duration-300 group cursor-pointer"
-                style={{ background: 'linear-gradient(135deg, rgba(30,27,75,0.4), rgba(15,23,42,0.6))' }}>
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 bg-white/5 ${color} group-hover:scale-110 transition-transform`}>
-                  <Icon size={20} />
+          <p className="text-teal-400 text-xs font-bold uppercase tracking-[0.16em] mb-3">Why Pi</p>
+          <h2 className="font-display text-3xl sm:text-4xl font-bold text-white mb-3 max-w-xl leading-tight">
+            Fragmented tools. One intelligent layer.
+          </h2>
+          <p className="text-slate-400 text-sm sm:text-base max-w-lg mb-12 leading-relaxed">
+            Social, work, communities, and AI live in separate apps. Pi unifies identity and opportunity with Twin intelligence at the center.
+          </p>
+
+          <div className="grid md:grid-cols-3 gap-4 sm:gap-5">
+            {pillars.map(({ icon: Icon, title, desc }) => (
+              <div
+                key={title}
+                className="rounded-2xl border border-white/[0.07] p-5 sm:p-6"
+                style={{ background: 'linear-gradient(160deg, rgba(18,28,40,0.9), rgba(8,12,20,0.95))' }}
+              >
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center mb-4 text-teal-200"
+                  style={{ background: 'rgba(20,184,166,0.15)' }}
+                >
+                  <Icon size={18} />
                 </div>
-                <h3 className="text-white font-bold mb-2">{title}</h3>
+                <h3 className="font-display text-lg font-bold text-white mb-2">{title}</h3>
                 <p className="text-slate-400 text-sm leading-relaxed">{desc}</p>
               </div>
             ))}
@@ -330,271 +354,149 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* SEO Section */}
-      <section id="seo" className="py-24 px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="p-8 md:p-12 rounded-3xl border border-pi-500/20"
-            style={{ background: 'linear-gradient(135deg, rgba(20,184,166,0.1), rgba(13,148,136,0.05))' }}>
-            <div className="text-center mb-10">
-              {/* Modern icon instead of emoji */}
-              <div className="w-16 h-16 rounded-2xl mx-auto mb-6 flex items-center justify-center"
-                style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)', boxShadow: '0 0 40px rgba(20,184,166,0.4)' }}>
-                <TrendingUp size={30} className="text-white" />
-              </div>
-              <h2 className="text-4xl font-black text-white mb-4">Grow Organically with SEO</h2>
-              <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-                Every public creator, professional, and community on Pi is search-engine indexed. Pi becomes your long-term organic growth engine — no ad spend required.
-              </p>
+      {/* Product */}
+      <section
+        id="product"
+        className="relative px-4 sm:px-6 py-20 sm:py-28"
+        style={{ background: 'linear-gradient(180deg, rgba(20,184,166,0.04), transparent)' }}
+      >
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-12">
+            <div>
+              <p className="text-teal-400 text-xs font-bold uppercase tracking-[0.16em] mb-3">Product</p>
+              <h2 className="font-display text-3xl sm:text-4xl font-bold text-white max-w-md leading-tight">
+                Everything in one ecosystem
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/features')}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-teal-300 hover:text-teal-200 self-start sm:self-auto"
+            >
+              Feature SEO hub <ArrowRight size={14} />
+            </button>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {featureRows.map(({ icon: Icon, title, desc }) => (
               <button
+                key={title}
                 type="button"
                 onClick={() => navigate('/features')}
-                className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white"
-                style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+                className="text-left rounded-2xl border border-white/[0.07] p-5 hover:border-teal-500/30 transition-colors group"
+                style={{ background: 'rgba(10,14,22,0.75)' }}
               >
-                Open feature SEO hub <ArrowRight size={16} />
+                <Icon size={18} className="text-teal-400 mb-3 group-hover:scale-110 transition-transform" />
+                <h3 className="text-white font-bold text-sm mb-1.5">{title}</h3>
+                <p className="text-slate-500 text-xs leading-relaxed">{desc}</p>
               </button>
-            </div>
-            <div className="grid md:grid-cols-2 gap-6">
-              {[
-                {
-                  title: 'Indexed Profiles',
-                  desc: 'Your professional profile appears in Google search results for your name, skills, and expertise.',
-                  icon: UserCircle2,
-                  color: 'from-indigo-500 to-violet-600',
-                },
-                {
-                  title: 'Discoverable Communities',
-                  desc: 'Communities rank for topic-based searches, attracting members naturally.',
-                  icon: Globe2,
-                  color: 'from-emerald-500 to-teal-600',
-                },
-                {
-                  title: 'Creator SEO Pages',
-                  desc: 'Each creator gets a public SEO-optimized page with structured data and meta tags.',
-                  icon: Sparkles,
-                  color: 'from-pink-500 to-rose-600',
-                },
-                {
-                  title: 'Opportunity Listings',
-                  desc: 'Jobs, events, and opportunities surface in search for organic applicant discovery.',
-                  icon: BadgeCheck,
-                  color: 'from-amber-500 to-orange-600',
-                },
-              ].map((item, i) => (
-                <div key={i} className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-pi-500/20 transition-all">
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${item.color} flex items-center justify-center flex-shrink-0`}>
-                    <item.icon size={18} className="text-white" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-white text-sm mb-1">{item.title}</h4>
-                    <p className="text-xs text-slate-400 leading-relaxed">{item.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Foundation Pillars */}
-      <section className="py-24 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-pi-500/30 bg-pi-500/10 text-pi-300 text-sm font-medium mb-6">
-              <Bot size={14} />
-              The Foundation of Pi
-            </div>
-            <h2 className="text-4xl md:text-5xl font-black text-white mb-4">
-              Intelligence That Creates{' '}
-              <span style={{ background: 'linear-gradient(135deg, #5eead4, #99f6e4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                Real Value
-              </span>
+      {/* Discoverability */}
+      <section id="seo" className="px-4 sm:px-6 py-20 sm:py-28 border-t border-white/[0.05]">
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+          <div>
+            <p className="text-teal-400 text-xs font-bold uppercase tracking-[0.16em] mb-3">Visibility</p>
+            <h2 className="font-display text-3xl sm:text-4xl font-bold text-white mb-4 leading-tight">
+              Built to be found
             </h2>
-            <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-              Pi is built on six core principles that make every interaction meaningful — not just productive.
+            <p className="text-slate-400 text-sm sm:text-base leading-relaxed mb-6 max-w-md">
+              Profiles, features, and investor surfaces ship with SEO foundations — so every improvement compounds discoverability.
             </p>
+            <button
+              type="button"
+              onClick={() => navigate('/features')}
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold text-white"
+              style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+            >
+              Explore features <ArrowRight size={15} />
+            </button>
           </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <ul className="space-y-3">
             {[
-              { Icon: Bot, color: 'from-indigo-500 to-violet-600', title: 'AI Personal Intelligence', desc: 'Every user has an intelligent AI companion that discovers opportunities, organizes information, and personalizes the experience continuously.' },
-              { Icon: UsersRound, color: 'from-pink-500 to-rose-600', title: 'Social Connection', desc: 'Meaningful connections based on goals, skills, and interests — not just engagement algorithms designed to maximize time spent.' },
-              { Icon: TrendingUp, color: 'from-emerald-500 to-teal-600', title: 'Collaboration Economy', desc: 'Transform skills and ideas into opportunities through services, courses, digital products, and professional collaboration inside one ecosystem.' },
-              { Icon: SearchCheck, color: 'from-amber-500 to-orange-600', title: 'SEO Growth Engine', desc: 'Organic discovery built in from day one. Public profiles, communities, and opportunities indexed for search engines — zero ad spend required.' },
-              { Icon: Globe2, color: 'from-cyan-500 to-blue-600', title: 'Global Discovery', desc: 'AI-powered translation and matching breaks language barriers, connecting talent and opportunity across borders and time zones.' },
-              { Icon: ShieldCheck, color: 'from-violet-500 to-purple-600', title: 'Trust & Safety', desc: 'Layered moderation, compliance, and fraud prevention built into the core architecture of Pi from day one.' },
-            ].map(({ Icon, color, title, desc }, i) => (
-              <div key={i}
-                className="p-6 rounded-2xl border border-white/5 hover:border-pi-500/20 transition-all duration-300 group"
-                style={{ background: 'linear-gradient(135deg, rgba(30,27,75,0.4), rgba(15,23,42,0.6))' }}>
-                <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                  <Icon size={20} className="text-white" />
+              { t: 'Indexed public profiles', d: 'Name, skills, and expertise that can surface in search.' },
+              { t: 'Feature identity pages', d: 'Twin, matching, communities, opportunities — each discoverable.' },
+              { t: 'Honest transparency', d: 'Live / Partial / Demo labels so trust scales with growth.' },
+            ].map(item => (
+              <li
+                key={item.t}
+                className="flex gap-3 rounded-2xl border border-white/[0.07] px-4 py-4"
+                style={{ background: 'rgba(14,20,28,0.7)' }}
+              >
+                <SearchCheck size={16} className="text-teal-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-white text-sm font-semibold mb-0.5">{item.t}</p>
+                  <p className="text-slate-500 text-xs leading-relaxed">{item.d}</p>
                 </div>
-                <h3 className="font-bold text-white mb-2">{title}</h3>
-                <p className="text-slate-400 text-sm leading-relaxed">{desc}</p>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       </section>
 
-      {/* Long-Term Roadmap */}
-      <section className="py-24 px-6" style={{ background: 'rgba(20,184,166,0.03)' }}>
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-pi-500/30 bg-pi-500/10 text-pi-300 text-sm font-medium mb-6">
-              <Rocket size={14} />
-              The Journey
-            </div>
-            <h2 className="text-4xl md:text-5xl font-black text-white mb-4">Long-Term Roadmap</h2>
-            <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-              Pi earns the right to expand by making its first small network genuinely useful, understandable, and safe.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6 mb-12">
-            {[
-              {
-                Icon: Link2,
-                phase: 'Phase 1',
-                title: 'Foundation',
-                color: 'from-indigo-500 to-violet-600',
-                border: 'border-pi-500/30',
-                bg: 'rgba(20,184,166,0.08)',
-                active: true,
-                items: ['AI-native social experience', 'User experience & personalization', 'Community building', 'Early adoption & feedback'],
-              },
-              {
-                Icon: Rocket,
-                phase: 'Phase 2',
-                title: 'Expansion',
-                color: 'from-emerald-500 to-teal-600',
-                border: 'border-white/5',
-                bg: 'rgba(30,27,75,0.3)',
-                active: false,
-                items: ['Professional networking', 'Creator economy tools', 'Digital services marketplace', 'Collaboration engine'],
-              },
-              {
-                Icon: Globe2,
-                phase: 'Phase 3',
-                title: 'Pi Ecosystem',
-                color: 'from-amber-500 to-orange-600',
-                border: 'border-white/5',
-                bg: 'rgba(30,27,75,0.3)',
-                active: false,
-                items: ['Advanced AI agents', 'Pi Earth integration', 'Smart City infrastructure', 'Global marketplace & economy'],
-              },
-            ].map(({ Icon, phase, title, color, border, bg, active, items }, i) => (
-              <div key={i}
-                className={`p-6 rounded-2xl border ${border} transition-all`}
-                style={{ background: bg }}>
-                <div className="flex items-center gap-3 mb-5">
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center flex-shrink-0`}>
-                    <Icon size={18} className="text-white" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">{phase}</p>
-                    <p className="text-white font-black text-lg">{title}</p>
-                  </div>
-                  {active && (
-                    <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 font-semibold">
-                      Now
-                    </span>
-                  )}
-                </div>
-                <ul className="space-y-2">
-                  {items.map((item, j) => (
-                    <li key={j} className="flex items-center gap-2 text-sm text-slate-400">
-                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${active ? 'bg-pi-400' : 'bg-slate-600'}`}></span>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-
-          {/* Pi Earth & Autopilot teaser */}
-          <div className="grid md:grid-cols-2 gap-6">
-            {[
-              {
-                Icon: Globe2,
-                color: 'from-emerald-500 to-teal-600',
-                title: 'Pi Earth',
-                badge: 'Coming Soon',
-                desc: 'Satellite and Earth observation data transformed into AI-powered insights — supporting location-based services, environmental awareness, and Smart City initiatives.',
-              },
-              {
-                Icon: Bot,
-                color: 'from-violet-500 to-purple-600',
-                title: 'Pi Autopilot',
-                badge: 'Coming Soon',
-                desc: 'An autonomous AI orchestration engine that continuously acquires, activates, engages, and retains users — turning Pi into a self-reinforcing growth ecosystem.',
-              },
-            ].map(({ Icon, color, title, badge, desc }, i) => (
-              <div key={i}
-                className="p-6 rounded-2xl border border-white/5 hover:border-pi-500/20 transition-all group"
-                style={{ background: 'linear-gradient(135deg, rgba(30,27,75,0.4), rgba(15,23,42,0.6))' }}>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform`}>
-                    <Icon size={18} className="text-white" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-white font-bold">{title}</p>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-pi-500/15 border border-pi-500/20 text-pi-300 font-semibold">{badge}</span>
-                    </div>
-                  </div>
-                </div>
-                <p className="text-slate-400 text-sm leading-relaxed">{desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="py-24 px-6 text-center">
-        <div className="max-w-2xl mx-auto">
-          <h2 className="text-4xl md:text-5xl font-black text-white mb-6">
-            The Future of Human Connection Starts Here.
+      {/* Closing CTA */}
+      <section className="relative px-4 sm:px-6 py-24 sm:py-32 overflow-hidden">
+        <div
+          className="absolute inset-0 pointer-events-none opacity-40"
+          style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 80%, rgba(20,184,166,0.35), transparent)' }}
+        />
+        <div className="relative max-w-2xl mx-auto text-center">
+          <h2 className="font-display text-3xl sm:text-5xl font-bold text-white mb-4 leading-tight">
+            Start with Pi
           </h2>
-          <p className="text-lg text-slate-400 mb-10">Connect. Grow. Create Opportunities.</p>
-          <button
-            onClick={() => navigate('/signup')}
-            className="inline-flex items-center gap-3 px-10 py-5 rounded-2xl font-bold text-white text-xl transition-all hover:scale-105 active:scale-95 shadow-2xl"
-            style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)', boxShadow: '0 0 60px rgba(20,184,166,0.5)' }}
-          >
-            Join Pi Now
-            <ArrowRight size={22} />
-          </button>
+          <p className="text-slate-400 text-sm sm:text-base mb-8">
+            Connect. Match. Grow opportunities — with AI that serves the user.
+          </p>
+          <div className="flex flex-col sm:flex-row justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate(isLoggedIn ? '/dashboard' : '/signup')}
+              className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-2xl font-bold text-white"
+              style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+            >
+              {isLoggedIn ? 'Go to dashboard' : 'Create account'}
+              <ArrowRight size={17} />
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/transparency')}
+              className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-2xl font-semibold text-slate-300 border border-white/10 hover:border-white/20"
+            >
+              What’s live
+            </button>
+          </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-8 px-6 border-t border-white/5 text-center text-slate-500 text-sm">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <span className="text-white font-bold">π</span>
-          <span>Pi — One Platform. Infinite Opportunities.</span>
+      <footer className="px-4 sm:px-6 py-10 border-t border-white/[0.06]">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center gap-4 sm:justify-between">
+          <div className="flex items-center gap-2">
+            <span className="font-display text-white font-bold">π Pi</span>
+            <span className="text-slate-600 text-sm">One platform. Infinite opportunities.</span>
+          </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+            {[
+              { l: 'Features', to: '/features' },
+              { l: 'Grow', to: '/grow' },
+              { l: 'Demo', to: '/demo' },
+              { l: 'Transparency', to: '/transparency' },
+              { l: 'Connect', to: '/connect' },
+            ].map(x => (
+              <button
+                key={x.to}
+                type="button"
+                onClick={() => navigate(x.to)}
+                className="text-slate-500 hover:text-teal-300 transition-colors"
+              >
+                {x.l}
+              </button>
+            ))}
+          </div>
         </div>
-        <p className="mb-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-          <button type="button" onClick={() => navigate('/features')} className="text-teal-400/90 hover:text-teal-300 underline-offset-2 hover:underline">
-            Features
-          </button>
-          <span className="text-slate-600">·</span>
-          <button type="button" onClick={() => navigate('/grow')} className="text-teal-400/90 hover:text-teal-300 underline-offset-2 hover:underline">
-            Grow
-          </button>
-          <span className="text-slate-600">·</span>
-          <button type="button" onClick={() => navigate('/demo')} className="text-teal-400/90 hover:text-teal-300 underline-offset-2 hover:underline">
-            Investor Demo
-          </button>
-          <span className="text-slate-600">·</span>
-          <button type="button" onClick={() => navigate('/transparency')} className="text-teal-400/90 hover:text-teal-300 underline-offset-2 hover:underline">
-            Engineering Transparency
-          </button>
-        </p>
-        <p>© 2026 Pi. All rights reserved. · Private Pilot</p>
+        <p className="max-w-6xl mx-auto mt-6 text-slate-600 text-xs">© 2026 Pi · Private Pilot</p>
       </footer>
     </div>
   )
