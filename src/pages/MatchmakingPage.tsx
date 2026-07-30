@@ -80,7 +80,7 @@ export default function MatchmakingPage() {
       <div className="mb-6 sm:mb-8">
         <div className="flex items-center gap-2 mb-2 flex-wrap">
           <Sparkles size={22} className="text-pi-400 shrink-0" />
-          <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-white">Pi Intelligence Engine</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-normal">Pi Intelligence Engine</h1>
           <StatusBadge
             kind={usingLive ? 'live' : 'partial'}
             label={usingLive ? 'Live graph' : 'Awaiting members'}

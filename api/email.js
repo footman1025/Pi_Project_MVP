@@ -106,7 +106,7 @@ export default async function handler(req, res) {
     const link = `${origin.replace(/\/$/, '')}${path.startsWith('/') ? path : `/${path}`}`
 
     const html = `
-      <div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;padding:24px;background:#0a0f1c;color:#e2e8f0;border-radius:16px">
+        <div style="font-family:Roboto,system-ui,sans-serif;max-width:520px;margin:0 auto;padding:24px;background:#0a0f1c;color:#e2e8f0;border-radius:16px">
         <div style="font-size:22px;font-weight:800;color:#14b8a6;margin-bottom:8px">π Pi</div>
         <h1 style="font-size:18px;color:#fff;margin:0 0 12px">${escapeHtml(title)}</h1>
         <p style="font-size:14px;line-height:1.5;color:#cbd5e1;margin:0 0 20px">${escapeHtml(notifBody)}</p>

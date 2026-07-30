@@ -80,7 +80,7 @@ export default async function handler(req, res) {
     // 1) Always email the address typed in the Speak-with-a-Human form
     if (visitorEmail) {
       const visitorHtml = `
-        <div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;padding:24px;background:#0a0f1c;color:#e2e8f0;border-radius:16px">
+        <div style="font-family:Roboto,system-ui,sans-serif;max-width:520px;margin:0 auto;padding:24px;background:#0a0f1c;color:#e2e8f0;border-radius:16px">
           <div style="font-size:22px;font-weight:800;color:#14b8a6;margin-bottom:8px">π Pi</div>
           <h1 style="font-size:18px;color:#fff;margin:0 0 12px">We received your message</h1>
           <p style="font-size:14px;line-height:1.5;color:#cbd5e1;margin:0 0 12px">
@@ -114,7 +114,7 @@ export default async function handler(req, res) {
     const teamRecipients = teamList.filter(e => e !== visitorEmail)
     if (teamRecipients.length) {
       const teamHtml = `
-        <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#0a0f1c;color:#e2e8f0;border-radius:16px">
+        <div style="font-family:Roboto,system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#0a0f1c;color:#e2e8f0;border-radius:16px">
           <div style="font-size:22px;font-weight:800;color:#14b8a6;margin-bottom:8px">π Pi · New handoff</div>
           <p style="font-size:14px;color:#cbd5e1;margin:0 0 12px">
             <strong style="color:#fff">${escapeHtml(visitorName)}</strong>
