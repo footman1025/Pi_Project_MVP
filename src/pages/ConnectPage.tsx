@@ -45,7 +45,7 @@ export default function ConnectPage() {
   const [teamHint, setTeamHint] = useState<ConnectTeam | null>(null)
   const [humanOpen, setHumanOpen] = useState(false)
   const [name, setName] = useState(profile?.full_name || '')
-  const [email, setEmail] = useState(user?.email || '')
+  const [email, setEmail] = useState('')
   const [org, setOrg] = useState('')
   const [note, setNote] = useState('')
   const [team, setTeam] = useState<ConnectTeam>('partnerships')
@@ -64,10 +64,10 @@ export default function ConnectPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, typing, humanOpen])
 
+  // Name only — email always starts blank so the visitor types the address they want
   useEffect(() => {
     if (profile?.full_name && !name) setName(profile.full_name)
-    if (user?.email && !email) setEmail(user.email)
-  }, [profile, user, name, email])
+  }, [profile?.full_name])
 
   const send = async (raw: string) => {
     const trimmed = raw.trim()
@@ -107,15 +107,20 @@ export default function ConnectPage() {
   }
 
   const submitHuman = async () => {
-    if (!email.trim() && !name.trim()) {
+    const trimmedEmail = email.trim()
+    if (!trimmedEmail && !name.trim()) {
       setError('Add at least a name or email so our team can reply.')
+      return
+    }
+    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setError('Enter a valid email address (e.g. name@gmail.com).')
       return
     }
     setSending(true)
     setError('')
     const summary = buildHandoffSummary(messages, {
       name,
-      email,
+      email: trimmedEmail,
       org,
       team,
       note,
@@ -123,7 +128,7 @@ export default function ConnectPage() {
     const res = await submitHandoff({
       team,
       visitorName: name,
-      visitorEmail: email,
+      visitorEmail: trimmedEmail,
       visitorOrg: org,
       intent: note || team,
       summary,
@@ -286,7 +291,7 @@ export default function ConnectPage() {
                     <p className="text-white text-sm font-bold">Speak with a Human</p>
                   </div>
                   <p className="text-slate-500 text-xs leading-relaxed">
-                    Pi AI attaches a chat summary. We’ll email confirmation to <span className="text-slate-300">whatever address you type below</span> — not only a fixed team address.
+                    Pi AI attaches a chat summary. Type any email below — confirmation goes to that address.
                   </p>
                   <div className="grid sm:grid-cols-2 gap-2">
                     <input
@@ -298,8 +303,9 @@ export default function ConnectPage() {
                     <input
                       value={email}
                       onChange={e => setEmail(e.target.value)}
-                      placeholder="Email"
+                      placeholder="Type the email you want"
                       type="email"
+                      autoComplete="off"
                       className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-pi-500/40"
                     />
                   </div>
