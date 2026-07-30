@@ -163,9 +163,12 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
   const confirmDeleteComment = comments.find(c => c.id === confirmDeleteCommentId)
 
   return (
-    <div className="p-5 rounded-2xl border border-white/5 hover:border-white/10 transition-all"
-      style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.4), rgba(14,20,25,0.6))' }}>
-      <div className="flex items-center gap-3 mb-4">
+    <article
+      className="relative overflow-hidden rounded-2xl border border-white/[0.07] hover:border-white/15 transition-all"
+      style={{ background: 'linear-gradient(160deg, rgba(18,28,40,0.95), rgba(10,14,22,0.98))' }}
+    >
+      <div className="p-4 sm:p-5">
+      <div className="flex items-center gap-3 mb-3.5">
         <UserAvatar
           url={post.profiles?.avatar_url}
           name={name}
@@ -173,6 +176,7 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
           username={authorUsername}
           from="/feed"
           size={40}
+          rounded="rounded-xl"
         />
         <div className="flex-1 min-w-0">
           <ProfileName
@@ -181,8 +185,8 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
             from="/feed"
             className="text-white font-semibold text-sm truncate block"
           />
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            {role && <span>{role}</span>}
+          <div className="flex items-center gap-2 text-[11px] text-slate-500">
+            {role && <span className="truncate max-w-[140px]">{role}</span>}
             {role && <span>·</span>}
             <span>{timeAgo(post.created_at)}</span>
           </div>
@@ -195,17 +199,17 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
             title="Delete post"
             aria-label="Delete post"
           >
-            <Trash2 size={16} />
+            <Trash2 size={15} />
           </button>
         )}
       </div>
 
       {post.content?.trim() && (
-        <p className="text-slate-200 text-sm leading-relaxed mb-4 whitespace-pre-wrap">{post.content}</p>
+        <p className="text-slate-200 text-sm leading-relaxed mb-3.5 whitespace-pre-wrap">{post.content}</p>
       )}
 
       {post.image_url && (
-        <div className="mb-4 -mx-1 overflow-hidden rounded-xl border border-white/10">
+        <div className="mb-3.5 overflow-hidden rounded-xl border border-white/[0.08]">
           <img
             src={post.image_url}
             alt="Post"
@@ -221,28 +225,28 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
         </div>
       )}
 
-      <div className="flex items-center gap-1 pt-3 border-t border-white/5">
+      <div className="flex items-center gap-1 pt-3 border-t border-white/[0.06]">
         <button onClick={() => onLike(post.id, !!post.liked)}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all hover:scale-105 ${post.liked ? 'text-pink-400 bg-pink-500/10' : 'text-slate-400 hover:text-pink-400 hover:bg-pink-500/10'}`}>
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${post.liked ? 'text-pink-400 bg-pink-500/10' : 'text-slate-400 hover:text-pink-400 hover:bg-pink-500/10'}`}>
           <Heart size={15} className={post.liked ? 'fill-pink-400' : ''} />
           {post.likes_count > 0 && post.likes_count}
         </button>
         <button onClick={toggleComments}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-pi-300 hover:bg-pi-500/10 transition-all">
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-teal-300 hover:bg-teal-500/10 transition-all">
           <MessageCircle size={15} />
           {post.comments_count > 0 && post.comments_count}
         </button>
-        <button className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all">
+        <button type="button" className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all">
           <Share2 size={15} />
         </button>
       </div>
 
       {showComments && (
-        <div className="mt-4 pt-4 border-t border-white/5">
+        <div className="mt-3.5 pt-3.5 border-t border-white/[0.06]">
           {loadingComments ? (
-            <div className="flex justify-center py-4"><Loader2 size={18} className="animate-spin text-pi-400" /></div>
+            <div className="flex justify-center py-4"><Loader2 size={18} className="animate-spin text-teal-400" /></div>
           ) : (
-            <div className="space-y-3 mb-3">
+            <div className="space-y-2.5 mb-3">
               {comments.length === 0 && <p className="text-slate-500 text-xs text-center py-2">No comments yet. Be the first!</p>}
               {comments.map(c => {
                 const isOwn = user?.id === c.author_id
@@ -260,14 +264,14 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
                       size={28}
                       rounded="rounded-lg"
                     />
-                    <div className="flex-1 bg-white/5 rounded-xl px-3 py-2 min-w-0">
+                    <div className="flex-1 bg-black/30 border border-white/[0.06] rounded-xl px-3 py-2 min-w-0">
                       {isEditing ? (
                         <div className="space-y-2">
                           <textarea
                             value={editText}
                             onChange={e => setEditText(e.target.value)}
                             rows={2}
-                            className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-pi-500/50 resize-none"
+                            className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-teal-500/40 resize-none"
                             autoFocus
                           />
                           <div className="flex gap-2">
@@ -327,7 +331,7 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
                               </div>
                             )}
                           </div>
-                          <p className="text-slate-600 text-xs mt-0.5">
+                          <p className="text-slate-600 text-[10px] mt-0.5">
                             {timeAgo(c.created_at)}
                             {c.updated_at && c.updated_at !== c.created_at ? ' · edited' : ''}
                           </p>
@@ -344,7 +348,7 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
               <input value={commentText} onChange={e => setCommentText(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && submitComment()}
                 placeholder="Write a comment..."
-                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-xs placeholder-slate-600 focus:outline-none focus:border-pi-500/50 transition-colors" />
+                className="flex-1 bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-white text-xs placeholder-slate-600 focus:outline-none focus:border-teal-500/40 transition-colors" />
               <button onClick={submitComment} disabled={submitting || !commentText.trim()}
                 className="w-8 h-8 rounded-xl flex items-center justify-center text-white disabled:opacity-40 transition-all hover:scale-105 flex-shrink-0"
                 style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
@@ -376,7 +380,8 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
           onConfirm={() => void deletePost()}
         />
       )}
-    </div>
+      </div>
+    </article>
   )
 }
 
@@ -630,102 +635,141 @@ export default function FeedPage() {
   }
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
-      <div className="mb-6">
-        <h1 className="font-display text-3xl font-extrabold text-white mb-1">Feed</h1>
-        <p className="text-slate-400 text-sm">Share your thoughts with the Pi community.</p>
-      </div>
+    <div className="min-h-full relative overflow-x-hidden">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-48 opacity-50"
+        style={{ background: 'radial-gradient(ellipse 70% 80% at 15% 0%, rgba(20,184,166,0.2), transparent)' }}
+      />
 
-      {error && (
-        <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-          {error}
-        </div>
-      )}
-
-      {user ? (
-        <div className="p-4 rounded-2xl border border-white/5 mb-6" style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.5), rgba(14,20,25,0.7))' }}>
-          <textarea
-            value={newPost} onChange={e => setNewPost(e.target.value)}
-            placeholder="What's on your mind? Share with the Pi community..."
-            rows={3}
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-pi-500/50 transition-colors resize-none mb-3"
-          />
-          {imagePreview && (
-            <div className="relative mb-3 inline-block max-w-full">
-              <img
-                src={imagePreview}
-                alt="Selected"
-                className="max-h-56 rounded-xl border border-white/10 object-cover"
-              />
-              <button
-                type="button"
-                onClick={clearImage}
-                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 border border-white/20 flex items-center justify-center text-white hover:bg-black/90 transition-colors"
-                aria-label="Remove photo"
-              >
-                <X size={14} />
-              </button>
+      <div className="relative p-4 sm:p-6 max-w-2xl mx-auto w-full min-w-0">
+        <header className="mb-6 sm:mb-7">
+          <div className="flex items-center gap-3 mb-2">
+            <div
+              className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+              style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+            >
+              <Sparkles size={18} className="text-white" />
             </div>
-          )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            className="hidden"
-            onChange={e => onPickImage(e.target.files?.[0])}
-          />
-          <div className="flex items-center justify-between">
-            <div className="flex gap-2">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-teal-400/90 mb-0.5">
+                Community
+              </p>
+              <h1 className="font-display text-xl sm:text-2xl font-bold text-white tracking-tight">
+                Feed
+              </h1>
+            </div>
+          </div>
+          <p className="text-slate-500 text-sm leading-relaxed pl-[52px]">
+            Share updates, wins, and ideas with the Pi community.
+          </p>
+        </header>
+
+        {error && (
+          <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+            {error}
+          </div>
+        )}
+
+        {user ? (
+          <div
+            className="relative overflow-hidden rounded-2xl border border-white/[0.07] p-4 sm:p-5 mb-6"
+            style={{ background: 'linear-gradient(160deg, rgba(18,28,40,0.95), rgba(10,14,22,0.98))' }}
+          >
+            <div
+              className="pointer-events-none absolute -top-10 -right-8 w-28 h-28 rounded-full opacity-20 blur-2xl"
+              style={{ background: '#14b8a6' }}
+            />
+            <textarea
+              value={newPost} onChange={e => setNewPost(e.target.value)}
+              placeholder="What's on your mind? Share with the Pi community..."
+              rows={3}
+              className="relative w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-teal-500/40 transition-colors resize-none mb-3"
+            />
+            {imagePreview && (
+              <div className="relative mb-3 inline-block max-w-full">
+                <img
+                  src={imagePreview}
+                  alt="Selected"
+                  className="max-h-56 rounded-xl border border-white/[0.08] object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={clearImage}
+                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 border border-white/20 flex items-center justify-center text-white hover:bg-black/90 transition-colors"
+                  aria-label="Remove photo"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+              onChange={e => onPickImage(e.target.files?.[0])}
+            />
+            <div className="relative flex items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors ${
-                  imageFile ? 'text-pi-300 bg-pi-500/10' : 'text-slate-400 hover:text-white'
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors ${
+                  imageFile
+                    ? 'text-teal-300 bg-teal-500/10 border border-teal-500/25'
+                    : 'text-slate-400 hover:text-white border border-white/10 hover:border-white/20'
                 }`}
               >
                 <Image size={14} /> Photo
               </button>
+              <button type="button" onClick={handlePost} disabled={posting || (!newPost.trim() && !imageFile)}
+                className="flex items-center gap-2 px-5 py-2 rounded-xl font-semibold text-white text-sm disabled:opacity-40 transition-all hover:brightness-110 active:scale-[0.98]"
+                style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
+                {posting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                {posting ? 'Posting...' : 'Post'}
+              </button>
             </div>
-            <button type="button" onClick={handlePost} disabled={posting || (!newPost.trim() && !imageFile)}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl font-semibold text-white text-sm disabled:opacity-40 transition-all hover:scale-105 active:scale-95"
-              style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
-              {posting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-              {posting ? 'Posting...' : 'Post'}
-            </button>
           </div>
-        </div>
-      ) : (
-        <div className="p-4 rounded-2xl border border-pi-500/20 mb-6 text-center" style={{ background: 'rgba(20,184,166,0.08)' }}>
-          <p className="text-slate-400 text-sm mb-3">Sign in to post and interact with the community.</p>
-          <button onClick={() => navigate('/login')}
-            className="px-6 py-2 rounded-xl font-bold text-white text-sm"
-            style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>Sign In</button>
-        </div>
-      )}
+        ) : (
+          <div
+            className="relative overflow-hidden rounded-2xl border border-teal-500/20 p-5 mb-6 text-center"
+            style={{ background: 'linear-gradient(160deg, rgba(20,184,166,0.1), rgba(10,14,22,0.9))' }}
+          >
+            <p className="text-slate-400 text-sm mb-3">Sign in to post and interact with the community.</p>
+            <button onClick={() => navigate('/login')}
+              className="px-6 py-2 rounded-xl font-bold text-white text-sm hover:brightness-110 transition-all"
+              style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>Sign In</button>
+          </div>
+        )}
 
-      {loading ? (
-        <LoadingSpinner className="py-16" label="Loading feed…" />
-      ) : posts.length === 0 ? (
-        <StateMessage
-          variant="empty"
-          title="No posts yet"
-          description="Be the first to share something with the Pi community."
-          icon={Sparkles}
-        />
-      ) : (
-        <div className="space-y-4">
-          {posts.map(post => (
-            <PostCard
-              key={post.id}
-              post={post}
-              onLike={handleLike}
-              onComment={handleComment}
-              onDeletePost={handleDeletePost}
-              actorName={actorName}
+        {loading ? (
+          <LoadingSpinner className="py-16" label="Loading feed…" />
+        ) : posts.length === 0 ? (
+          <div
+            className="rounded-2xl border border-white/[0.07] overflow-hidden"
+            style={{ background: 'linear-gradient(160deg, rgba(18,28,40,0.95), rgba(10,14,22,0.98))' }}
+          >
+            <StateMessage
+              variant="empty"
+              title="No posts yet"
+              description="Be the first to share something with the Pi community."
+              icon={Sparkles}
             />
-          ))}
-        </div>
-      )}
+          </div>
+        ) : (
+          <div className="space-y-3.5">
+            {posts.map(post => (
+              <PostCard
+                key={post.id}
+                post={post}
+                onLike={handleLike}
+                onComment={handleComment}
+                onDeletePost={handleDeletePost}
+                actorName={actorName}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
