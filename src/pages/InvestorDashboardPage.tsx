@@ -15,9 +15,9 @@ const visionBullets = [
 ]
 
 const roadmap = [
-  { phase: 'Now', items: ['SEO + growth infra', 'Market expansion (/grow · invites · partners · discuss)', 'Investor Demo + Transparency', 'Traction & Meet Pi AI'] },
-  { phase: 'Next', items: ['Stronger graph density', 'Deeper partner pipelines', 'Measured acquisition loops'] },
-  { phase: 'Later', items: ['Apply / marketplace', 'Enterprise workspace', 'Pi Earth / Autopilot concepts'] },
+  { phase: 'Now', items: ['SEO + growth infra', 'Pi Social Opportunity Feed (streams)', 'UGE experience prefs', 'Trust & Safety + Truth Guarantee principles', 'Investor Demo + Transparency'] },
+  { phase: 'Next', items: ['Deeper Twin ranking on Feed', 'Moderation + appeals pipeline', 'Stronger graph density', 'Measured acquisition loops'] },
+  { phase: 'Later', items: ['Trust-based monetization', 'E2E private messaging', 'Verification tiers', 'Apply / marketplace', 'Pi Earth / Autopilot'] },
 ]
 
 const architecture = [

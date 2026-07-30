@@ -41,6 +41,8 @@ import GrowPage from './pages/GrowPage'
 import InviteLandingPage from './pages/InviteLandingPage'
 import PartnersPage from './pages/PartnersPage'
 import DiscussPage from './pages/DiscussPage'
+import ExperienceSettingsPage from './pages/ExperienceSettingsPage'
+import TrustSafetyPage from './pages/TrustSafetyPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth()
@@ -75,6 +77,8 @@ export default function App() {
 
   const isProfilePath = location.pathname.startsWith('/p/')
   const isTransparencyPath = location.pathname === '/transparency'
+  const isTrustPath = location.pathname === '/trust'
+  const isExperiencePath = location.pathname === '/experience'
   const isConnectPath = location.pathname === '/connect'
   const isFeaturesPath =
     location.pathname === '/features' || location.pathname.startsWith('/features/')
@@ -88,13 +92,13 @@ export default function App() {
     isFeaturesPath ||
     isInvitePath ||
     (isGrowPath && !session && !authLoading) ||
-    ((isProfilePath || isTransparencyPath || isConnectPath) && !session && !authLoading)
+    ((isProfilePath || isTransparencyPath || isTrustPath || isExperiencePath || isConnectPath) && !session && !authLoading)
 
   useEffect(() => { window.scrollTo(0, 0) }, [location.pathname])
   useEffect(() => { trackPageView(location.pathname) }, [location.pathname])
 
   // Wait for auth before deciding public vs app shell for dual-mode URLs
-  if ((isProfilePath || isTransparencyPath || isConnectPath || isGrowPath) && authLoading) {
+  if ((isProfilePath || isTransparencyPath || isTrustPath || isExperiencePath || isConnectPath || isGrowPath) && authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-dark-950">
         <LoadingSpinner size="lg" label="Loading Pi…" />
@@ -117,6 +121,8 @@ export default function App() {
           <Route path="/investor" element={<InvestorDashboardPage />} />
           <Route path="/connect" element={<ConnectPage />} />
           <Route path="/transparency" element={<TransparencyPage />} />
+          <Route path="/trust" element={<TrustSafetyPage />} />
+          <Route path="/experience" element={<ExperienceSettingsPage />} />
           <Route path="/features" element={<FeaturesHubPage />} />
           <Route path="/features/:slug" element={<FeatureDetailPage />} />
           <Route path="/grow" element={<GrowPage />} />
@@ -141,6 +147,8 @@ export default function App() {
               <Route path="/search" element={<SearchPage />} />
               <Route path="/vision" element={<VisionPage />} />
               <Route path="/transparency" element={<TransparencyPage />} />
+              <Route path="/trust" element={<TrustSafetyPage />} />
+              <Route path="/experience" element={<ExperienceSettingsPage />} />
               <Route path="/messages" element={<MessagingPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/profile/edit" element={<ProfileEditPage />} />

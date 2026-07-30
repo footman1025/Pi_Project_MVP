@@ -4,13 +4,15 @@ import {
   LayoutGrid, Sparkles, Briefcase, Rocket,
   UsersRound, Building2, SearchCheck, Telescope,
   LogOut, Bell, Menu, X, BotMessageSquare, ScanFace,
-  Newspaper, MessageCircle, UserCog, ShieldCheck, Activity, Inbox, TrendingUp
+  Newspaper, MessageCircle, UserCog, ShieldCheck, Activity, Inbox, TrendingUp,
+  Accessibility, Shield,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import UserAvatar from './UserAvatar'
 import ValidationFeedback from './ValidationFeedback'
 import { track } from '../lib/analytics'
+import { applyUgePreferences, loadUgePreferences } from '../lib/ugePreferences'
 import { playConnectSound, unlockConnectSound } from '../lib/connectSound'
 import {
   ensureSystemAlertPermission,
@@ -20,22 +22,24 @@ import { registerPiServiceWorker, enablePushNotifications } from '../lib/pushNot
 import { maybeSendAiSuggestions } from '../lib/aiSuggestions'
 
 const navItems = [
-  { to: '/dashboard', icon: LayoutGrid, label: 'Dashboard' },
-  { to: '/twin', icon: BotMessageSquare, label: 'AI Twin' },
-  { to: '/feed', icon: Newspaper, label: 'Feed' },
-  { to: '/match', icon: Sparkles, label: 'Matching' },
-  { to: '/opportunities', icon: Briefcase, label: 'Opportunities' },
-  { to: '/creators', icon: Rocket, label: 'Creators' },
-  { to: '/professionals', icon: Building2, label: 'Professionals' },
-  { to: '/communities', icon: UsersRound, label: 'Communities' },
-  { to: '/messages', icon: MessageCircle, label: 'Messages' },
-  { to: '/search', icon: SearchCheck, label: 'Search' },
-  { to: '/vision', icon: Telescope, label: 'Vision' },
-  { to: '/transparency', icon: ShieldCheck, label: 'What’s live' },
-  { to: '/traction', icon: Activity, label: 'Traction' },
-  { to: '/grow', icon: TrendingUp, label: 'Grow' },
-  { to: '/handoffs', icon: Inbox, label: 'Handoffs' },
-  { to: '/connect', icon: BotMessageSquare, label: 'Meet Pi AI' },
+  { to: '/dashboard', icon: LayoutGrid, label: 'Dashboard', core: true },
+  { to: '/twin', icon: BotMessageSquare, label: 'AI Twin', core: true },
+  { to: '/feed', icon: Newspaper, label: 'Feed', core: true },
+  { to: '/match', icon: Sparkles, label: 'Matching', core: true },
+  { to: '/opportunities', icon: Briefcase, label: 'Opportunities', core: true },
+  { to: '/creators', icon: Rocket, label: 'Creators', core: false },
+  { to: '/professionals', icon: Building2, label: 'Professionals', core: false },
+  { to: '/communities', icon: UsersRound, label: 'Communities', core: true },
+  { to: '/messages', icon: MessageCircle, label: 'Messages', core: true },
+  { to: '/search', icon: SearchCheck, label: 'Search', core: true },
+  { to: '/experience', icon: Accessibility, label: 'Experience', core: true },
+  { to: '/trust', icon: Shield, label: 'Trust & Safety', core: true },
+  { to: '/vision', icon: Telescope, label: 'Vision', core: false },
+  { to: '/transparency', icon: ShieldCheck, label: 'What’s live', core: false },
+  { to: '/traction', icon: Activity, label: 'Traction', core: false },
+  { to: '/grow', icon: TrendingUp, label: 'Grow', core: false },
+  { to: '/handoffs', icon: Inbox, label: 'Handoffs', core: false },
+  { to: '/connect', icon: BotMessageSquare, label: 'Meet Pi AI', core: false },
 ]
 
 const mobileTabs = [
@@ -54,11 +58,27 @@ interface Props {
 export default function AppShell({ children, onAssistantToggle }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [unreadNotifs, setUnreadNotifs] = useState(0)
+  const [simplifiedNav, setSimplifiedNav] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
   const { profile, user, signOut } = useAuth()
 
   useEffect(() => { setSidebarOpen(false) }, [location.pathname])
+
+  useEffect(() => {
+    const sync = () => {
+      const next = loadUgePreferences()
+      applyUgePreferences(next)
+      setSimplifiedNav(next.simplifiedNav)
+    }
+    sync()
+    window.addEventListener('storage', sync)
+    window.addEventListener('pi:uge-prefs', sync)
+    return () => {
+      window.removeEventListener('storage', sync)
+      window.removeEventListener('pi:uge-prefs', sync)
+    }
+  }, [])
 
   const handleSignOut = async () => {
     track('sign_out')
@@ -156,7 +176,9 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-          {navItems.map(({ to, icon: Icon, label }) => (
+          {navItems
+            .filter(item => !simplifiedNav || item.core)
+            .map(({ to, icon: Icon, label }) => (
             <NavLink
               key={to}
               to={to}

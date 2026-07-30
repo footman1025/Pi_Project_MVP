@@ -100,6 +100,28 @@
   }
 }
 
+/* UGE — Universal Generational Experience */
+html[data-pi-contrast='high'] {
+  --tw-border-opacity: 1;
+}
+html[data-pi-contrast='high'] body {
+  filter: contrast(1.08);
+}
+html[data-pi-motion='reduce'] *,
+html[data-pi-motion='reduce'] *::before,
+html[data-pi-motion='reduce'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+html[data-pi-density='compact'] .pi-density-pad {
+  padding: 0.65rem !important;
+}
+html[data-pi-density='spacious'] .pi-density-pad {
+  padding: 1.35rem !important;
+}
+
 /* Match meter animation */
 .match-bar {
   transition: width 1.5s cubic-bezier(0.34, 1.56, 0.64, 1);

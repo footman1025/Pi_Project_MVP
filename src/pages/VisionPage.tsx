@@ -22,7 +22,7 @@ const pillars = [
   { Icon: Sparkles, color: 'from-pink-500 to-rose-600', title: 'Collaboration Economy', desc: 'Transform skills and ideas into opportunities through services, courses, digital products, and professional collaboration.' },
   { Icon: TrendingUp, color: 'from-amber-500 to-orange-600', title: 'SEO Growth Engine', desc: 'Organic discovery built in from day one. Public profiles, communities, and opportunities indexed for search engines.' },
   { Icon: Globe2, color: 'from-cyan-500 to-blue-600', title: 'Global Discovery', desc: 'AI-powered translation and matching breaks language barriers, connecting talent and opportunity across borders.' },
-  { Icon: ShieldCheck, color: 'from-teal-500 to-pi-600', title: 'Trust & Safety', desc: 'Layered moderation, compliance, and fraud prevention built into the core architecture of Pi.' },
+  { Icon: ShieldCheck, color: 'from-teal-500 to-pi-600', title: 'Trust & Safety', desc: 'Layered moderation, compliance, and fraud prevention built into the core architecture of Pi. Truth Guarantee: trust first, revenue follows.' },
 ]
 
 export default function VisionPage() {
@@ -146,9 +146,9 @@ export default function VisionPage() {
       <h2 className="font-display text-2xl font-extrabold text-white mb-6">Long-Term Roadmap</h2>
       <div className="grid md:grid-cols-3 gap-4 mb-10">
         {[
-          { Icon: Link2, phase: 'Phase 1', title: 'Foundation', color: 'from-pi-500 to-teal-600', desc: 'Build the AI-native social experience. Focus on user experience, AI personalization, community building, and early adoption.', active: true },
-          { Icon: Rocket, phase: 'Phase 2', title: 'Expansion', color: 'from-emerald-500 to-teal-600', desc: 'Introduce the opportunity ecosystem. Professional networking, creator economy, digital services, collaboration tools.', active: false },
-          { Icon: Globe2, phase: 'Phase 3', title: 'Pi Ecosystem', color: 'from-amber-500 to-orange-600', desc: 'Expand into a complete AI-native environment: advanced AI agents, global marketplace, digital economy.', active: false },
+          { Icon: Link2, phase: 'Phase 1', title: 'Foundation', color: 'from-pi-500 to-teal-600', desc: 'AI-native social + Opportunity Feed streams, UGE preferences, Trust & Safety principles, Twin matching, and honest transparency.', active: true },
+          { Icon: Rocket, phase: 'Phase 2', title: 'Expansion', color: 'from-emerald-500 to-teal-600', desc: 'Deeper moderation, verification, trust-based monetization, creator economy, and collaboration tools.', active: false },
+          { Icon: Globe2, phase: 'Phase 3', title: 'Pi Ecosystem', color: 'from-amber-500 to-orange-600', desc: 'Lifelong UGE companion, family mode, intergenerational networks, marketplace, and global AI agents.', active: false },
         ].map(({ Icon, phase, title, color, desc, active }, i) => (
           <div key={i}
             className={`p-5 rounded-2xl border transition-all ${active ? 'border-pi-500/30' : 'border-white/5'}`}
@@ -170,6 +170,27 @@ export default function VisionPage() {
             <p className="text-slate-400 text-xs leading-relaxed">{desc}</p>
           </div>
         ))}
+      </div>
+
+      <div className="mb-4 flex flex-col sm:flex-row gap-3">
+        <button
+          type="button"
+          onClick={() => navigate('/trust')}
+          className="flex-1 p-4 rounded-2xl border border-white/10 text-left hover:border-teal-500/30"
+          style={{ background: 'rgba(14,20,25,0.5)' }}
+        >
+          <p className="text-white font-bold text-sm mb-1">Trust & Truth Guarantee</p>
+          <p className="text-slate-500 text-xs">Core principles for safety and trust-based value.</p>
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate('/experience')}
+          className="flex-1 p-4 rounded-2xl border border-white/10 text-left hover:border-teal-500/30"
+          style={{ background: 'rgba(14,20,25,0.5)' }}
+        >
+          <p className="text-white font-bold text-sm mb-1">Universal Experience (UGE)</p>
+          <p className="text-slate-500 text-xs">Adapt Pi to every generation and ability.</p>
+        </button>
       </div>
 
       <div className="mb-8 p-5 rounded-2xl border border-teal-500/20 bg-teal-500/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

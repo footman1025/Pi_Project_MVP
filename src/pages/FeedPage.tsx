@@ -1,11 +1,26 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase, Post, Comment, Profile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { notifyPostAuthorOfLike, notifyPostAuthorOfComment } from '../lib/notifications'
 import { displayName } from '../lib/posts'
 import { uploadPostImage } from '../lib/postImageUpload'
-import { Heart, MessageCircle, Share2, Send, Image, Loader2, Sparkles, X, Pencil, Trash2, Check } from 'lucide-react'
+import {
+  FEED_STREAMS,
+  classifyPostStream,
+  filterAndSortPosts,
+  reputationScore,
+  stripStreamPrefix,
+  withStreamPrefix,
+  type FeedStream,
+  type PostStreamTag,
+} from '../lib/feedStreams'
+import { REPORT_REASONS, submitContentReport, type ReportReason } from '../lib/contentReports'
+import { track } from '../lib/analytics'
+import {
+  Heart, MessageCircle, Share2, Send, Image, Loader2, Sparkles, X, Pencil, Trash2, Check,
+  Flag, Briefcase, Users, Handshake, Shield,
+} from 'lucide-react'
 import UserAvatar from '../components/UserAvatar'
 import ProfileName from '../components/ProfileName'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -42,11 +57,58 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
   const [confirmDeletePost, setConfirmDeletePost] = useState(false)
   const [deletingPost, setDeletingPost] = useState(false)
   const [actionError, setActionError] = useState('')
+  const [shareNote, setShareNote] = useState('')
+  const [reportOpen, setReportOpen] = useState(false)
+  const [reportReason, setReportReason] = useState<ReportReason>('spam')
+  const [reportDetails, setReportDetails] = useState('')
+  const [reporting, setReporting] = useState(false)
+  const [reportDone, setReportDone] = useState(false)
 
   const name = displayName(post.profiles)
   const role = post.profiles?.role || ''
   const authorUsername = post.profiles?.username || null
   const isOwnPost = !!user && user.id === post.author_id
+  const stream = classifyPostStream(post)
+  const body = stripStreamPrefix(post.content || '')
+  const trust = reputationScore(post.profiles)
+
+  const sharePost = async () => {
+    const url = `${window.location.origin}/feed?post=${post.id}`
+    const text = body.slice(0, 140) || 'Shared from Pi'
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Pi', text, url })
+      } else {
+        await navigator.clipboard.writeText(`${text}\n${url}`)
+        setShareNote('Link copied')
+        setTimeout(() => setShareNote(''), 2000)
+      }
+      track('feed_share', { post_id: post.id, stream })
+      await supabase.from('posts').update({ shares_count: (post.shares_count || 0) + 1 }).eq('id', post.id)
+    } catch {
+      /* user cancelled share */
+    }
+  }
+
+  const submitReport = async () => {
+    if (!user) { navigate('/login'); return }
+    setReporting(true)
+    setActionError('')
+    const res = await submitContentReport({
+      reporterId: user.id,
+      targetType: 'post',
+      targetId: post.id,
+      reason: reportReason,
+      details: reportDetails,
+    })
+    setReporting(false)
+    if (!res.ok) {
+      setActionError(res.error)
+      return
+    }
+    setReportDone(true)
+    setTimeout(() => { setReportOpen(false); setReportDone(false); setReportDetails('') }, 1400)
+  }
 
   const loadComments = async () => {
     setLoadingComments(true)
@@ -185,27 +247,45 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
             from="/feed"
             className="text-white font-semibold text-sm truncate block"
           />
-          <div className="flex items-center gap-2 text-[11px] text-slate-500">
+          <div className="flex items-center gap-2 text-[11px] text-slate-500 flex-wrap">
             {role && <span className="truncate max-w-[140px]">{role}</span>}
             {role && <span>·</span>}
             <span>{timeAgo(post.created_at)}</span>
+            <span>·</span>
+            <span className="text-teal-400/80 capitalize">{stream}</span>
+            <span className="inline-flex items-center gap-0.5 text-emerald-400/80" title="Reputation signal (activity + Twin readiness)">
+              <Shield size={10} /> {trust}
+            </span>
           </div>
         </div>
-        {isOwnPost && (
-          <button
-            type="button"
-            onClick={() => { setActionError(''); setConfirmDeletePost(true) }}
-            className="p-2 rounded-xl text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
-            title="Delete post"
-            aria-label="Delete post"
-          >
-            <Trash2 size={15} />
-          </button>
-        )}
+        <div className="flex items-center gap-0.5 shrink-0">
+          {!isOwnPost && (
+            <button
+              type="button"
+              onClick={() => { setActionError(''); setReportOpen(true) }}
+              className="p-2 rounded-xl text-slate-500 hover:text-amber-300 hover:bg-amber-500/10 transition-colors"
+              title="Report"
+              aria-label="Report post"
+            >
+              <Flag size={15} />
+            </button>
+          )}
+          {isOwnPost && (
+            <button
+              type="button"
+              onClick={() => { setActionError(''); setConfirmDeletePost(true) }}
+              className="p-2 rounded-xl text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+              title="Delete post"
+              aria-label="Delete post"
+            >
+              <Trash2 size={15} />
+            </button>
+          )}
+        </div>
       </div>
 
-      {post.content?.trim() && (
-        <p className="text-slate-200 text-sm leading-relaxed mb-3.5 whitespace-pre-wrap">{post.content}</p>
+      {body.trim() && (
+        <p className="text-slate-200 text-sm leading-relaxed mb-3.5 whitespace-pre-wrap">{body}</p>
       )}
 
       {post.image_url && (
@@ -225,6 +305,30 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
         </div>
       )}
 
+      <div className="flex flex-wrap gap-1.5 mb-3">
+        <button
+          type="button"
+          onClick={() => navigate(`/messages?u=${post.author_id}`)}
+          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-teal-200 border border-teal-500/25 bg-teal-500/[0.07] hover:bg-teal-500/15"
+        >
+          <Handshake size={12} /> Collaborate
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate('/opportunities')}
+          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-amber-100 border border-amber-500/25 bg-amber-500/[0.07] hover:bg-amber-500/15"
+        >
+          <Briefcase size={12} /> Opportunities
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate(authorUsername ? `/p/${authorUsername}` : `/match`)}
+          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-300 border border-white/10 hover:border-white/20"
+        >
+          <Users size={12} /> People
+        </button>
+      </div>
+
       <div className="flex items-center gap-1 pt-3 border-t border-white/[0.06]">
         <button onClick={() => onLike(post.id, !!post.liked)}
           className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${post.liked ? 'text-pink-400 bg-pink-500/10' : 'text-slate-400 hover:text-pink-400 hover:bg-pink-500/10'}`}>
@@ -236,10 +340,68 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
           <MessageCircle size={15} />
           {post.comments_count > 0 && post.comments_count}
         </button>
-        <button type="button" className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all">
+        <button
+          type="button"
+          onClick={() => void sharePost()}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all"
+        >
           <Share2 size={15} />
+          {shareNote || (post.shares_count > 0 ? post.shares_count : null)}
         </button>
       </div>
+
+      {reportOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" role="dialog" aria-modal>
+          <div
+            className="w-full max-w-md rounded-2xl border border-white/10 p-5"
+            style={{ background: 'linear-gradient(160deg, #0d1220, #06090f)' }}
+          >
+            <h3 className="text-white font-bold text-base mb-1">Report post</h3>
+            <p className="text-slate-500 text-xs mb-4">Trust & Safety — reports help Pi reduce abuse without compromising privacy-first design.</p>
+            {reportDone ? (
+              <p className="text-teal-300 text-sm font-medium py-4 text-center">Thanks — report received.</p>
+            ) : (
+              <>
+                <div className="space-y-1.5 mb-3">
+                  {REPORT_REASONS.map(r => (
+                    <label key={r.id} className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                      <input
+                        type="radio"
+                        name={`report-${post.id}`}
+                        checked={reportReason === r.id}
+                        onChange={() => setReportReason(r.id)}
+                        className="text-teal-500"
+                      />
+                      {r.label}
+                    </label>
+                  ))}
+                </div>
+                <textarea
+                  value={reportDetails}
+                  onChange={e => setReportDetails(e.target.value)}
+                  rows={2}
+                  placeholder="Optional details…"
+                  className="w-full mb-3 bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-teal-500/40 resize-none"
+                />
+                <div className="flex gap-2 justify-end">
+                  <button type="button" onClick={() => setReportOpen(false)} className="px-3 py-2 rounded-xl text-xs text-slate-400 border border-white/10">
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={reporting}
+                    onClick={() => void submitReport()}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-40"
+                    style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+                  >
+                    {reporting ? 'Sending…' : 'Submit report'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {showComments && (
         <div className="mt-3.5 pt-3.5 border-t border-white/[0.06]">
@@ -374,7 +536,7 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
         <ConfirmDeleteDialog
           title="Delete post?"
           description="This can’t be undone. The post and its comments will be removed."
-          preview={post.content}
+          preview={body}
           deleting={deletingPost}
           onCancel={() => !deletingPost && setConfirmDeletePost(false)}
           onConfirm={() => void deletePost()}
@@ -390,6 +552,8 @@ export default function FeedPage() {
   const navigate = useNavigate()
   const [posts, setPosts] = useState<Post[]>([])
   const [newPost, setNewPost] = useState('')
+  const [postStream, setPostStream] = useState<PostStreamTag>('knowledge')
+  const [activeStream, setActiveStream] = useState<FeedStream>('all')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -397,6 +561,11 @@ export default function FeedPage() {
   const [error, setError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const actorName = profile?.full_name || user?.email?.split('@')[0] || 'Someone'
+
+  const visiblePosts = useMemo(
+    () => filterAndSortPosts(posts, activeStream, profile),
+    [posts, activeStream, profile],
+  )
 
   const clearImage = () => {
     setImageFile(null)
@@ -543,15 +712,21 @@ export default function FeedPage() {
         imageUrl = await uploadPostImage(user.id, imageFile)
       }
 
+      const taggedContent = content
+        ? withStreamPrefix(postStream, content)
+        : withStreamPrefix(postStream, imageFile ? 'Shared a photo' : '')
+
       const { data, error: insertError } = await supabase
         .from('posts')
         .insert({
           author_id: user.id,
-          content: content || '',
+          content: taggedContent,
           image_url: imageUrl,
         })
         .select('*')
         .single()
+
+      track('feed_post', { stream: postStream, has_image: !!imageUrl })
 
       if (insertError || !data) {
         throw new Error(insertError?.message || 'Failed to create post')
@@ -652,17 +827,35 @@ export default function FeedPage() {
             </div>
             <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-teal-400/90 mb-0.5">
-                Community
+                Pi Social
               </p>
               <h1 className="font-display text-xl sm:text-2xl font-bold text-white tracking-tight">
-                Feed
+                Opportunity Feed
               </h1>
             </div>
           </div>
           <p className="text-slate-500 text-sm leading-relaxed pl-[52px]">
-            Share updates, wins, and ideas with the Pi community.
+            An opportunity network — Knowledge, People, Opportunities, Communities, and Twin-aware For you.
           </p>
         </header>
+
+        <div className="flex gap-1.5 overflow-x-auto pb-1 mb-5 -mx-1 px-1 scrollbar-thin">
+          {FEED_STREAMS.map(s => (
+            <button
+              key={s.id}
+              type="button"
+              title={s.hint}
+              onClick={() => { setActiveStream(s.id); track('feed_stream', { stream: s.id }) }}
+              className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${
+                activeStream === s.id
+                  ? 'border-teal-500/40 bg-teal-500/15 text-teal-100'
+                  : 'border-white/10 text-slate-400 hover:text-white hover:border-white/20'
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
 
         {error && (
           <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
@@ -679,9 +872,25 @@ export default function FeedPage() {
               className="pointer-events-none absolute -top-10 -right-8 w-28 h-28 rounded-full opacity-20 blur-2xl"
               style={{ background: '#14b8a6' }}
             />
+            <div className="relative flex flex-wrap gap-1.5 mb-3">
+              {(['knowledge', 'people', 'opportunities', 'communities'] as PostStreamTag[]).map(s => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setPostStream(s)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold capitalize border ${
+                    postStream === s
+                      ? 'border-teal-500/40 bg-teal-500/15 text-teal-100'
+                      : 'border-white/10 text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
             <textarea
               value={newPost} onChange={e => setNewPost(e.target.value)}
-              placeholder="What's on your mind? Share with the Pi community..."
+              placeholder="Share knowledge, people asks, or opportunities…"
               rows={3}
               className="relative w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-teal-500/40 transition-colors resize-none mb-3"
             />
@@ -755,9 +964,16 @@ export default function FeedPage() {
               icon={Sparkles}
             />
           </div>
+        ) : visiblePosts.length === 0 ? (
+          <StateMessage
+            variant="empty"
+            title="Nothing in this stream"
+            description="Try All, or post with a matching stream tag."
+            icon={Sparkles}
+          />
         ) : (
           <div className="space-y-3.5">
-            {posts.map(post => (
+            {visiblePosts.map(post => (
               <PostCard
                 key={post.id}
                 post={post}

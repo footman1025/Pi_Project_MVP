@@ -68,6 +68,12 @@ export const SEO_PAGES: Record<string, SeoPage> = {
     description:
       'Honest Live / Partial / Demo / Soon status for Pi’s MVP — investor-grade transparency without inflated claims.',
   },
+  '/trust': {
+    path: '/trust',
+    title: 'Trust, Safety & Truth Guarantee | Pi',
+    description:
+      'Pi’s Trust & Safety principles, Truth Guarantee, and trust-based monetization — privacy-first architecture with honest maturity labeling.',
+  },
   '/grow': {
     path: '/grow',
     title: 'Grow Pi – Invites, Partnerships & Strategic Discussions',
@@ -134,7 +140,9 @@ const APP_NOINDEX: SeoPage = {
 
 export const APP_SEO: Record<string, Partial<SeoPage>> = {
   '/dashboard': { title: 'Dashboard | Pi' },
-  '/feed': { title: 'Feed | Pi' },
+  '/feed': { title: 'Opportunity Feed | Pi' },
+  '/experience': { title: 'Experience (UGE) | Pi' },
+  '/trust': { title: 'Trust & Safety | Pi' },
   '/match': { title: 'Matching | Pi' },
   '/opportunities': { title: 'Opportunities | Pi' },
   '/creators': { title: 'Creators | Pi' },
@@ -258,6 +266,42 @@ export const FEATURE_SEO: FeatureSeo[] = [
       'Present Pi with confidence: Investor Demo walkthrough and company dashboard covering vision, Twin, metrics, and roadmap.',
     ctaPath: '/demo',
     ctaLabel: 'Open Investor Demo',
+  },
+  {
+    slug: 'social-feed',
+    name: 'Pi Social Feed',
+    problem: 'Attention feeds optimize for time-on-app, not opportunity or trust.',
+    who: 'Builders, creators, professionals, and communities seeking meaningful next steps.',
+    whyDifferent: 'Five streams — Knowledge, People, Opportunities, Communities, For you — with reputation signals and opportunity actions.',
+    title: 'Pi Social – Opportunity Network Feed | Pi',
+    description:
+      'Pi Social is an opportunity network: stream-aware feed, Twin ranking, collaborate actions, and trust signals — not a vanity timeline.',
+    ctaPath: '/feed',
+    ctaLabel: 'Open Opportunity Feed',
+  },
+  {
+    slug: 'universal-experience',
+    name: 'Universal Generational Experience',
+    problem: 'Most platforms design for one age group and force everyone else to adapt.',
+    who: 'People from teens to older adults who want technology that adapts to them.',
+    whyDifferent: 'UGE preferences for text, density, contrast, motion, simplified nav, and life-stage hints — AI that grows with every person.',
+    title: 'Universal Generational Experience (UGE) | Pi',
+    description:
+      'Pi adapts to every generation: accessibility, simplified navigation, and personalization that evolves with each user’s life stage.',
+    ctaPath: '/experience',
+    ctaLabel: 'Open Experience settings',
+  },
+  {
+    slug: 'trust-safety',
+    name: 'Trust & Safety',
+    problem: 'Platforms bolt on safety after scale — users and regulators pay the price.',
+    who: 'Users, enterprises, investors, and partners who need privacy-first compliance readiness.',
+    whyDifferent: 'Truth Guarantee + trust-based monetization: report tooling now; moderation, E2E, verification, and transparency reports on the roadmap.',
+    title: 'Trust, Safety & Truth Guarantee | Pi',
+    description:
+      'How Pi protects users: Trust & Safety by design, Truth Guarantee, and monetization only when we add real trust value.',
+    ctaPath: '/trust',
+    ctaLabel: 'Read Trust & Safety',
   },
 ]
 
