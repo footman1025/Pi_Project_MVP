@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, SendHorizonal, Sparkles, Minimize2 } from 'lucide-react'
+import { X, SendHorizonal, Sparkles, RotateCcw, BotMessageSquare, Shield } from 'lucide-react'
 import { aiAssistantSuggestions } from '../data/mockData'
 import { useAuth } from '../contexts/AuthContext'
 import { askGroqAssistant, hasGroqKey, type ChatTurn } from '../lib/groqAssistant'
@@ -69,19 +69,25 @@ export default function AiAssistant({ open, onClose }: Props) {
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'there'
   const groqEnabled = hasGroqKey()
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'ai',
-      text: groqEnabled
-        ? "Hi — I'm your Pi AI assistant (powered by Groq). Ask me anything about Matching, Opportunities, your Digital Twin, Feed, Messages, or how to use Pi."
-        : "Hi — I'm your Pi AI assistant. Add a Groq API key (VITE_GROQ_API_KEY) for live answers, or ask me about matches, opportunities, communities, and next steps.",
-    },
-  ])
+  const welcomeText = groqEnabled
+    ? "Hi — I'm your Pi AI assistant (powered by Groq). Ask me anything about Matching, Opportunities, your Digital Twin, Feed, Messages, or how to use Pi."
+    : "Hi — I'm your Pi AI assistant. Add a Groq API key (VITE_GROQ_API_KEY) for live answers, or ask me about matches, opportunities, communities, and next steps."
+
+  const [messages, setMessages] = useState<Message[]>([{ role: 'ai', text: welcomeText }])
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const abortRef = useRef<AbortController | null>(null)
+
+  const resetChat = () => {
+    abortRef.current?.abort()
+    abortRef.current = null
+    setTyping(false)
+    setInput('')
+    setMessages([{ role: 'ai', text: welcomeText }])
+    setTimeout(() => inputRef.current?.focus(), 80)
+  }
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -167,19 +173,19 @@ export default function AiAssistant({ open, onClose }: Props) {
 
   return (
     <div
-      className="fixed z-50 flex flex-col w-[min(100vw-1.5rem,380px)] rounded-3xl overflow-hidden border border-white/10 shadow-2xl animate-slide-up"
+      className="fixed z-50 flex flex-col w-[min(100vw-1.5rem,380px)] rounded-3xl overflow-hidden border border-white/[0.08] shadow-2xl animate-slide-up"
       style={{
         right: 'max(0.75rem, env(safe-area-inset-right))',
         bottom: 'max(5.5rem, calc(env(safe-area-inset-bottom) + 5.25rem))',
-        maxHeight: 'min(560px, calc(100dvh - 7rem))',
-        background: 'linear-gradient(165deg, #0f1724 0%, #0a101c 55%, #080d16 100%)',
-        boxShadow: '0 24px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(20,184,166,0.12)',
+        maxHeight: 'min(580px, calc(100dvh - 7rem))',
+        background: 'linear-gradient(165deg, rgba(14,22,36,0.98) 0%, rgba(8,12,20,0.99) 55%, #06090f 100%)',
+        boxShadow: '0 28px 90px rgba(0,0,0,0.6), 0 0 0 1px rgba(20,184,166,0.14), 0 0 48px rgba(20,184,166,0.08)',
       }}
     >
-      <div className="relative px-4 pt-4 pb-3 flex-shrink-0">
+      <div className="relative px-4 pt-4 pb-3 flex-shrink-0 border-b border-white/[0.05]">
         <div
-          className="absolute inset-0 opacity-80 pointer-events-none"
-          style={{ background: 'radial-gradient(120% 80% at 0% 0%, rgba(20,184,166,0.18), transparent 55%)' }}
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: 'radial-gradient(120% 90% at 10% 0%, rgba(20,184,166,0.22), transparent 55%)' }}
         />
         <div className="relative flex items-center gap-3">
           <div
@@ -189,14 +195,24 @@ export default function AiAssistant({ open, onClose }: Props) {
             <Sparkles size={20} className="text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-white font-bold text-sm tracking-tight">Pi AI Assistant</p>
-            <div className="flex items-center gap-1.5 mt-0.5">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-teal-400/80 mb-0.5">Companion</p>
+            <p className="text-white font-bold text-sm tracking-tight leading-tight">Pi AI Assistant</p>
+            <div className="flex items-center gap-1.5 mt-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-[11px] text-emerald-400/90 font-medium">
-                {groqEnabled ? 'Online · Groq AI' : 'Online · guided demo replies'}
+                {groqEnabled ? 'Online · Groq AI' : 'Online · guided replies'}
               </span>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={resetChat}
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-teal-200 hover:bg-teal-500/10 border border-transparent hover:border-teal-500/20 transition-colors"
+            aria-label="New chat"
+            title="New chat"
+          >
+            <RotateCcw size={15} />
+          </button>
           <button
             type="button"
             onClick={onClose}
@@ -208,7 +224,7 @@ export default function AiAssistant({ open, onClose }: Props) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-2 space-y-3.5 min-h-0" style={{ maxHeight: 280 }}>
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3.5 min-h-0" style={{ maxHeight: 280 }}>
         {messages.map((msg, i) => (
           <div key={i} className={`flex gap-2.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             {msg.role === 'ai' && (
@@ -228,7 +244,7 @@ export default function AiAssistant({ open, onClose }: Props) {
               style={
                 msg.role === 'user'
                   ? { background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }
-                  : { background: 'rgba(255,255,255,0.04)' }
+                  : { background: 'linear-gradient(160deg, rgba(18,28,40,0.9), rgba(10,14,22,0.95))' }
               }
             >
               {msg.text}
@@ -244,7 +260,10 @@ export default function AiAssistant({ open, onClose }: Props) {
             >
               <Sparkles size={12} className="text-white" />
             </div>
-            <div className="px-3.5 py-3 rounded-2xl rounded-bl-md border border-white/[0.07]" style={{ background: 'rgba(255,255,255,0.04)' }}>
+            <div
+              className="px-3.5 py-3 rounded-2xl rounded-bl-md border border-white/[0.07]"
+              style={{ background: 'linear-gradient(160deg, rgba(18,28,40,0.9), rgba(10,14,22,0.95))' }}
+            >
               <div className="flex gap-1.5">
                 {[0, 150, 300].map(delay => (
                   <span
@@ -260,11 +279,13 @@ export default function AiAssistant({ open, onClose }: Props) {
         <div ref={bottomRef} />
       </div>
 
-      <div className="flex-shrink-0 border-t border-white/[0.06] px-3 pt-3 pb-3"
-        style={{ background: 'rgba(0,0,0,0.22)' }}>
+      <div
+        className="flex-shrink-0 border-t border-white/[0.06] px-3 pt-3 pb-3"
+        style={{ background: 'linear-gradient(180deg, rgba(8,12,20,0.5), rgba(6,9,15,0.95))' }}
+      >
         {showSuggestions && (
           <div className="mb-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 px-1 mb-2">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 px-1 mb-2">
               Try asking
             </p>
             <div className="grid grid-cols-1 gap-1.5">
@@ -274,7 +295,8 @@ export default function AiAssistant({ open, onClose }: Props) {
                   type="button"
                   disabled={typing}
                   onClick={() => send(s)}
-                  className="text-left text-xs px-3 py-2.5 rounded-xl border border-white/[0.08] text-slate-300 hover:text-white hover:border-teal-500/35 hover:bg-teal-500/10 transition-all disabled:opacity-50"
+                  className="text-left text-xs px-3 py-2.5 rounded-xl border border-white/[0.07] text-slate-300 hover:text-white hover:border-teal-500/35 hover:bg-teal-500/[0.08] transition-all disabled:opacity-50"
+                  style={{ background: 'rgba(0,0,0,0.25)' }}
                 >
                   {s}
                 </button>
@@ -283,13 +305,13 @@ export default function AiAssistant({ open, onClose }: Props) {
           </div>
         )}
 
-        <div className="flex gap-1.5 mb-2 overflow-x-auto pb-0.5">
+        <div className="flex gap-1.5 mb-2.5 overflow-x-auto pb-0.5">
           {quickLinks.map(l => (
             <button
               key={l.to}
               type="button"
               onClick={() => { onClose(); navigate(l.to) }}
-              className="shrink-0 text-[10px] font-semibold px-2.5 py-1 rounded-full border border-teal-500/25 text-teal-300 bg-teal-500/10 hover:bg-teal-500/20"
+              className="shrink-0 text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-teal-500/25 text-teal-300 bg-teal-500/[0.08] hover:bg-teal-500/15"
             >
               {l.label}
             </button>
@@ -297,7 +319,7 @@ export default function AiAssistant({ open, onClose }: Props) {
         </div>
 
         <form
-          className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] pl-3.5 pr-1.5 py-1.5 focus-within:border-teal-500/40 transition-colors"
+          className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/35 pl-3.5 pr-1.5 py-1.5 focus-within:border-teal-500/40 transition-colors"
           onSubmit={e => {
             e.preventDefault()
             void send(input)
@@ -314,17 +336,49 @@ export default function AiAssistant({ open, onClose }: Props) {
           <button
             type="submit"
             disabled={!input.trim() || typing}
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-white disabled:opacity-35 transition-all hover:scale-105 active:scale-95 flex-shrink-0"
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-white disabled:opacity-35 transition-all hover:brightness-110 active:scale-95 flex-shrink-0"
             style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
             aria-label="Send"
           >
             <SendHorizonal size={15} />
           </button>
         </form>
-        <p className="text-[10px] text-slate-600 text-center mt-2 flex items-center justify-center gap-1">
-          <Minimize2 size={10} />
-          {groqEnabled ? 'Groq AI · answers about this site' : 'Add VITE_GROQ_API_KEY for live AI · Matching on /match'}
-        </p>
+
+        {/* Footer: status left + actions in circled bottom-right area */}
+        <div className="mt-2.5 flex items-center gap-2 min-w-0">
+          <p className="text-[10px] text-slate-600 truncate flex-1 min-w-0">
+            {groqEnabled ? 'Groq AI · site-aware answers' : 'Guided mode · add Groq for live AI'}
+          </p>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={resetChat}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold text-slate-400 border border-white/10 hover:text-white hover:border-white/20"
+              title="Start a new chat"
+            >
+              <RotateCcw size={10} />
+              New
+            </button>
+            <button
+              type="button"
+              onClick={() => { onClose(); navigate('/connect') }}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold text-teal-200 border border-teal-500/25 bg-teal-500/[0.08] hover:bg-teal-500/15"
+              title="Meet Pi AI / human handoff"
+            >
+              <BotMessageSquare size={10} />
+              Meet Pi
+            </button>
+            <button
+              type="button"
+              onClick={() => { onClose(); navigate('/trust') }}
+              className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 border border-white/10 hover:text-teal-200 hover:border-teal-500/25"
+              title="Trust & Safety"
+              aria-label="Trust & Safety"
+            >
+              <Shield size={11} />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )
