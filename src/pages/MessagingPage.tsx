@@ -589,48 +589,83 @@ export default function MessagingPage() {
 
   if (!user) {
     return (
-      <div className="flex flex-col items-center justify-center h-full py-20 px-6">
-        <MessageCircle size={48} className="text-pi-400 mb-4" />
-        <h2 className="font-display text-2xl font-extrabold text-white mb-2">Sign in to message</h2>
-        <p className="text-slate-400 text-sm mb-6">Connect and chat with other Pi members.</p>
-        <button onClick={() => navigate('/login')}
-          className="px-8 py-3 rounded-xl font-bold text-white"
-          style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>Sign In</button>
+      <div className="relative flex flex-col items-center justify-center h-full py-20 px-6 overflow-hidden">
+        <div
+          className="pointer-events-none absolute inset-0 opacity-50"
+          style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 30%, rgba(20,184,166,0.2), transparent)' }}
+        />
+        <div
+          className="relative w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
+          style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+        >
+          <MessageCircle size={24} className="text-white" />
+        </div>
+        <h2 className="relative font-display text-2xl font-bold text-white mb-2">Sign in to message</h2>
+        <p className="relative text-slate-500 text-sm mb-6">Connect and chat with other Pi members.</p>
+        <button
+          type="button"
+          onClick={() => navigate('/login')}
+          className="relative px-8 py-3 rounded-xl font-bold text-white hover:brightness-110"
+          style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+        >
+          Sign In
+        </button>
       </div>
     )
   }
 
   return (
-    <div className="flex overflow-hidden min-w-0 w-full max-w-full h-full min-h-0">
+    <div className="relative flex overflow-hidden min-w-0 w-full max-w-full h-full min-h-0">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-32 opacity-40 z-0"
+        style={{ background: 'radial-gradient(ellipse 50% 80% at 20% 0%, rgba(20,184,166,0.15), transparent)' }}
+      />
+
       {/* Left: Conversations */}
-      <div className={`flex flex-col border-r border-white/5 min-w-0 ${selectedUser ? 'hidden md:flex' : 'flex'} w-full md:w-80 flex-shrink-0`}
-        style={{ background: 'rgba(8,13,26,0.8)' }}>
-        <div className="p-4 border-b border-white/5">
-          <h2 className="text-lg font-bold text-white mb-3">Messages</h2>
+      <div
+        className={`relative z-[1] flex flex-col border-r border-white/[0.06] min-w-0 ${selectedUser ? 'hidden md:flex' : 'flex'} w-full md:w-80 flex-shrink-0`}
+        style={{ background: 'linear-gradient(180deg, rgba(12,18,30,0.95), rgba(8,12,20,0.98))' }}
+      >
+        <div className="p-4 border-b border-white/[0.06]">
+          <div className="flex items-center gap-2.5 mb-3">
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+            >
+              <MessageCircle size={15} className="text-white" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-teal-400/90">Inbox</p>
+              <h2 className="font-display text-base font-bold text-white tracking-tight leading-tight">Messages</h2>
+            </div>
+          </div>
           <div className="relative">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
               value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
               placeholder="Search people to message..."
-              className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-3 py-2.5 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-pi-500/50 transition-colors"
+              className="w-full bg-black/30 border border-white/10 rounded-xl pl-9 pr-3 py-2.5 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-teal-500/40 transition-colors"
             />
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {/* Search results */}
           {searchQuery && (
-            <div className="p-2 border-b border-white/5">
-              <p className="text-xs text-slate-500 px-2 py-1 uppercase tracking-wider font-semibold">People</p>
+            <div className="p-2 border-b border-white/[0.06]">
+              <p className="text-[10px] text-slate-500 px-2 py-1.5 uppercase tracking-[0.14em] font-bold">People</p>
               {searching ? (
-                <div className="flex justify-center py-4"><Loader2 size={16} className="animate-spin text-pi-400" /></div>
+                <div className="flex justify-center py-4"><Loader2 size={16} className="animate-spin text-teal-400" /></div>
               ) : searchResults.length === 0 ? (
                 <p className="text-slate-500 text-xs text-center py-3">No users found</p>
               ) : (
                 searchResults.map(p => (
-                  <button key={p.id} onClick={() => { setSearchQuery(''); selectConversation(p) }}
-                    className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl hover:bg-white/5 transition-all text-left">
-                    <UserAvatar url={p.avatar_url} name={p.full_name} id={p.id} username={p.username} from="/messages" size={36} />
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => { setSearchQuery(''); selectConversation(p) }}
+                    className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl hover:bg-white/[0.04] border border-transparent hover:border-white/[0.06] transition-all text-left"
+                  >
+                    <UserAvatar url={p.avatar_url} name={p.full_name} id={p.id} username={p.username} from="/messages" size={36} rounded="rounded-xl" />
                     <div className="flex-1 min-w-0">
                       <p className="text-white text-sm font-semibold truncate">{p.full_name}</p>
                       <p className="text-slate-500 text-xs truncate">{p.role || 'Pi Member'}</p>
@@ -641,20 +676,29 @@ export default function MessagingPage() {
             </div>
           )}
 
-          {/* Conversations */}
           {loading ? (
-            <div className="flex justify-center py-8"><Loader2 size={20} className="animate-spin text-pi-400" /></div>
+            <div className="flex justify-center py-8"><Loader2 size={20} className="animate-spin text-teal-400" /></div>
           ) : conversations.length === 0 && !searchQuery ? (
             <div className="text-center py-12 px-4">
-              <MessageCircle size={32} className="text-slate-600 mx-auto mb-3" />
+              <div className="w-12 h-12 rounded-2xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center mx-auto mb-3">
+                <MessageCircle size={22} className="text-teal-400/80" />
+              </div>
               <p className="text-slate-400 text-sm">No conversations yet.</p>
               <p className="text-slate-600 text-xs mt-1">Search for people to start chatting.</p>
             </div>
           ) : (
             conversations.map(c => (
-              <button key={c.id} onClick={() => selectConversation(c)}
-                className={`flex items-center gap-3 w-full px-4 py-3 transition-all text-left ${selectedUser?.id === c.id ? 'bg-pi-500/10 border-r-2 border-pi-500' : 'hover:bg-white/5'}`}>
-                    <UserAvatar url={c.avatar_url} name={c.full_name} id={c.id} username={c.username} from="/messages" size={40} />
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => selectConversation(c)}
+                className={`flex items-center gap-3 w-full px-4 py-3 transition-all text-left border-r-2 ${
+                  selectedUser?.id === c.id
+                    ? 'bg-teal-500/[0.1] border-teal-400'
+                    : 'border-transparent hover:bg-white/[0.04]'
+                }`}
+              >
+                <UserAvatar url={c.avatar_url} name={c.full_name} id={c.id} username={c.username} from="/messages" size={40} rounded="rounded-xl" />
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-sm font-semibold truncate">{c.full_name}</p>
                   <p className="text-slate-500 text-xs truncate">{c.role || 'Pi Member'}</p>
@@ -666,26 +710,36 @@ export default function MessagingPage() {
       </div>
 
       {/* Right: Chat */}
-      <div className={`flex-1 flex flex-col min-w-0 max-w-full overflow-hidden ${!selectedUser ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`relative z-[1] flex-1 flex flex-col min-w-0 max-w-full overflow-hidden ${!selectedUser ? 'hidden md:flex' : 'flex'}`}
+        style={{ background: 'rgba(6,10,18,0.4)' }}
+      >
         {!selectedUser ? (
-          <div className="flex flex-col items-center justify-center flex-1">
-            <MessageCircle size={48} className="text-slate-700 mb-4" />
-            <p className="text-slate-400 text-lg font-semibold">Select a conversation</p>
-            <p className="text-slate-600 text-sm">or search for someone to message</p>
+          <div className="flex flex-col items-center justify-center flex-1 px-6">
+            <div
+              className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 border border-white/[0.07]"
+              style={{ background: 'linear-gradient(160deg, rgba(18,28,40,0.95), rgba(10,14,22,0.98))' }}
+            >
+              <MessageCircle size={28} className="text-teal-400/70" />
+            </div>
+            <p className="text-slate-300 text-lg font-semibold">Select a conversation</p>
+            <p className="text-slate-600 text-sm mt-1 text-center">or search for someone to message</p>
           </div>
         ) : (
           <>
             {/* Chat header */}
-            <div className="flex items-center gap-3 px-3 sm:px-5 py-3 sm:py-4 border-b border-white/5 flex-shrink-0 min-w-0"
-              style={{ background: 'rgba(14,20,25,0.8)' }}>
-              <button onClick={() => setSelectedUser(null)} className="md:hidden text-slate-400 hover:text-white mr-1 flex-shrink-0">←</button>
+            <div
+              className="flex items-center gap-3 px-3 sm:px-5 py-3 sm:py-3.5 border-b border-white/[0.06] flex-shrink-0 min-w-0"
+              style={{ background: 'linear-gradient(180deg, rgba(14,20,32,0.95), rgba(10,14,22,0.9))' }}
+            >
+              <button type="button" onClick={() => setSelectedUser(null)} className="md:hidden text-slate-400 hover:text-white mr-1 flex-shrink-0 text-sm">←</button>
               <UserAvatar
                 url={selectedUser.avatar_url}
                 name={selectedUser.full_name}
                 id={selectedUser.id}
                 username={selectedUser.username}
                 from="/messages"
-                size={36}
+                size={40}
+                rounded="rounded-xl"
               />
               <div className="min-w-0 flex-1">
                 <ProfileName
@@ -696,9 +750,9 @@ export default function MessagingPage() {
                 />
                 <p className="text-slate-500 text-xs truncate">{selectedUser.role || 'Pi Member'}</p>
               </div>
-              <div className="ml-auto flex items-center gap-1.5 flex-shrink-0">
-                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                <span className="text-xs text-emerald-400 hidden xs:inline sm:inline">Online</span>
+              <div className="ml-auto flex items-center gap-1.5 flex-shrink-0 px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                <span className="text-[10px] font-semibold text-emerald-300 hidden sm:inline">Online</span>
               </div>
             </div>
 
@@ -709,7 +763,7 @@ export default function MessagingPage() {
                   const el = document.getElementById(`msg-${pinnedMessage.id}`)
                   el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
                 }}
-                className="flex items-center gap-2 px-3 sm:px-5 py-2 border-b border-teal-500/20 bg-teal-500/10 text-left w-full min-w-0"
+                className="flex items-center gap-2 px-3 sm:px-5 py-2 border-b border-teal-500/20 bg-teal-500/[0.08] text-left w-full min-w-0"
               >
                 <Pin size={14} className="text-teal-400 shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -733,7 +787,7 @@ export default function MessagingPage() {
             )}
 
             {selectMode && (
-              <div className="flex items-center gap-2 px-3 sm:px-5 py-2 border-b border-white/10 bg-white/[0.03]">
+              <div className="flex items-center gap-2 px-3 sm:px-5 py-2 border-b border-white/[0.06] bg-black/25">
                 <p className="text-xs text-slate-300 flex-1">{selectedIds.size} selected</p>
                 <button
                   type="button"
@@ -789,8 +843,9 @@ export default function MessagingPage() {
             {/* Messages */}
             <div className="flex-1 overflow-y-auto overflow-x-hidden px-2.5 sm:px-5 py-4 space-y-3 min-w-0 w-full box-border">
               {messages.length === 0 && (
-                <div className="text-center py-8">
-                  <p className="text-slate-500 text-sm">No messages yet. Say hello! 👋</p>
+                <div className="text-center py-10">
+                  <p className="text-slate-500 text-sm">No messages yet. Say hello.</p>
+                  <p className="text-slate-600 text-xs mt-1">Intros, collabs, and follow-ups live here.</p>
                 </div>
               )}
               {messages.map(msg => {
@@ -853,7 +908,7 @@ export default function MessagingPage() {
                     </div>
                     <div className="min-w-0 max-w-[calc(100%-2.75rem)] sm:max-w-[72%] overflow-hidden">
                       {isDeleted ? (
-                        <div className={`px-3 py-2 rounded-2xl text-sm italic ${isMe ? 'text-white/70 bg-teal-700/50' : 'text-slate-500 bg-white/5 border border-white/10'}`}>
+                        <div className={`px-3 py-2 rounded-2xl text-sm italic ${isMe ? 'text-white/70 bg-teal-700/50' : 'text-slate-500 bg-black/30 border border-white/[0.08]'}`}>
                           Message deleted
                         </div>
                       ) : (
@@ -884,7 +939,7 @@ export default function MessagingPage() {
                         isAudioFile(file.type) ? (
                           <VoiceMessageBubble url={file.url} size={file.size} isMe={isMe} />
                         ) : (
-                        <div className={`rounded-2xl overflow-hidden border ${isMe ? 'border-white/10' : 'border-white/10 bg-white/5'}`}
+                        <div className={`rounded-2xl overflow-hidden border ${isMe ? 'border-white/10' : 'border-white/[0.08] bg-black/30'}`}
                           style={isMe && !isImageFile(file.type) && !isVideoFile(file.type) ? { background: 'linear-gradient(135deg, #14b8a6, #0d9488)' } : {}}>
                           {isImageFile(file.type) ? (
                             <a href={file.url} target="_blank" rel="noreferrer" className="block">
@@ -934,7 +989,7 @@ export default function MessagingPage() {
                       ) : (
                         <div className={`px-3 sm:px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words [overflow-wrap:anywhere] ${isMe
                           ? 'text-white rounded-br-sm'
-                          : 'bg-white/5 border border-white/10 text-slate-200 rounded-bl-sm'}`}
+                          : 'bg-black/35 border border-white/[0.08] text-slate-200 rounded-bl-sm'}`}
                           style={isMe ? { background: 'linear-gradient(135deg, #14b8a6, #0d9488)' } : {}}>
                           {body}
                         </div>
@@ -972,8 +1027,8 @@ export default function MessagingPage() {
 
             {/* Input */}
             <div
-              className="px-2 sm:px-4 py-2 sm:py-3 border-t border-white/5 flex-shrink-0 relative min-w-0 w-full max-w-full box-border"
-              style={{ background: 'rgba(8,13,26,0.9)' }}
+              className="px-2 sm:px-4 py-2.5 sm:py-3 border-t border-white/[0.06] flex-shrink-0 relative min-w-0 w-full max-w-full box-border"
+              style={{ background: 'linear-gradient(180deg, rgba(10,14,22,0.92), rgba(8,12,20,0.98))' }}
             >
               <MessagePicker
                 open={pickerOpen}
@@ -987,7 +1042,7 @@ export default function MessagingPage() {
                 </div>
               )}
               {replyTo && (
-                <div className="mb-2 flex items-start gap-2 px-3 py-2 rounded-xl border border-teal-500/25 bg-teal-500/10 min-w-0">
+                <div className="mb-2 flex items-start gap-2 px-3 py-2 rounded-xl border border-teal-500/25 bg-teal-500/[0.08] min-w-0">
                   <div className="flex-1 min-w-0 border-l-2 border-teal-400 pl-2.5">
                     <p className="text-teal-300 text-xs font-semibold truncate">Replying to {replyTo.author}</p>
                     <p className="text-slate-400 text-xs truncate mt-0.5">{replyTo.preview}</p>
@@ -1014,8 +1069,10 @@ export default function MessagingPage() {
                   type="button"
                   onMouseDown={e => e.preventDefault()}
                   onClick={() => setPickerOpen(o => !o)}
-                  className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 transition-all ${
-                    pickerOpen ? 'bg-pi-500/20 text-pi-300' : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                  className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 transition-all border ${
+                    pickerOpen
+                      ? 'bg-teal-500/15 text-teal-300 border-teal-500/30'
+                      : 'bg-black/30 text-slate-400 border-white/10 hover:text-white hover:border-white/20'
                   }`}
                   title="Emoji & stickers"
                   aria-expanded={pickerOpen}
@@ -1027,7 +1084,7 @@ export default function MessagingPage() {
                   type="button"
                   disabled={sending}
                   onClick={() => fileRef.current?.click()}
-                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all disabled:opacity-40"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 bg-black/30 text-slate-400 border border-white/10 hover:text-white hover:border-white/20 transition-all disabled:opacity-40"
                   title="Attach file"
                 >
                   <Paperclip size={18} />
@@ -1045,7 +1102,7 @@ export default function MessagingPage() {
                   }}
                   onError={msg => setUploadError(msg)}
                 />
-                <div className="flex-1 min-w-0 max-w-full overflow-hidden relative bg-white/5 border border-white/10 rounded-2xl focus-within:border-pi-500/50 transition-colors">
+                <div className="flex-1 min-w-0 max-w-full overflow-hidden relative bg-black/30 border border-white/10 rounded-2xl focus-within:border-teal-500/40 transition-colors">
                   <textarea
                     ref={inputRef}
                     value={newMsg}
@@ -1083,7 +1140,7 @@ export default function MessagingPage() {
                   type="button"
                   onClick={sendMessage}
                   disabled={sending || !newMsg.trim()}
-                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-white disabled:opacity-40 transition-all shrink-0"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-white disabled:opacity-40 transition-all shrink-0 hover:brightness-110"
                   style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
                   aria-label="Send message"
                 >
