@@ -6,6 +6,11 @@ Allow: /demo
 Allow: /investor
 Allow: /connect
 Allow: /transparency
+Allow: /grow
+Allow: /partners
+Allow: /discuss
+Allow: /invite
+Allow: /invite/
 Allow: /p/
 
 Disallow: /dashboard

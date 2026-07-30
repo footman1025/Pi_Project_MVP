@@ -28,14 +28,18 @@ export type TractionSnapshot = {
     joins: number
     posts: number
   }
-  growth: {
-    aiSuggestionsSent: number
-    notifOpens: number
-    pushEnableAttempts: number
-    pushEnableOk: number
-    coreLoopCompletes: number
-    weeklyDigestShown: number
-  }
+    growth: {
+      aiSuggestionsSent: number
+      notifOpens: number
+      pushEnableAttempts: number
+      pushEnableOk: number
+      coreLoopCompletes: number
+      weeklyDigestShown: number
+      inviteShares: number
+      signupAttributed: number
+      partnerClicks: number
+      discussRequests: number
+    }
   feedback: {
     total: number
     yes: number
@@ -86,6 +90,10 @@ export async function fetchTractionSnapshot(windowDays = 7): Promise<TractionSna
       pushEnableOk: 0,
       coreLoopCompletes: 0,
       weeklyDigestShown: 0,
+      inviteShares: 0,
+      signupAttributed: 0,
+      partnerClicks: 0,
+      discussRequests: 0,
     },
     feedback: { total: 0, yes: 0, maybe: 0, no: 0, wouldUseAgainPct: null, recentBlockers: [] },
     eventsTotal: 0,
@@ -184,6 +192,10 @@ export async function fetchTractionSnapshot(windowDays = 7): Promise<TractionSna
       pushEnableOk: events.filter(e => e.event === 'push_enable_result' && (e.props as { ok?: boolean } | null)?.ok === true).length,
       coreLoopCompletes: count('core_loop_complete'),
       weeklyDigestShown: count('weekly_digest_shown'),
+      inviteShares: count('invite_share'),
+      signupAttributed: count('signup_attributed'),
+      partnerClicks: count('partner_interest_click'),
+      discussRequests: count('discuss_request'),
     },
     feedback: {
       total: totalFb,

@@ -188,7 +188,9 @@ export default function TractionPage() {
                 </div>
               </div>
               <p className="text-slate-500 text-[11px] mt-3">
-                Weekly digests shown: {snap.growth.weeklyDigestShown}
+                Weekly digests: {snap.growth.weeklyDigestShown} · Invites shared: {snap.growth.inviteShares} ·
+                Attributed signups: {snap.growth.signupAttributed} · Partner clicks: {snap.growth.partnerClicks} ·
+                Discuss requests: {snap.growth.discussRequests}
               </p>
             </div>
 

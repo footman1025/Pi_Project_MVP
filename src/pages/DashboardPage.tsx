@@ -189,6 +189,14 @@ export default function DashboardPage() {
       <CoreLoopGuide />
       <ForYouRecommendations />
 
+      <button
+        type="button"
+        onClick={() => navigate('/grow')}
+        className="mb-6 w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-teal-200 border border-teal-500/30 bg-teal-500/10 hover:bg-teal-500/15"
+      >
+        Grow Pi · invites, partners, discussions →
+      </button>
+
       {twin && (
         <div className="mb-6 sm:mb-8 min-w-0">
           <DigitalTwinCard twin={twin} name={displayName} compact />

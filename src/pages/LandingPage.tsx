@@ -95,6 +95,7 @@ export default function LandingPage() {
           <a href="#features" className="hover:text-white transition-colors">Features</a>
           <button onClick={() => navigate('/features')} className="hover:text-white transition-colors">SEO Hub</button>
           <button onClick={() => navigate('/demo')} className="hover:text-teal-300 transition-colors text-teal-400/90 font-medium">Investor Demo</button>
+          <button onClick={() => navigate('/grow')} className="hover:text-white transition-colors">Grow</button>
           <button onClick={() => navigate('/connect')} className="hover:text-white transition-colors">Meet Pi AI</button>
           <button onClick={() => navigate('/transparency')} className="hover:text-white transition-colors">What’s live</button>
         </div>
@@ -579,6 +580,10 @@ export default function LandingPage() {
         <p className="mb-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
           <button type="button" onClick={() => navigate('/features')} className="text-teal-400/90 hover:text-teal-300 underline-offset-2 hover:underline">
             Features
+          </button>
+          <span className="text-slate-600">·</span>
+          <button type="button" onClick={() => navigate('/grow')} className="text-teal-400/90 hover:text-teal-300 underline-offset-2 hover:underline">
+            Grow
           </button>
           <span className="text-slate-600">·</span>
           <button type="button" onClick={() => navigate('/demo')} className="text-teal-400/90 hover:text-teal-300 underline-offset-2 hover:underline">

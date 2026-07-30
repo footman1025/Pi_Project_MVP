@@ -37,6 +37,10 @@ import ConnectPage from './pages/ConnectPage'
 import HandoffsPage from './pages/HandoffsPage'
 import FeaturesHubPage from './pages/FeaturesHubPage'
 import FeatureDetailPage from './pages/FeatureDetailPage'
+import GrowPage from './pages/GrowPage'
+import InviteLandingPage from './pages/InviteLandingPage'
+import PartnersPage from './pages/PartnersPage'
+import DiscussPage from './pages/DiscussPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth()
@@ -60,6 +64,8 @@ const ALWAYS_PUBLIC = [
   '/reset-password',
   '/demo',
   '/investor',
+  '/partners',
+  '/discuss',
 ]
 
 export default function App() {
@@ -72,18 +78,23 @@ export default function App() {
   const isConnectPath = location.pathname === '/connect'
   const isFeaturesPath =
     location.pathname === '/features' || location.pathname.startsWith('/features/')
-  // Logged-in members see profiles / transparency / connect inside AppShell. Guests get public layout.
-  // Features + investor surfaces stay public for SEO even when signed in.
+  const isInvitePath =
+    location.pathname === '/invite' || location.pathname.startsWith('/invite/')
+  const isGrowPath = location.pathname === '/grow'
+  // Logged-in members see profiles / transparency / connect / grow inside AppShell. Guests get public layout.
+  // Features + investor + partners/discuss stay public for SEO even when signed in.
   const isPublic =
     ALWAYS_PUBLIC.includes(location.pathname) ||
     isFeaturesPath ||
+    isInvitePath ||
+    (isGrowPath && !session && !authLoading) ||
     ((isProfilePath || isTransparencyPath || isConnectPath) && !session && !authLoading)
 
   useEffect(() => { window.scrollTo(0, 0) }, [location.pathname])
   useEffect(() => { trackPageView(location.pathname) }, [location.pathname])
 
   // Wait for auth before deciding public vs app shell for dual-mode URLs
-  if ((isProfilePath || isTransparencyPath || isConnectPath) && authLoading) {
+  if ((isProfilePath || isTransparencyPath || isConnectPath || isGrowPath) && authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-dark-950">
         <LoadingSpinner size="lg" label="Loading Pi…" />
@@ -108,6 +119,11 @@ export default function App() {
           <Route path="/transparency" element={<TransparencyPage />} />
           <Route path="/features" element={<FeaturesHubPage />} />
           <Route path="/features/:slug" element={<FeatureDetailPage />} />
+          <Route path="/grow" element={<GrowPage />} />
+          <Route path="/partners" element={<PartnersPage />} />
+          <Route path="/discuss" element={<DiscussPage />} />
+          <Route path="/invite" element={<InviteLandingPage />} />
+          <Route path="/invite/:code" element={<InviteLandingPage />} />
           <Route path="/p/:username" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
@@ -132,6 +148,7 @@ export default function App() {
               <Route path="/traction" element={<TractionPage />} />
               <Route path="/handoffs" element={<HandoffsPage />} />
               <Route path="/connect" element={<ConnectPage />} />
+              <Route path="/grow" element={<GrowPage />} />
               <Route path="/p/:username" element={<ProfilePage />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>

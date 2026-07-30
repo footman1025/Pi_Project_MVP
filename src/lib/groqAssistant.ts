@@ -61,6 +61,7 @@ Pi helps people discover collaborators, investors, communities, and opportunitie
 - /demo — Investor Demo Mode (walkthrough: twin → matches → opportunities)
 - /investor — company investor view (vision, Twin, metrics, roadmap) + Demo graph search
 - /features — public SEO hub for major Pi product surfaces
+- /grow — Phase 3 market expansion (invites, partnerships, strategic discussions)
 - /connect — AI-first Contact & Partnership (Pi AI greets first; Speak with a Human handoff)
 - /p/:username — public SEO profile pages
 - Auth: /login, /signup, /forgot-password, /onboarding

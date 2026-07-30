@@ -68,6 +68,30 @@ export const SEO_PAGES: Record<string, SeoPage> = {
     description:
       'Honest Live / Partial / Demo / Soon status for Pi’s MVP — investor-grade transparency without inflated claims.',
   },
+  '/grow': {
+    path: '/grow',
+    title: 'Grow Pi – Invites, Partnerships & Strategic Discussions',
+    description:
+      'Phase 3 market expansion: invite users into the live graph, explore partnerships, and prepare for strategic investor discussions without rushing undervalued deals.',
+  },
+  '/partners': {
+    path: '/partners',
+    title: 'Partner with Pi – Integrations & Ecosystem',
+    description:
+      'Partnership types for Pi: product integration, distribution, ecosystem, and enterprise pilots — routed through Meet Pi AI with full context.',
+  },
+  '/discuss': {
+    path: '/discuss',
+    title: 'Strategic Investor Discussions – Prep Room | Pi',
+    description:
+      'Prepare for strategic conversations with Demo, Transparency, and Traction. Value-first timing — not early undervalued deals.',
+  },
+  '/invite': {
+    path: '/invite',
+    title: 'You’re invited to Pi',
+    description:
+      'Join Pi via invite — AI-native Digital Twin, matching, communities, and opportunities.',
+  },
   '/login': {
     path: '/login',
     title: 'Sign in to Pi',

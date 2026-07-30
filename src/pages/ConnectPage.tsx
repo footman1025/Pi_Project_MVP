@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, Bot, Loader2, SendHorizonal, UserRound, Sparkles, Check,
 } from 'lucide-react'
@@ -27,8 +27,15 @@ const SUGGESTIONS = [
 
 export default function ConnectPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { user, profile } = useAuth()
   const groqOn = hasGroqKey()
+
+  const initialTeam = (() => {
+    const t = searchParams.get('team') as ConnectTeam | null
+    return CONNECT_TEAMS.some(x => x.id === t) ? (t as ConnectTeam) : 'partnerships'
+  })()
+  const intentParam = searchParams.get('intent') || ''
 
   const [messages, setMessages] = useState<ConnectMessage[]>([
     {
@@ -42,23 +49,42 @@ export default function ConnectPage() {
   ])
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
-  const [teamHint, setTeamHint] = useState<ConnectTeam | null>(null)
+  const [teamHint, setTeamHint] = useState<ConnectTeam | null>(initialTeam)
   const [humanOpen, setHumanOpen] = useState(false)
   const [name, setName] = useState(profile?.full_name || '')
   const [email, setEmail] = useState('')
   const [org, setOrg] = useState('')
-  const [note, setNote] = useState('')
-  const [team, setTeam] = useState<ConnectTeam>('partnerships')
+  const [note, setNote] = useState(intentParam ? `Intent: ${intentParam}` : '')
+  const [team, setTeam] = useState<ConnectTeam>(initialTeam)
   const [sending, setSending] = useState(false)
   const [done, setDone] = useState(false)
   const [emailNote, setEmailNote] = useState('')
   const [error, setError] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const bootstrapped = useRef(false)
 
   useEffect(() => {
-    track('connect_open')
+    track('connect_open', { team: initialTeam, intent: intentParam || undefined })
   }, [])
+
+  // Deep-link from /partners or /discuss — acknowledge routing intent once
+  useEffect(() => {
+    if (bootstrapped.current) return
+    if (!searchParams.get('team') && !intentParam) return
+    bootstrapped.current = true
+    const label = CONNECT_TEAMS.find(t => t.id === initialTeam)?.label || initialTeam
+    setMessages(m => [
+      ...m,
+      {
+        role: 'ai',
+        text:
+          `I see you’re here for ${label}` +
+          (intentParam ? ` (${intentParam.replace(/-/g, ' ')})` : '') +
+          '. Ask anything about Pi, or tap Speak with a Human and I’ll package context for the team.',
+      },
+    ])
+  }, [searchParams, initialTeam, intentParam])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })

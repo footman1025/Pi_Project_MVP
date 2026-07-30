@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { Eye, EyeOff, Sparkles, ArrowRight } from 'lucide-react'
 import { isValidEmail, validatePassword } from '../../lib/validation'
 import { track } from '../../lib/analytics'
+import { getStoredInviteRef, trackSignupAttribution } from '../../lib/acquisition'
 
 export default function SignUpPage() {
   const navigate = useNavigate()
@@ -34,6 +35,7 @@ export default function SignUpPage() {
       return
     }
     track('signup_success')
+    trackSignupAttribution()
     setSuccess(true)
   }
 
@@ -72,7 +74,14 @@ export default function SignUpPage() {
           ) : (
             <>
               <h1 className="text-3xl font-black text-white mb-1">Create your account</h1>
-              <p className="text-slate-400 text-sm mb-8">Join Pi — One Platform. Infinite Opportunities.</p>
+              <p className="text-slate-400 text-sm mb-8">
+                Join Pi — One Platform. Infinite Opportunities.
+                {getStoredInviteRef() && (
+                  <span className="block mt-1 text-teal-400/90 text-xs">
+                    Invite from @{getStoredInviteRef()} will be attributed.
+                  </span>
+                )}
+              </p>
 
               {error && (
                 <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
