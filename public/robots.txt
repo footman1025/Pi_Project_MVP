@@ -1,0 +1,32 @@
+User-agent: *
+Allow: /
+Allow: /features
+Allow: /features/
+Allow: /demo
+Allow: /investor
+Allow: /connect
+Allow: /transparency
+Allow: /p/
+
+Disallow: /dashboard
+Disallow: /feed
+Disallow: /match
+Disallow: /opportunities
+Disallow: /creators
+Disallow: /professionals
+Disallow: /communities
+Disallow: /messages
+Disallow: /notifications
+Disallow: /profile/edit
+Disallow: /twin
+Disallow: /traction
+Disallow: /handoffs
+Disallow: /search
+Disallow: /login
+Disallow: /signup
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /onboarding
+Disallow: /api/
+
+Sitemap: https://pi-project-mvp.vercel.app/sitemap.xml

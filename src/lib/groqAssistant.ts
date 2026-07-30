@@ -60,6 +60,7 @@ Pi helps people discover collaborators, investors, communities, and opportunitie
 - /profile/edit — edit profile (skills, goals, experience, avatar) — improves twin & matches
 - /demo — Investor Demo Mode (walkthrough: twin → matches → opportunities)
 - /investor — company investor view (vision, Twin, metrics, roadmap) + Demo graph search
+- /features — public SEO hub for major Pi product surfaces
 - /connect — AI-first Contact & Partnership (Pi AI greets first; Speak with a Human handoff)
 - /p/:username — public SEO profile pages
 - Auth: /login, /signup, /forgot-password, /onboarding

@@ -14,6 +14,7 @@ import ResetPasswordPage from './pages/auth/ResetPasswordPage'
 
 import AppShell from './components/AppShell'
 import AiAssistant from './components/AiAssistant'
+import SeoHead from './components/SeoHead'
 
 import DashboardPage from './pages/DashboardPage'
 import FeedPage from './pages/FeedPage'
@@ -34,6 +35,8 @@ import DigitalTwinPage from './pages/DigitalTwinPage'
 import TractionPage from './pages/TractionPage'
 import ConnectPage from './pages/ConnectPage'
 import HandoffsPage from './pages/HandoffsPage'
+import FeaturesHubPage from './pages/FeaturesHubPage'
+import FeatureDetailPage from './pages/FeatureDetailPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth()
@@ -67,9 +70,13 @@ export default function App() {
   const isProfilePath = location.pathname.startsWith('/p/')
   const isTransparencyPath = location.pathname === '/transparency'
   const isConnectPath = location.pathname === '/connect'
+  const isFeaturesPath =
+    location.pathname === '/features' || location.pathname.startsWith('/features/')
   // Logged-in members see profiles / transparency / connect inside AppShell. Guests get public layout.
+  // Features + investor surfaces stay public for SEO even when signed in.
   const isPublic =
     ALWAYS_PUBLIC.includes(location.pathname) ||
+    isFeaturesPath ||
     ((isProfilePath || isTransparencyPath || isConnectPath) && !session && !authLoading)
 
   useEffect(() => { window.scrollTo(0, 0) }, [location.pathname])
@@ -86,6 +93,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-dark-950 text-white">
+      <SeoHead />
       {isPublic ? (
         <Routes>
           <Route path="/" element={<LandingPage />} />
@@ -98,6 +106,8 @@ export default function App() {
           <Route path="/investor" element={<InvestorDashboardPage />} />
           <Route path="/connect" element={<ConnectPage />} />
           <Route path="/transparency" element={<TransparencyPage />} />
+          <Route path="/features" element={<FeaturesHubPage />} />
+          <Route path="/features/:slug" element={<FeatureDetailPage />} />
           <Route path="/p/:username" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -11,6 +11,8 @@ type Row = {
 }
 
 const rows: Row[] = [
+  { area: 'Platform SEO (Phase 1)', kind: 'live', detail: 'Per-route titles/meta/OG/Twitter/canonical via SeoHead; /features hub + feature pages; robots.txt + sitemap.xml; public profiles keep Person JSON-LD; auth app routes noindex' },
+  { area: 'Production readiness (Phase 1)', kind: 'live', detail: 'SPA rewrite excludes robots/sitemap/static assets; security headers (nosniff, referrer, frame); PWA manifest + SW; investor surfaces public' },
   { area: 'Contact & Partnership (Meet Pi AI)', kind: 'live', detail: '/connect — AI greets first, guides intent, Speak with a Human saves to /handoffs + emails visitor confirmation and HANDOFF_NOTIFY_EMAIL (Resend); team inbox at /handoffs' },
   { area: 'Traction metrics & validation', kind: 'live', detail: 'product_events + product_feedback; Traction page (activation, retention, intros, opp interest, would-use-again); in-app feedback widget' },
   { area: 'Auth & profiles', kind: 'live', detail: 'Supabase auth, onboarding save, public profiles, follow graph' },
@@ -97,6 +99,13 @@ export default function TransparencyPage() {
               className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold text-slate-200 text-sm border border-white/10 hover:border-white/20"
             >
               Traction metrics
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/features')}
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold text-slate-200 text-sm border border-white/10 hover:border-white/20"
+            >
+              Feature SEO hub
             </button>
             <button
               type="button"

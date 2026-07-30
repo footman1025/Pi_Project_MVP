@@ -93,6 +93,7 @@ export default function LandingPage() {
         <div className="hidden md:flex items-center gap-6 text-sm text-slate-400 mr-8">
           <a href="#why" className="hover:text-white transition-colors">Why Pi</a>
           <a href="#features" className="hover:text-white transition-colors">Features</a>
+          <button onClick={() => navigate('/features')} className="hover:text-white transition-colors">SEO Hub</button>
           <button onClick={() => navigate('/demo')} className="hover:text-teal-300 transition-colors text-teal-400/90 font-medium">Investor Demo</button>
           <button onClick={() => navigate('/connect')} className="hover:text-white transition-colors">Meet Pi AI</button>
           <button onClick={() => navigate('/transparency')} className="hover:text-white transition-colors">What’s live</button>
@@ -343,6 +344,14 @@ export default function LandingPage() {
               <p className="text-lg text-slate-400 max-w-2xl mx-auto">
                 Every public creator, professional, and community on Pi is search-engine indexed. Pi becomes your long-term organic growth engine — no ad spend required.
               </p>
+              <button
+                type="button"
+                onClick={() => navigate('/features')}
+                className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white"
+                style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+              >
+                Open feature SEO hub <ArrowRight size={16} />
+              </button>
             </div>
             <div className="grid md:grid-cols-2 gap-6">
               {[
@@ -567,9 +576,17 @@ export default function LandingPage() {
           <span className="text-white font-bold">π</span>
           <span>Pi — One Platform. Infinite Opportunities.</span>
         </div>
-        <p className="mb-2">
+        <p className="mb-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+          <button type="button" onClick={() => navigate('/features')} className="text-teal-400/90 hover:text-teal-300 underline-offset-2 hover:underline">
+            Features
+          </button>
+          <span className="text-slate-600">·</span>
+          <button type="button" onClick={() => navigate('/demo')} className="text-teal-400/90 hover:text-teal-300 underline-offset-2 hover:underline">
+            Investor Demo
+          </button>
+          <span className="text-slate-600">·</span>
           <button type="button" onClick={() => navigate('/transparency')} className="text-teal-400/90 hover:text-teal-300 underline-offset-2 hover:underline">
-            Engineering Transparency — what’s live
+            Engineering Transparency
           </button>
         </p>
         <p>© 2026 Pi. All rights reserved. · Private Pilot</p>
