@@ -212,29 +212,52 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
   }
 
   return (
-    <div className="animate-fade-in">
-      <div className="flex items-center gap-3 mb-6">
-        <button onClick={onBack} className="text-slate-400 hover:text-white transition-colors text-sm">← Back</button>
-      </div>
+    <div>
+      <button
+        type="button"
+        onClick={onBack}
+        className="mb-5 inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-white transition-colors"
+      >
+        ← Back to communities
+      </button>
 
-      <div className="p-6 rounded-2xl border border-white/5 mb-6" style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.5), rgba(14,20,25,0.7))' }}>
-        <div className="flex items-center gap-4">
+      <div
+        className="relative overflow-hidden rounded-2xl border border-white/[0.07] p-5 sm:p-6 mb-5"
+        style={{ background: 'linear-gradient(160deg, rgba(18,28,40,0.95), rgba(10,14,22,0.98))' }}
+      >
+        <div
+          className="pointer-events-none absolute -top-10 -right-8 w-32 h-32 rounded-full opacity-20 blur-2xl"
+          style={{ background: '#14b8a6' }}
+        />
+        <div className="relative flex items-center gap-4 flex-wrap">
           <CommunityIcon name={community.name} category={community.category} size="lg" />
-          <div className="flex-1">
-            <h2 className="font-display text-2xl font-extrabold text-white">{community.name}</h2>
-            <p className="text-slate-400 text-sm">{membersCount.toLocaleString()} members · {community.category}</p>
+          <div className="flex-1 min-w-0">
+            <h2 className="font-display text-xl sm:text-2xl font-bold text-white tracking-tight">{community.name}</h2>
+            <p className="text-slate-500 text-sm mt-0.5">
+              {membersCount.toLocaleString()} members · {community.category}
+            </p>
           </div>
           {user && (
-            <button onClick={toggleJoin} disabled={joiningLoading}
-              className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all hover:scale-105 disabled:opacity-50 ${joined ? 'border border-white/20 text-slate-300 hover:border-red-500/40 hover:text-red-400' : 'text-white'}`}
-              style={joined ? {} : { background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
+            <button
+              type="button"
+              onClick={toggleJoin}
+              disabled={joiningLoading}
+              className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-50 ${
+                joined
+                  ? 'border border-white/15 text-slate-300 hover:border-red-500/40 hover:text-red-400'
+                  : 'text-white hover:brightness-110'
+              }`}
+              style={joined ? undefined : { background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+            >
               {joiningLoading ? <Loader2 size={14} className="animate-spin" /> : joined ? 'Leave' : 'Join'}
             </button>
           )}
         </div>
-        {community.description && <p className="text-slate-400 text-sm mt-3">{community.description}</p>}
-        <p className="text-slate-500 text-xs mt-3">
-          This is a topic space: join, post, and discuss with people who share this interest.
+        {community.description && (
+          <p className="relative text-slate-400 text-sm mt-3.5 leading-relaxed">{community.description}</p>
+        )}
+        <p className="relative text-slate-600 text-xs mt-2.5">
+          Topic space: join, post, and discuss with people who share this interest.
         </p>
       </div>
 
@@ -243,17 +266,28 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
       )}
 
       {user && (
-        <div className="p-4 rounded-2xl border border-white/5 mb-6" style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.4), rgba(14,20,25,0.6))' }}>
+        <div
+          className="relative overflow-hidden rounded-2xl border border-white/[0.07] p-4 sm:p-5 mb-5"
+          style={{ background: 'linear-gradient(160deg, rgba(18,28,40,0.95), rgba(10,14,22,0.98))' }}
+        >
           {!joined && (
-            <p className="text-xs text-amber-400/90 mb-2">You will be joined automatically when you post.</p>
+            <p className="text-xs text-amber-400/90 mb-2">You’ll be joined automatically when you post.</p>
           )}
-          <textarea value={newPost} onChange={e => setNewPost(e.target.value)}
-            placeholder={`Share something with ${community.name}...`} rows={3}
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-pi-500/50 transition-colors resize-none mb-3" />
+          <textarea
+            value={newPost}
+            onChange={e => setNewPost(e.target.value)}
+            placeholder={`Share something with ${community.name}...`}
+            rows={3}
+            className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-teal-500/40 transition-colors resize-none mb-3"
+          />
           <div className="flex justify-end">
-            <button onClick={handlePost} disabled={posting || !newPost.trim()}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl font-semibold text-white text-sm disabled:opacity-40 transition-all hover:scale-105"
-              style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
+            <button
+              type="button"
+              onClick={handlePost}
+              disabled={posting || !newPost.trim()}
+              className="flex items-center gap-2 px-5 py-2 rounded-xl font-semibold text-white text-sm disabled:opacity-40 hover:brightness-110"
+              style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+            >
               {posting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
               {posting ? 'Posting...' : 'Post'}
             </button>
@@ -262,18 +296,24 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
       )}
 
       {loading ? (
-        <div className="flex justify-center py-12"><Loader2 size={28} className="animate-spin text-pi-400" /></div>
+        <div className="flex justify-center py-12"><Loader2 size={28} className="animate-spin text-teal-400" /></div>
       ) : posts.length === 0 ? (
-        <div className="text-center py-12">
-          <MessageCircle size={36} className="text-slate-600 mx-auto mb-3" />
+        <div
+          className="text-center py-12 rounded-2xl border border-white/[0.07]"
+          style={{ background: 'linear-gradient(160deg, rgba(18,28,40,0.95), rgba(10,14,22,0.98))' }}
+        >
+          <MessageCircle size={32} className="text-slate-600 mx-auto mb-3" />
           <p className="text-slate-400 text-sm">No posts yet in this community.</p>
           <p className="text-slate-600 text-xs mt-1">Be the first to start the conversation.</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3.5">
           {posts.map(post => (
-            <div key={post.id} className="p-4 rounded-2xl border border-white/5 hover:border-white/10 transition-all"
-              style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.4), rgba(14,20,25,0.6))' }}>
+            <article
+              key={post.id}
+              className="relative overflow-hidden rounded-2xl border border-white/[0.07] hover:border-white/15 transition-all p-4 sm:p-5"
+              style={{ background: 'linear-gradient(160deg, rgba(18,28,40,0.95), rgba(10,14,22,0.98))' }}
+            >
               <div className="flex items-center gap-3 mb-3">
                 <UserAvatar
                   url={post.profiles?.avatar_url}
@@ -281,7 +321,8 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
                   id={post.author_id}
                   username={post.profiles?.username}
                   from="/communities"
-                  size={32}
+                  size={36}
+                  rounded="rounded-xl"
                 />
                 <div className="flex-1 min-w-0">
                   <ProfileName
@@ -290,10 +331,15 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
                     from="/communities"
                     className="text-white text-sm font-semibold"
                   />
-                  {post.profiles?.username && post.profiles?.full_name && (
-                    <p className="text-slate-500 text-xs">@{post.profiles.username}</p>
-                  )}
-                  <p className="text-slate-500 text-xs">{timeAgo(post.created_at)}</p>
+                  <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                    {post.profiles?.username && post.profiles?.full_name && (
+                      <>
+                        <span>@{post.profiles.username}</span>
+                        <span>·</span>
+                      </>
+                    )}
+                    <span>{timeAgo(post.created_at)}</span>
+                  </div>
                 </div>
                 {user?.id === post.author_id && (
                   <button
@@ -308,11 +354,11 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
                 )}
               </div>
               <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-wrap">{post.content}</p>
-              <div className="flex items-center gap-4 mt-3 pt-3 border-t border-white/5 text-xs text-slate-500">
+              <div className="flex items-center gap-4 mt-3.5 pt-3 border-t border-white/[0.06] text-[11px] text-slate-500">
                 <span>{post.likes_count || 0} likes</span>
                 <span>{post.comments_count || 0} comments</span>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       )}
@@ -400,151 +446,209 @@ export default function CommunityPage() {
 
   if (selected) {
     return (
-      <div className="p-6 max-w-3xl mx-auto">
-        <CommunityDetail community={selected} onBack={() => { setSelected(null); fetchCommunities() }} />
+      <div className="min-h-full relative overflow-x-hidden">
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-40 opacity-45"
+          style={{ background: 'radial-gradient(ellipse 70% 80% at 15% 0%, rgba(20,184,166,0.18), transparent)' }}
+        />
+        <div className="relative p-4 sm:p-6 max-w-3xl mx-auto w-full min-w-0">
+          <CommunityDetail community={selected} onBack={() => { setSelected(null); fetchCommunities() }} />
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <div className="mb-8">
-        <div className="flex items-center gap-2 mb-2 flex-wrap">
-          <UsersRound size={22} className="text-emerald-400" />
-          <h1 className="font-display text-3xl font-extrabold text-white">Communities</h1>
-          <StatusBadge kind="live" label="Live · twin-ranked" size="md" />
-        </div>
-        <p className="text-slate-400">
-          Topic groups where people with shared interests join, post, and discuss.
-          Unlike the main Feed (everyone), community posts stay inside that group.
-        </p>
-      </div>
+    <div className="min-h-full relative overflow-x-hidden">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-48 opacity-50"
+        style={{ background: 'radial-gradient(ellipse 70% 80% at 15% 0%, rgba(20,184,166,0.2), transparent)' }}
+      />
 
-      {/* Search bar */}
-      <div className="relative mb-4">
-        <SearchIcon size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
-        <input
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          placeholder="Search communities by name, topic, or category..."
-          className="w-full bg-white/5 border border-white/10 rounded-2xl pl-11 pr-4 py-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-pi-500/50 transition-colors"
-        />
-        {searching && (
-          <div className="absolute right-4 top-1/2 -translate-y-1/2">
-            <Loader2 size={15} className="animate-spin text-pi-400" />
+      <div className="relative p-4 sm:p-6 max-w-5xl mx-auto w-full min-w-0">
+        <header className="mb-6 sm:mb-7">
+          <div className="flex items-center gap-3 mb-2 flex-wrap">
+            <div
+              className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+              style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+            >
+              <UsersRound size={18} className="text-white" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-teal-400/90 mb-0.5">
+                Twin-ranked hubs
+              </p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="font-display text-xl sm:text-2xl font-bold text-white tracking-tight">
+                  Communities
+                </h1>
+                <StatusBadge kind="live" label="Live · twin-ranked" />
+              </div>
+            </div>
           </div>
-        )}
-        {searchQuery && !searching && (
-          <button
-            onClick={() => setSearchQuery('')}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors text-xs">
-            ✕
-          </button>
-        )}
-      </div>
+          <p className="text-slate-500 text-sm leading-relaxed pl-[52px] max-w-2xl">
+            Topic groups to join, post, and discuss. Unlike the main Feed, posts stay inside the hub.
+          </p>
+        </header>
 
-      {/* Category filter */}
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-6">
-        {categories.map(c => (
-          <button key={c} onClick={() => setActive(c)}
-            className={`flex-shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-all
-              ${active === c ? 'text-white border border-pi-500/40' : 'text-slate-400 border border-white/5 hover:text-white hover:border-white/10'}`}
-            style={active === c ? { background: 'rgba(20,184,166,0.15)' } : {}}>
-            {c}
-          </button>
-        ))}
-      </div>
-
-      <div className="p-4 rounded-2xl border border-pi-500/20 mb-6 flex items-center gap-3"
-        style={{ background: 'rgba(20,184,166,0.08)' }}>
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-pi-500 to-teal-600 flex items-center justify-center flex-shrink-0">
-          <Sparkles size={16} className="text-white" />
-        </div>
-        <p className="text-sm text-slate-300">
-          <span className="text-pi-300 font-semibold">Pi AI recommends:</span>{' '}
-          {topRecs.length >= 2 ? (
-            <>
-              Based on your twin, start with{' '}
-              <span className="text-white font-semibold">{topRecs[0].name}</span>
-              {' '}({topRecs[0].score}% fit) and{' '}
-              <span className="text-white font-semibold">{topRecs[1].name}</span>
-              {' '}({topRecs[1].score}% fit).
-            </>
-          ) : topRecs.length === 1 ? (
-            <>
-              Top fit right now:{' '}
-              <span className="text-white font-semibold">{topRecs[0].name}</span>
-              {' '}({topRecs[0].score}%).
-            </>
-          ) : (
-            <>Complete your profile interests to personalize community ranking.</>
+        <div className="relative mb-4">
+          <SearchIcon size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+          <input
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search communities by name, topic, or category..."
+            className="w-full bg-black/30 border border-white/10 rounded-2xl pl-11 pr-10 py-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-teal-500/40 transition-colors"
+          />
+          {searching && (
+            <div className="absolute right-4 top-1/2 -translate-y-1/2">
+              <Loader2 size={15} className="animate-spin text-teal-400" />
+            </div>
           )}
-        </p>
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center py-16"><Loader2 size={32} className="animate-spin text-pi-400" /></div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-16">
-          <UsersRound size={40} className="text-slate-600 mx-auto mb-3" />
-          <p className="text-white font-bold mb-1">
-            {searchQuery ? `No communities found for "${searchQuery}"` : 'No communities yet'}
-          </p>
-          <p className="text-slate-500 text-sm">
-            {searchQuery ? 'Try a different search term or clear the filter.' : 'Check back soon!'}
-          </p>
-          {searchQuery && (
-            <button onClick={() => setSearchQuery('')}
-              className="mt-4 px-5 py-2 rounded-xl text-sm font-semibold text-pi-300 bg-pi-500/10 border border-pi-500/20 hover:bg-pi-500/15 transition-all">
-              Clear search
+          {searchQuery && !searching && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors text-xs"
+            >
+              ✕
             </button>
           )}
         </div>
-      ) : (
-        <div className="grid md:grid-cols-2 gap-4">
-          {filtered.map(c => (
-              <div key={c.id}
-                className="rounded-2xl border border-white/5 hover:border-pi-500/20 transition-all group"
-                style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.5), rgba(14,20,25,0.7))' }}>
-                <div className="p-5 cursor-pointer" onClick={() => setSelected(c)}>
-                  <div className="flex items-center gap-4 mb-4">
+
+        <div className="flex gap-1.5 overflow-x-auto pb-1 mb-5 -mx-1 px-1">
+          {categories.map(c => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setActive(c)}
+              className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${
+                active === c
+                  ? 'border-teal-500/40 bg-teal-500/15 text-teal-100'
+                  : 'border-white/10 text-slate-400 hover:text-white hover:border-white/20'
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+
+        <div
+          className="relative overflow-hidden rounded-2xl border border-teal-500/20 p-4 mb-6 flex items-start gap-3"
+          style={{ background: 'linear-gradient(160deg, rgba(20,184,166,0.12), rgba(10,14,22,0.9))' }}
+        >
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+          >
+            <Sparkles size={15} className="text-white" />
+          </div>
+          <p className="text-sm text-slate-300 leading-relaxed">
+            <span className="text-teal-300 font-semibold">Pi recommends:</span>{' '}
+            {topRecs.length >= 2 ? (
+              <>
+                Based on your twin, start with{' '}
+                <span className="text-white font-semibold">{topRecs[0].name}</span>
+                {' '}({topRecs[0].score}% fit) and{' '}
+                <span className="text-white font-semibold">{topRecs[1].name}</span>
+                {' '}({topRecs[1].score}% fit).
+              </>
+            ) : topRecs.length === 1 ? (
+              <>
+                Top fit right now:{' '}
+                <span className="text-white font-semibold">{topRecs[0].name}</span>
+                {' '}({topRecs[0].score}%).
+              </>
+            ) : (
+              <>Complete your profile interests to personalize community ranking.</>
+            )}
+          </p>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-16"><Loader2 size={32} className="animate-spin text-teal-400" /></div>
+        ) : filtered.length === 0 ? (
+          <div
+            className="text-center py-14 rounded-2xl border border-white/[0.07]"
+            style={{ background: 'linear-gradient(160deg, rgba(18,28,40,0.95), rgba(10,14,22,0.98))' }}
+          >
+            <UsersRound size={36} className="text-slate-600 mx-auto mb-3" />
+            <p className="text-white font-bold mb-1">
+              {searchQuery ? `No communities found for "${searchQuery}"` : 'No communities yet'}
+            </p>
+            <p className="text-slate-500 text-sm">
+              {searchQuery ? 'Try a different search term or clear the filter.' : 'Check back soon!'}
+            </p>
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="mt-4 px-5 py-2 rounded-xl text-sm font-semibold text-teal-200 border border-teal-500/25 bg-teal-500/[0.08] hover:bg-teal-500/15"
+              >
+                Clear search
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 gap-3.5">
+            {filtered.map(c => (
+              <article
+                key={c.id}
+                className="relative overflow-hidden rounded-2xl border border-white/[0.07] hover:border-white/15 transition-all group"
+                style={{ background: 'linear-gradient(160deg, rgba(18,28,40,0.95), rgba(10,14,22,0.98))' }}
+              >
+                <div
+                  className="pointer-events-none absolute -top-8 -right-6 w-24 h-24 rounded-full opacity-15 blur-2xl group-hover:opacity-25 transition-opacity"
+                  style={{ background: '#14b8a6' }}
+                />
+                <div className="relative p-4 sm:p-5 cursor-pointer" onClick={() => setSelected(c)}>
+                  <div className="flex items-center gap-3.5 mb-3.5">
                     <CommunityIcon
                       name={c.name}
                       category={c.category}
                       size="md"
-                      className="group-hover:scale-110 transition-transform"
+                      className="group-hover:scale-105 transition-transform"
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-bold text-white">{c.name}</h3>
-                        <span className="text-xs font-extrabold text-teal-300">{c.score}% fit</span>
+                        <span className="text-[11px] font-extrabold text-teal-300 tabular-nums">{c.score}% fit</span>
                         {c.joined && (
-                          <span className="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">Joined</span>
+                          <span className="text-[10px] font-semibold text-emerald-300 bg-emerald-500/10 border border-emerald-500/25 px-1.5 py-0.5 rounded-md">
+                            Joined
+                          </span>
                         )}
                       </div>
-                      <p className="text-slate-400 text-sm">{c.members_count.toLocaleString()} members · {c.category}</p>
+                      <p className="text-slate-500 text-xs mt-0.5">
+                        {c.members_count.toLocaleString()} members · {c.category}
+                      </p>
                     </div>
                   </div>
 
-                  <div className="mb-4 p-3 rounded-xl border border-pi-500/20" style={{ background: 'rgba(20,184,166,0.08)' }}>
+                  <div
+                    className="mb-4 p-3 rounded-xl border border-teal-500/20"
+                    style={{ background: 'rgba(20,184,166,0.08)' }}
+                  >
                     <div className="flex items-center gap-1.5 mb-1.5">
-                      <Sparkles size={12} className="text-pi-400" />
-                      <p className="text-pi-300 text-xs font-bold uppercase tracking-wider">Pi Intelligence</p>
+                      <Sparkles size={11} className="text-teal-400" />
+                      <p className="text-teal-300/90 text-[10px] font-bold uppercase tracking-[0.14em]">Why this hub</p>
                     </div>
                     <p className="text-slate-300 text-xs leading-relaxed">{c.reason}</p>
                   </div>
 
                   <button
+                    type="button"
                     onClick={e => { e.stopPropagation(); setSelected(c) }}
-                    className="w-full py-2.5 rounded-xl font-semibold text-sm text-white transition-all hover:opacity-90"
-                    style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
-                    {c.joined ? 'View Community' : 'Join Community'}
+                    className="w-full py-2.5 rounded-xl font-semibold text-sm text-white hover:brightness-110 transition-all"
+                    style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+                  >
+                    {c.joined ? 'View community' : 'Open community'}
                   </button>
                 </div>
-              </div>
-          ))}
-        </div>
-      )}
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
