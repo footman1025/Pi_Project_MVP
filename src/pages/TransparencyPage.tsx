@@ -12,6 +12,7 @@ type Row = {
 
 const rows: Row[] = [
   { area: 'Platform SEO (Phase 1)', kind: 'live', detail: 'Per-route titles/meta/OG/Twitter/canonical via SeoHead; /features hub + feature pages; robots.txt + sitemap.xml; public profiles keep Person JSON-LD; auth app routes noindex' },
+  { area: 'Growth infrastructure (Phase 2)', kind: 'live', detail: 'Push opt-in/out honored; Dashboard For-you AI recommendations; Core-loop completion + streak; weekly digest + re-engage nudge; Traction growth metrics (ai_suggest_sent, notif_open, push_enable)' },
   { area: 'Production readiness (Phase 1)', kind: 'live', detail: 'SPA rewrite excludes robots/sitemap/static assets; security headers (nosniff, referrer, frame); PWA manifest + SW; investor surfaces public' },
   { area: 'Contact & Partnership (Meet Pi AI)', kind: 'live', detail: '/connect — AI greets first, guides intent, Speak with a Human saves to /handoffs + emails visitor confirmation and HANDOFF_NOTIFY_EMAIL (Resend); team inbox at /handoffs' },
   { area: 'Traction metrics & validation', kind: 'live', detail: 'product_events + product_feedback; Traction page (activation, retention, intros, opp interest, would-use-again); in-app feedback widget' },

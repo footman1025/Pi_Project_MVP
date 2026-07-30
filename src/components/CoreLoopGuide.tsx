@@ -1,12 +1,13 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, Bot, Briefcase, CheckCircle2, Circle, Sparkles, UsersRound } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { isProfileActivated } from '../lib/traction'
+import { getCoreLoopState, markCoreLoopDone, type CoreLoopId } from '../lib/engagement'
 import { track } from '../lib/analytics'
 
 type Step = {
-  id: string
+  id: CoreLoopId
   label: string
   detail: string
   to: string
@@ -19,6 +20,22 @@ export default function CoreLoopGuide() {
   const { profile } = useAuth()
   const navigate = useNavigate()
   const activated = isProfileActivated(profile)
+  const [loop, setLoop] = useState(() => getCoreLoopState())
+
+  useEffect(() => {
+    if (activated) markCoreLoopDone('twin')
+    setLoop(getCoreLoopState())
+  }, [activated])
+
+  useEffect(() => {
+    const sync = () => setLoop(getCoreLoopState())
+    window.addEventListener('storage', sync)
+    window.addEventListener('pi:core-loop', sync)
+    return () => {
+      window.removeEventListener('storage', sync)
+      window.removeEventListener('pi:core-loop', sync)
+    }
+  }, [])
 
   const steps: Step[] = useMemo(() => [
     {
@@ -26,7 +43,7 @@ export default function CoreLoopGuide() {
       label: 'Strengthen your Digital Twin',
       detail: 'Role, skills, interests, goals — this powers matching.',
       to: '/twin',
-      done: activated,
+      done: activated || !!loop.twin,
       Icon: Bot,
     },
     {
@@ -34,7 +51,7 @@ export default function CoreLoopGuide() {
       label: 'Review ranked matches',
       detail: 'Open Matching and start one intro or message.',
       to: '/match',
-      done: false,
+      done: !!loop.match,
       Icon: Sparkles,
     },
     {
@@ -42,7 +59,7 @@ export default function CoreLoopGuide() {
       label: 'Join a community & post',
       detail: 'Topic spaces build network density and retention.',
       to: '/communities',
-      done: false,
+      done: !!loop.communities,
       Icon: UsersRound,
     },
     {
@@ -50,11 +67,12 @@ export default function CoreLoopGuide() {
       label: 'Scan opportunities',
       detail: 'Mark interest on the best fit for your twin.',
       to: '/opportunities',
-      done: false,
+      done: !!loop.opportunities,
       Icon: Briefcase,
     },
-  ], [activated])
+  ], [activated, loop])
 
+  const doneCount = steps.filter(s => s.done).length
   const next = steps.find(s => !s.done) || steps[0]
 
   return (
@@ -64,7 +82,9 @@ export default function CoreLoopGuide() {
     >
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
-          <p className="text-pi-300 text-xs font-bold uppercase tracking-wider mb-1">Core loops</p>
+          <p className="text-pi-300 text-xs font-bold uppercase tracking-wider mb-1">
+            Core loops · {doneCount}/{steps.length}
+          </p>
           <h2 className="text-white font-bold text-base sm:text-lg">Your next value step</h2>
           <p className="text-slate-400 text-xs mt-1 max-w-xl">
             Tighten these four loops before fundraising theatre — product → usage → data.

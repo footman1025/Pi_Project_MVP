@@ -3,6 +3,7 @@ import { rankMatches } from './matching'
 import { fetchOpportunities } from './opportunities'
 import { scoreOpportunityForUser } from './matching'
 import { createNotification } from './notifications'
+import { track } from './analytics'
 
 const COOLDOWN_KEY = 'pi_ai_suggest_at'
 const COOLDOWN_MS = 12 * 60 * 60 * 1000 // 12h
@@ -77,6 +78,7 @@ export async function maybeSendAiSuggestions(me: Profile) {
             path,
             title: 'Pi Intelligence',
           })
+          track('ai_suggest_sent', { type: 'ai_match', match: top.match })
         }
       }
 
@@ -95,6 +97,7 @@ export async function maybeSendAiSuggestions(me: Profile) {
             path: '/opportunities',
             title: 'Pi Opportunity',
           })
+          track('ai_suggest_sent', { type: 'ai_opportunity', score: scored.score })
         }
       }
     } catch {

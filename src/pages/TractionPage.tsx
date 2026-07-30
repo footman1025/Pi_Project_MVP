@@ -164,6 +164,39 @@ export default function TractionPage() {
               style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.5), rgba(14,20,25,0.7))' }}
             >
               <div className="flex items-center gap-2 mb-3">
+                <Sparkles size={16} className="text-teal-400" />
+                <h2 className="text-white font-bold text-sm">Growth infrastructure (Phase 2)</h2>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <p className="text-2xl font-extrabold text-teal-300">{snap.growth.aiSuggestionsSent}</p>
+                  <p className="text-slate-500">AI suggestions sent</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-extrabold text-cyan-300">{snap.growth.notifOpens}</p>
+                  <p className="text-slate-500">Notif / For-you opens</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-extrabold text-emerald-300">
+                    {snap.growth.pushEnableOk}/{snap.growth.pushEnableAttempts}
+                  </p>
+                  <p className="text-slate-500">Push enable ok / attempts</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-extrabold text-amber-300">{snap.growth.coreLoopCompletes}</p>
+                  <p className="text-slate-500">Core-loop steps completed</p>
+                </div>
+              </div>
+              <p className="text-slate-500 text-[11px] mt-3">
+                Weekly digests shown: {snap.growth.weeklyDigestShown}
+              </p>
+            </div>
+
+            <div
+              className="p-5 rounded-2xl border border-white/5 md:col-span-2"
+              style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.5), rgba(14,20,25,0.7))' }}
+            >
+              <div className="flex items-center gap-2 mb-3">
                 <MessageSquareHeart size={16} className="text-pink-400" />
                 <h2 className="text-white font-bold text-sm">Would use again</h2>
               </div>

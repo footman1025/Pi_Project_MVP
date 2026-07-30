@@ -88,6 +88,17 @@ export default async function handler(req, res) {
       auth: { autoRefreshToken: false, persistSession: false },
     })
 
+    const { data: prefs } = await admin
+      .from('notification_preferences')
+      .select('push_enabled')
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (prefs && prefs.push_enabled === false) {
+      res.status(200).json({ sent: 0, skipped: true, reason: 'push_disabled' })
+      return
+    }
+
     const { data: rows, error } = await admin
       .from('push_subscriptions')
       .select('id, endpoint, p256dh, auth')

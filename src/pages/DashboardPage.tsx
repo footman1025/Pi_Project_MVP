@@ -10,6 +10,8 @@ import CommunityIcon from '../components/CommunityIcon'
 import UserAvatar from '../components/UserAvatar'
 import StatusBadge from '../components/StatusBadge'
 import CoreLoopGuide from '../components/CoreLoopGuide'
+import ForYouRecommendations from '../components/ForYouRecommendations'
+import GrowthNudgeBanner from '../components/GrowthNudgeBanner'
 import { buildDigitalTwin } from '../lib/digitalTwin'
 import DigitalTwinCard from '../components/DigitalTwinCard'
 import { hasGroqKey } from '../lib/groqAssistant'
@@ -183,7 +185,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      <GrowthNudgeBanner unreadCount={unreadNotifs} />
       <CoreLoopGuide />
+      <ForYouRecommendations />
 
       {twin && (
         <div className="mb-6 sm:mb-8 min-w-0">

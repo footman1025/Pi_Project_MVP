@@ -49,6 +49,7 @@ export default function OpportunityPage() {
   const markInterest = (o: OpportunityItem & { personalizedMatch: number }) => {
     setInterested(prev => new Set(prev).add(o.id))
     track('opportunity_interest', { id: o.id, title: o.title, match: o.personalizedMatch, live: isLive })
+    void import('../lib/engagement').then(m => m.recordEngagementAction('opportunity_interest'))
   }
 
   return (

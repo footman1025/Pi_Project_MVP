@@ -121,6 +121,7 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
         setMembersCount(next)
         setJoined(true)
         track('community_join', { id: community.id, name: community.name })
+        void import('../lib/engagement').then(m => m.recordEngagementAction('community_join'))
       }
     } catch (e: any) {
       setError(e?.message || 'Could not update membership')
@@ -145,6 +146,7 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
         setJoined(true)
         setMembersCount(c => c + 1)
         track('community_join', { id: community.id, name: community.name, via: 'post' })
+        void import('../lib/engagement').then(m => m.recordEngagementAction('community_join'))
       }
 
       const { data, error: insertError } = await supabase
@@ -155,6 +157,7 @@ function CommunityDetail({ community, onBack }: { community: Community, onBack: 
 
       if (insertError || !data) throw new Error(insertError?.message || 'Failed to create post')
       track('community_post', { id: community.id, name: community.name })
+      void import('../lib/engagement').then(m => m.recordEngagementAction('community_post'))
 
       const newItem: Post = {
         ...(data as Post),

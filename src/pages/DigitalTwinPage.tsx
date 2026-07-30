@@ -15,7 +15,10 @@ export default function DigitalTwinPage() {
   const twin = buildDigitalTwin(profile)
 
   useEffect(() => {
-    if (twin) track('twin_view', { activated: isProfileActivated(profile) })
+    if (twin) {
+      track('twin_view', { activated: isProfileActivated(profile) })
+      void import('../lib/engagement').then(m => m.recordEngagementAction('twin_view'))
+    }
   }, [twin, profile])
 
   if (!twin) {

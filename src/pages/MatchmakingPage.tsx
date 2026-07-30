@@ -226,6 +226,7 @@ export default function MatchmakingPage() {
                     <button
                       onClick={() => {
                         track('match_connect', { target: p.id, match: m.match })
+                        void import('../lib/engagement').then(m => m.recordEngagementAction('match_intro'))
                         if (p.username) navigate(`/p/${p.username}`, { state: { from: '/match' } })
                         else navigate('/messages')
                       }}
@@ -234,6 +235,7 @@ export default function MatchmakingPage() {
                     </button>
                     <button onClick={() => {
                       track('match_message', { target: p.id, match: m.match })
+                      void import('../lib/engagement').then(m => m.recordEngagementAction('match_intro'))
                       void playConnectSound()
                       navigate(`/messages?u=${p.id}`)
                     }}

@@ -15,8 +15,8 @@ const visionBullets = [
 ]
 
 const roadmap = [
-  { phase: 'Now', items: ['Live MVP loops', 'Investor Demo + Transparency', 'Platform SEO + feature pages', 'Traction & Meet Pi AI'] },
-  { phase: 'Next', items: ['Push / engagement depth', 'Stronger matching density', 'Analytics maturity'] },
+  { phase: 'Now', items: ['Live MVP loops', 'Investor Demo + Transparency', 'Platform SEO + feature pages', 'Growth infra (push · AI For you · engagement · analytics)'] },
+  { phase: 'Next', items: ['User acquisition', 'Partnership density', 'Strategic investor conversations'] },
   { phase: 'Later', items: ['Apply / marketplace', 'Enterprise workspace', 'Pi Earth / Autopilot concepts'] },
 ]
 

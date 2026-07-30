@@ -150,6 +150,13 @@ export async function sendPushToUser(opts: {
   tag?: string
 }) {
   try {
+    const { data: prefs } = await supabase
+      .from('notification_preferences')
+      .select('push_enabled')
+      .eq('user_id', opts.userId)
+      .maybeSingle()
+    if (prefs && prefs.push_enabled === false) return
+
     const { data: sessionData } = await supabase.auth.getSession()
     const token = sessionData.session?.access_token
     if (!token) return

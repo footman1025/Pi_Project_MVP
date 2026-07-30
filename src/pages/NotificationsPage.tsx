@@ -19,6 +19,7 @@ import {
   saveNotificationPrefs,
   type NotificationPrefs,
 } from '../lib/emailNotifications'
+import { track } from '../lib/analytics'
 
 function timeAgo(date: string) {
   const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
@@ -83,7 +84,12 @@ export default function NotificationsPage() {
       setEmailHint(res.error)
     } else {
       setEmailPrefs(merged)
-      setEmailHint(merged.email_enabled ? 'Email alerts on' : 'Email alerts off')
+      if (next.push_enabled !== undefined && next.email_enabled === undefined) {
+        setEmailHint(merged.push_enabled ? 'Push alerts allowed' : 'Push alerts opted out')
+        track('push_pref_saved', { enabled: merged.push_enabled })
+      } else {
+        setEmailHint(merged.email_enabled ? 'Email alerts on' : 'Email alerts off')
+      }
     }
     setEmailSaving(false)
   }
@@ -136,6 +142,7 @@ export default function NotificationsPage() {
   }
 
   const openNotification = async (n: NotifRow) => {
+    track('notif_open', { type: n.type, id: n.id, was_unread: !n.is_read })
     if (!n.is_read) {
       await supabase.from('notifications').update({ is_read: true }).eq('id', n.id)
       setNotifications(list => list.map(x => x.id === n.id ? { ...x, is_read: true } : x))
@@ -209,6 +216,7 @@ export default function NotificationsPage() {
                 setAlertPerm(systemAlertPermission())
                 if (user?.id) {
                   const push = await enablePushNotifications(user.id)
+                  track('push_enable_result', { ok: push.ok, reason: push.reason || '' })
                   if (push.ok || ok) {
                     setPushHint(push.reason === 'local-only'
                       ? 'System alerts on. Deploy VAPID for closed-app push.'
@@ -255,11 +263,23 @@ export default function NotificationsPage() {
           <div className="w-9 h-9 rounded-xl bg-teal-500/15 flex items-center justify-center shrink-0">
             <Smartphone size={16} className="text-teal-300" />
           </div>
-          <div>
-            <p className="text-white text-sm font-semibold">Phone / tablet / desktop</p>
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <p className="text-white text-sm font-semibold">Phone / tablet / desktop</p>
+              <label className="inline-flex items-center gap-2 text-xs text-slate-300 cursor-pointer ml-auto">
+                <input
+                  type="checkbox"
+                  checked={emailPrefs.push_enabled}
+                  disabled={emailSaving}
+                  onChange={e => void saveEmailPrefs({ push_enabled: e.target.checked })}
+                  className="rounded border-white/20 bg-black/40 text-teal-500 focus:ring-teal-500/40"
+                />
+                Allow push
+              </label>
+            </div>
             <p className="text-slate-500 text-xs leading-relaxed mt-0.5">
               Cellphone alerts use <span className="text-slate-300">Web Push</span> (enable above + Install Pi).
-              No SMS — browser/PWA is the phone channel.
+              No SMS — browser/PWA is the phone channel. Opt out anytime.
             </p>
           </div>
         </div>
