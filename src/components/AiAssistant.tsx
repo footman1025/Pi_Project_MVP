@@ -4,6 +4,7 @@ import { X, SendHorizonal, Sparkles, RotateCcw, BotMessageSquare, Shield } from 
 import { aiAssistantSuggestions } from '../data/mockData'
 import { useAuth } from '../contexts/AuthContext'
 import { askGroqAssistant, hasGroqKey, type ChatTurn } from '../lib/groqAssistant'
+import { companionTone, loadUgePreferences } from '../lib/ugePreferences'
 
 interface Message {
   role: 'user' | 'ai'
@@ -68,10 +69,14 @@ export default function AiAssistant({ open, onClose }: Props) {
   const { profile, user } = useAuth()
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'there'
   const groqEnabled = hasGroqKey()
+  const lifeStage =
+    (profile?.uge_preferences?.lifeStage as ReturnType<typeof loadUgePreferences>['lifeStage'] | undefined)
+    || loadUgePreferences().lifeStage
+  const tone = companionTone(lifeStage || 'auto')
 
   const welcomeText = groqEnabled
-    ? "Hi — I'm your Pi AI assistant (powered by Groq). Ask me anything about Matching, Opportunities, your Digital Twin, Feed, Messages, or how to use Pi."
-    : "Hi — I'm your Pi AI assistant. Add a Groq API key (VITE_GROQ_API_KEY) for live answers, or ask me about matches, opportunities, communities, and next steps."
+    ? `Hi ${displayName} — I'm your Pi AI assistant (powered by Groq). ${tone} Ask about Matching, Opportunities, your Twin, Feed, Trust, or how to use Pi.`
+    : `Hi ${displayName} — I'm your Pi AI assistant. ${tone} Add a Groq API key for live answers, or ask about matches, opportunities, and next steps.`
 
   const [messages, setMessages] = useState<Message[]>([{ role: 'ai', text: welcomeText }])
   const [input, setInput] = useState('')
@@ -79,13 +84,15 @@ export default function AiAssistant({ open, onClose }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const welcomeRef = useRef(welcomeText)
+  welcomeRef.current = welcomeText
 
   const resetChat = () => {
     abortRef.current?.abort()
     abortRef.current = null
     setTyping(false)
     setInput('')
-    setMessages([{ role: 'ai', text: welcomeText }])
+    setMessages([{ role: 'ai', text: welcomeRef.current }])
     setTimeout(() => inputRef.current?.focus(), 80)
   }
 

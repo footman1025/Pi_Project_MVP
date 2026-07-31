@@ -143,6 +143,7 @@ export const APP_SEO: Record<string, Partial<SeoPage>> = {
   '/feed': { title: 'Opportunity Feed | Pi' },
   '/experience': { title: 'Experience (UGE) | Pi' },
   '/trust': { title: 'Trust & Safety | Pi' },
+  '/moderation': { title: 'Moderation inbox | Pi' },
   '/match': { title: 'Matching | Pi' },
   '/opportunities': { title: 'Opportunities | Pi' },
   '/creators': { title: 'Creators | Pi' },

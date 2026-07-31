@@ -43,6 +43,7 @@ import PartnersPage from './pages/PartnersPage'
 import DiscussPage from './pages/DiscussPage'
 import ExperienceSettingsPage from './pages/ExperienceSettingsPage'
 import TrustSafetyPage from './pages/TrustSafetyPage'
+import ModerationPage from './pages/ModerationPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth()
@@ -148,6 +149,7 @@ export default function App() {
               <Route path="/vision" element={<VisionPage />} />
               <Route path="/transparency" element={<TransparencyPage />} />
               <Route path="/trust" element={<TrustSafetyPage />} />
+              <Route path="/moderation" element={<ModerationPage />} />
               <Route path="/experience" element={<ExperienceSettingsPage />} />
               <Route path="/messages" element={<MessagingPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />

@@ -33,7 +33,8 @@ type Row = { area: string; kind: StatusKind; detail: string }
 
 const maturity: Row[] = [
   { area: 'Engineering Transparency', kind: 'live', detail: 'Honest Live / Partial / Demo / Soon labeling across the product' },
-  { area: 'Content reporting (v0)', kind: 'partial', detail: 'Report on Feed posts; stored locally + content_reports table when SQL is applied' },
+  { area: 'Content reporting (v0)', kind: 'partial', detail: 'Report posts, comments, and profiles; local audit + content_reports when SQL is applied' },
+  { area: 'Moderation inbox (v0)', kind: 'partial', detail: '/moderation — triage open reports (reviewing / resolved / dismissed); team policies via supabase_content_reports_team.sql' },
   { area: 'Reputation signals (v0)', kind: 'partial', detail: 'Transparent activity/twin-readiness proxy on posts — not vanity follower counts' },
   { area: 'AI moderation engine', kind: 'soon', detail: 'Realtime risk scoring for posts, chats, communities, files' },
   { area: 'Multi-layer moderation + appeals', kind: 'soon', detail: 'Community report → trusted review → appeal → independent review' },
@@ -128,11 +129,18 @@ export default function TrustSafetyPage() {
           <>
             <button
               type="button"
-              onClick={() => navigate('/feed')}
+              onClick={() => navigate('/moderation')}
               className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold text-white text-sm"
               style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
             >
-              Open Social Feed <ArrowRight size={16} />
+              Moderation inbox <ArrowRight size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/feed')}
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold text-slate-200 text-sm border border-white/10"
+            >
+              Open Social Feed
             </button>
             <button
               type="button"

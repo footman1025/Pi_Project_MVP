@@ -8,8 +8,10 @@ import {
   DEFAULT_UGE,
   LIFE_STAGE_LABELS,
   applyUgePreferences,
+  hydrateUgeFromProfile,
   loadUgePreferences,
   saveUgePreferences,
+  syncUgeToProfile,
   type Density,
   type TextScale,
   type UgePreferences,
@@ -91,15 +93,21 @@ function ToggleRow({
 
 export default function ExperienceSettingsPage() {
   const navigate = useNavigate()
-  const { session } = useAuth()
+  const { session, user, profile, refreshProfile } = useAuth()
   const [prefs, setPrefs] = useState<UgePreferences>(DEFAULT_UGE)
   const [saved, setSaved] = useState(false)
+  const [syncNote, setSyncNote] = useState('')
 
   useEffect(() => {
+    if (profile?.uge_preferences) {
+      const merged = hydrateUgeFromProfile(profile.uge_preferences)
+      setPrefs(merged)
+      return
+    }
     const loaded = loadUgePreferences()
     setPrefs(loaded)
     applyUgePreferences(loaded)
-  }, [])
+  }, [profile?.uge_preferences])
 
   const update = <K extends keyof UgePreferences>(key: K, value: UgePreferences[K]) => {
     setPrefs(p => {
@@ -108,10 +116,10 @@ export default function ExperienceSettingsPage() {
       return next
     })
     setSaved(false)
+    setSyncNote('')
   }
 
-  const persist = () => {
-    saveUgePreferences(prefs)
+  const persist = async () => {
     track('uge_prefs_save', {
       text_scale: prefs.textScale,
       density: prefs.density,
@@ -119,7 +127,21 @@ export default function ExperienceSettingsPage() {
       reduce_motion: prefs.reduceMotion,
       simplified_nav: prefs.simplifiedNav,
       life_stage: prefs.lifeStage,
+      account_sync: !!user,
     })
+    if (user) {
+      const res = await syncUgeToProfile(user.id, prefs)
+      if (!res.ok) {
+        setSyncNote(res.error || 'Could not sync to account')
+        setSaved(false)
+        return
+      }
+      setSyncNote(res.error || 'Saved on this device and your account.')
+      await refreshProfile()
+    } else {
+      saveUgePreferences(prefs)
+      setSyncNote('Saved on this device. Sign in to sync across sessions.')
+    }
     setSaved(true)
   }
 
@@ -298,10 +320,10 @@ export default function ExperienceSettingsPage() {
           />
         </section>
 
-        <div className="flex flex-wrap gap-2 mb-6">
+        <div className="flex flex-wrap gap-2 mb-3">
           <button
             type="button"
-            onClick={persist}
+            onClick={() => void persist()}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white hover:brightness-110 transition-all"
             style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
           >
@@ -323,10 +345,13 @@ export default function ExperienceSettingsPage() {
             Trust & Safety
           </button>
         </div>
+        {syncNote && (
+          <p className="text-teal-300/90 text-xs mb-4 leading-relaxed">{syncNote}</p>
+        )}
 
         <p className="text-slate-600 text-xs leading-relaxed">
           Roadmap: voice-first mode, family spaces, intergenerational mentoring, and deeper Companion personalization.
-          Preferences apply on this device today; account sync comes next.
+          Signed-in saves sync to your profile when <code className="text-slate-500">supabase_uge_preferences.sql</code> is applied.
         </p>
       </div>
     </div>

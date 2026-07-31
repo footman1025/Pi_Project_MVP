@@ -23,6 +23,8 @@ export type Profile = {
   following_count: number
   posts_count: number
   created_at: string
+  /** UGE prefs synced from /experience (jsonb) */
+  uge_preferences?: Record<string, unknown> | null
 }
 
 export type Experience = {
@@ -44,6 +46,8 @@ export type Post = {
   comments_count: number
   shares_count: number
   created_at: string
+  /** Pi Social stream — knowledge | people | opportunities | communities */
+  stream?: string | null
   profiles?: Profile
   liked?: boolean
 }

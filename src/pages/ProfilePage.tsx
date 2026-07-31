@@ -2,7 +2,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import {
   MapPin, Globe2, Star, Code2, ChevronDown, ChevronUp, ExternalLink,
-  UserPlus, UserCheck, Loader2, MessageCircle, Sparkles, ArrowLeft
+  UserPlus, UserCheck, Loader2, MessageCircle, Sparkles, ArrowLeft, Flag,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase, Profile } from '../lib/supabase'
@@ -15,6 +15,7 @@ import {
   getFollowCounts,
   isFollowing,
 } from '../lib/follows'
+import { REPORT_REASONS, submitContentReport, type ReportReason } from '../lib/contentReports'
 import UserAvatar from '../components/UserAvatar'
 import { externalHref, absoluteProfileUrl } from '../lib/urls'
 
@@ -116,10 +117,40 @@ export default function ProfilePage() {
   const [followError, setFollowError] = useState('')
   const [seo, setSeo] = useState<ReturnType<typeof applySeo> | null>(null)
   const [copied, setCopied] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
+  const [reportReason, setReportReason] = useState<ReportReason>('spam')
+  const [reportDetails, setReportDetails] = useState('')
+  const [reporting, setReporting] = useState(false)
+  const [reportDone, setReportDone] = useState(false)
+  const [reportError, setReportError] = useState('')
 
   const isLoggedIn = !!session
   const isOwn = !!(user && profile && user.id === profile.id)
   const siteHref = externalHref(profile?.website)
+
+  const submitProfileReport = async () => {
+    if (!user || !profile) return
+    setReporting(true)
+    setReportError('')
+    const res = await submitContentReport({
+      reporterId: user.id,
+      targetType: 'profile',
+      targetId: profile.id,
+      reason: reportReason,
+      details: reportDetails,
+    })
+    setReporting(false)
+    if (!res.ok) {
+      setReportError(res.error)
+      return
+    }
+    setReportDone(true)
+    setTimeout(() => {
+      setReportOpen(false)
+      setReportDone(false)
+      setReportDetails('')
+    }, 1400)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -393,7 +424,7 @@ export default function ProfilePage() {
                 <p className="mt-3 text-xs text-red-400 text-center px-2">{followError}</p>
               )}
 
-              <div className={`grid gap-1.5 sm:gap-2 mt-5 w-full min-w-0 max-w-full ${isOwn ? 'grid-cols-2' : 'grid-cols-3'}`}>
+              <div className={`grid gap-1.5 sm:gap-2 mt-5 w-full min-w-0 max-w-full ${isOwn ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-4'}`}>
                 {isOwn ? (
                   <button onClick={() => navigate('/profile/edit')}
                     className="w-full min-w-0 py-2.5 sm:py-3 px-1 sm:px-2 rounded-xl font-bold text-white text-xs sm:text-sm pi-mark">
@@ -423,6 +454,16 @@ export default function ProfilePage() {
                       <MessageCircle size={13} className="shrink-0" />
                       <span className="truncate">Message</span>
                     </button>
+                    {isLoggedIn && (
+                      <button
+                        type="button"
+                        onClick={() => { setReportOpen(true); setReportError(''); setReportDone(false) }}
+                        className="w-full min-w-0 py-2.5 sm:py-3 px-1 sm:px-2 rounded-xl border border-white/10 text-slate-300 text-[11px] sm:text-sm font-medium hover:border-amber-500/30 hover:text-amber-200 flex items-center justify-center gap-1"
+                      >
+                        <Flag size={13} className="shrink-0" />
+                        <span className="truncate">Report</span>
+                      </button>
+                    )}
                   </>
                 )}
                 <button
@@ -435,6 +476,65 @@ export default function ProfilePage() {
                 </button>
               </div>
             </div>
+
+            {reportOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" role="dialog" aria-modal>
+                <div
+                  className="w-full max-w-md rounded-2xl border border-white/10 p-5"
+                  style={{ background: 'linear-gradient(160deg, #0d1220, #06090f)' }}
+                >
+                  <h3 className="text-white font-bold text-base mb-1">Report profile</h3>
+                  <p className="text-slate-500 text-xs mb-4">
+                    Trust & Safety — reports help protect the community. High-risk cases get human review.
+                  </p>
+                  {reportDone ? (
+                    <p className="text-teal-300 text-sm font-medium py-4 text-center">Thanks — report received.</p>
+                  ) : (
+                    <>
+                      <div className="space-y-1.5 mb-3">
+                        {REPORT_REASONS.map(r => (
+                          <label key={r.id} className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="profile-report"
+                              checked={reportReason === r.id}
+                              onChange={() => setReportReason(r.id)}
+                            />
+                            {r.label}
+                          </label>
+                        ))}
+                      </div>
+                      <textarea
+                        value={reportDetails}
+                        onChange={e => setReportDetails(e.target.value)}
+                        rows={2}
+                        placeholder="Optional details…"
+                        className="w-full mb-3 bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-teal-500/40 resize-none"
+                      />
+                      {reportError && <p className="text-red-400 text-xs mb-2">{reportError}</p>}
+                      <div className="flex gap-2 justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setReportOpen(false)}
+                          className="px-3 py-2 rounded-xl text-xs text-slate-400 border border-white/10"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={reporting}
+                          onClick={() => void submitProfileReport()}
+                          className="px-4 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-40"
+                          style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+                        >
+                          {reporting ? 'Sending…' : 'Submit report'}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
 
             {seo && (
               <div className="rounded-2xl border border-pi-500/20 overflow-hidden bg-pi-500/[0.05] w-full max-w-full min-w-0">

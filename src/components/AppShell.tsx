@@ -5,14 +5,14 @@ import {
   UsersRound, Building2, SearchCheck, Telescope,
   LogOut, Bell, Menu, X, BotMessageSquare, ScanFace,
   Newspaper, MessageCircle, UserCog, ShieldCheck, Activity, Inbox, TrendingUp,
-  Accessibility, Shield,
+  Accessibility, Shield, Flag,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import UserAvatar from './UserAvatar'
 import ValidationFeedback from './ValidationFeedback'
 import { track } from '../lib/analytics'
-import { applyUgePreferences, loadUgePreferences } from '../lib/ugePreferences'
+import { applyUgePreferences, hydrateUgeFromProfile, loadUgePreferences } from '../lib/ugePreferences'
 import { playConnectSound, unlockConnectSound } from '../lib/connectSound'
 import {
   ensureSystemAlertPermission,
@@ -34,6 +34,7 @@ const navItems = [
   { to: '/search', icon: SearchCheck, label: 'Search', core: true },
   { to: '/experience', icon: Accessibility, label: 'Experience', core: true },
   { to: '/trust', icon: Shield, label: 'Trust & Safety', core: true },
+  { to: '/moderation', icon: Flag, label: 'Moderation', core: false },
   { to: '/vision', icon: Telescope, label: 'Vision', core: false },
   { to: '/transparency', icon: ShieldCheck, label: 'What’s live', core: false },
   { to: '/traction', icon: Activity, label: 'Traction', core: false },
@@ -79,6 +80,13 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
       window.removeEventListener('pi:uge-prefs', sync)
     }
   }, [])
+
+  useEffect(() => {
+    if (profile?.uge_preferences) {
+      const merged = hydrateUgeFromProfile(profile.uge_preferences)
+      setSimplifiedNav(merged.simplifiedNav)
+    }
+  }, [profile?.uge_preferences])
 
   const handleSignOut = async () => {
     track('sign_out')

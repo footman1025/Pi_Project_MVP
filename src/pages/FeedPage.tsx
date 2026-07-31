@@ -9,8 +9,10 @@ import {
   FEED_STREAMS,
   classifyPostStream,
   filterAndSortPosts,
-  reputationScore,
+  opportunityActions,
+  reputationBreakdown,
   stripStreamPrefix,
+  whyPostReasons,
   withStreamPrefix,
   type FeedStream,
   type PostStreamTag,
@@ -19,7 +21,7 @@ import { REPORT_REASONS, submitContentReport, type ReportReason } from '../lib/c
 import { track } from '../lib/analytics'
 import {
   Heart, MessageCircle, Share2, Send, Image, Loader2, Sparkles, X, Pencil, Trash2, Check,
-  Flag, Briefcase, Users, Handshake, Shield,
+  Flag, Shield, ChevronDown, ChevronUp,
 } from 'lucide-react'
 import UserAvatar from '../components/UserAvatar'
 import ProfileName from '../components/ProfileName'
@@ -42,7 +44,7 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
   onDeletePost: (id: string) => Promise<{ error?: string }>
   actorName: string
 }) {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const navigate = useNavigate()
   const [comments, setComments] = useState<Comment[]>([])
   const [showComments, setShowComments] = useState(false)
@@ -59,10 +61,12 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
   const [actionError, setActionError] = useState('')
   const [shareNote, setShareNote] = useState('')
   const [reportOpen, setReportOpen] = useState(false)
+  const [reportTarget, setReportTarget] = useState<{ type: 'post' | 'comment'; id: string } | null>(null)
   const [reportReason, setReportReason] = useState<ReportReason>('spam')
   const [reportDetails, setReportDetails] = useState('')
   const [reporting, setReporting] = useState(false)
   const [reportDone, setReportDone] = useState(false)
+  const [showWhy, setShowWhy] = useState(false)
 
   const name = displayName(post.profiles)
   const role = post.profiles?.role || ''
@@ -70,7 +74,9 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
   const isOwnPost = !!user && user.id === post.author_id
   const stream = classifyPostStream(post)
   const body = stripStreamPrefix(post.content || '')
-  const trust = reputationScore(post.profiles)
+  const trust = reputationBreakdown(post.profiles)
+  const why = whyPostReasons(post, profile)
+  const actions = opportunityActions(post)
 
   const sharePost = async () => {
     const url = `${window.location.origin}/feed?post=${post.id}`
@@ -90,14 +96,22 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
     }
   }
 
+  const openReport = (type: 'post' | 'comment', id: string) => {
+    setActionError('')
+    setReportTarget({ type, id })
+    setReportOpen(true)
+    setReportDone(false)
+  }
+
   const submitReport = async () => {
     if (!user) { navigate('/login'); return }
+    if (!reportTarget) return
     setReporting(true)
     setActionError('')
     const res = await submitContentReport({
       reporterId: user.id,
-      targetType: 'post',
-      targetId: post.id,
+      targetType: reportTarget.type,
+      targetId: reportTarget.id,
       reason: reportReason,
       details: reportDetails,
     })
@@ -107,7 +121,12 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
       return
     }
     setReportDone(true)
-    setTimeout(() => { setReportOpen(false); setReportDone(false); setReportDetails('') }, 1400)
+    setTimeout(() => {
+      setReportOpen(false)
+      setReportDone(false)
+      setReportDetails('')
+      setReportTarget(null)
+    }, 1400)
   }
 
   const loadComments = async () => {
@@ -253,8 +272,11 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
             <span>{timeAgo(post.created_at)}</span>
             <span>·</span>
             <span className="text-teal-400/80 capitalize">{stream}</span>
-            <span className="inline-flex items-center gap-0.5 text-emerald-400/80" title="Reputation signal (activity + Twin readiness)">
-              <Shield size={10} /> {trust}
+            <span
+              className="inline-flex items-center gap-0.5 text-emerald-400/80"
+              title={`Twin ${trust.twinReady} · activity ${trust.activity} · network ${trust.network}`}
+            >
+              <Shield size={10} /> {trust.score} · {trust.label}
             </span>
           </div>
         </div>
@@ -262,7 +284,7 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
           {!isOwnPost && (
             <button
               type="button"
-              onClick={() => { setActionError(''); setReportOpen(true) }}
+              onClick={() => openReport('post', post.id)}
               className="p-2 rounded-xl text-slate-500 hover:text-amber-300 hover:bg-amber-500/10 transition-colors"
               title="Report"
               aria-label="Report post"
@@ -306,30 +328,26 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
       )}
 
       <div className="flex flex-wrap gap-1.5 mb-3">
-        <button
-          type="button"
-          onClick={() => navigate(`/messages?u=${post.author_id}`)}
-          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-teal-200 border border-teal-500/25 bg-teal-500/[0.07] hover:bg-teal-500/15"
-        >
-          <Handshake size={12} /> Collaborate
-        </button>
-        <button
-          type="button"
-          onClick={() => navigate('/opportunities')}
-          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-amber-100 border border-amber-500/25 bg-amber-500/[0.07] hover:bg-amber-500/15"
-        >
-          <Briefcase size={12} /> Opportunities
-        </button>
-        <button
-          type="button"
-          onClick={() => navigate(authorUsername ? `/p/${authorUsername}` : `/match`)}
-          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-300 border border-white/10 hover:border-white/20"
-        >
-          <Users size={12} /> People
-        </button>
+        {actions.map(a => (
+          <button
+            key={a.id}
+            type="button"
+            onClick={() => {
+              track('feed_opp_action', { action: a.id, stream, post_id: post.id })
+              navigate(a.to)
+            }}
+            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border ${
+              a.kind === 'primary'
+                ? 'text-teal-200 border-teal-500/25 bg-teal-500/[0.07] hover:bg-teal-500/15'
+                : 'text-slate-300 border-white/10 hover:border-white/20'
+            }`}
+          >
+            {a.label}
+          </button>
+        ))}
       </div>
 
-      <div className="flex items-center gap-1 pt-3 border-t border-white/[0.06]">
+      <div className="flex items-center gap-1 pt-3 border-t border-white/[0.06] flex-wrap">
         <button onClick={() => onLike(post.id, !!post.liked)}
           className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${post.liked ? 'text-pink-400 bg-pink-500/10' : 'text-slate-400 hover:text-pink-400 hover:bg-pink-500/10'}`}>
           <Heart size={15} className={post.liked ? 'fill-pink-400' : ''} />
@@ -348,7 +366,36 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
           <Share2 size={15} />
           {shareNote || (post.shares_count > 0 ? post.shares_count : null)}
         </button>
+        <button
+          type="button"
+          onClick={() => {
+            const next = !showWhy
+            setShowWhy(next)
+            if (next) track('feed_why_open', { post_id: post.id, stream })
+          }}
+          className="ml-auto flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold text-teal-200 border border-teal-500/20 bg-teal-500/[0.06] hover:bg-teal-500/12"
+        >
+          <Sparkles size={12} /> Why
+          {showWhy ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+        </button>
       </div>
+
+      {showWhy && (
+        <div
+          className="mt-3 p-3.5 rounded-xl border border-teal-500/20"
+          style={{ background: 'linear-gradient(160deg, rgba(20,184,166,0.1), rgba(10,14,22,0.7))' }}
+        >
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-teal-300/90 mb-2">Why this post</p>
+          <ul className="space-y-1.5">
+            {why.map((r, i) => (
+              <li key={i} className="flex gap-2 text-xs text-slate-300 leading-relaxed">
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-400 mt-1.5 shrink-0" />
+                {r}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {reportOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" role="dialog" aria-modal>
@@ -356,8 +403,12 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
             className="w-full max-w-md rounded-2xl border border-white/10 p-5"
             style={{ background: 'linear-gradient(160deg, #0d1220, #06090f)' }}
           >
-            <h3 className="text-white font-bold text-base mb-1">Report post</h3>
-            <p className="text-slate-500 text-xs mb-4">Trust & Safety — reports help Pi reduce abuse without compromising privacy-first design.</p>
+            <h3 className="text-white font-bold text-base mb-1">
+              Report {reportTarget?.type === 'comment' ? 'comment' : 'post'}
+            </h3>
+            <p className="text-slate-500 text-xs mb-4">
+              Trust & Safety — you can appeal enforcement later. Reports are reviewed by humans for high-risk cases.
+            </p>
             {reportDone ? (
               <p className="text-teal-300 text-sm font-medium py-4 text-center">Thanks — report received.</p>
             ) : (
@@ -384,7 +435,11 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
                   className="w-full mb-3 bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-teal-500/40 resize-none"
                 />
                 <div className="flex gap-2 justify-end">
-                  <button type="button" onClick={() => setReportOpen(false)} className="px-3 py-2 rounded-xl text-xs text-slate-400 border border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => { setReportOpen(false); setReportTarget(null) }}
+                    className="px-3 py-2 rounded-xl text-xs text-slate-400 border border-white/10"
+                  >
                     Cancel
                   </button>
                   <button
@@ -469,29 +524,42 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
                               {' '}
                               <span className="text-slate-300 text-xs break-words">{c.content}</span>
                             </div>
-                            {isOwn && (
-                              <div className="flex gap-0.5 shrink-0">
+                            <div className="flex gap-0.5 shrink-0">
+                              {!isOwn && user && (
                                 <button
                                   type="button"
-                                  onClick={() => startEdit(c)}
-                                  className="p-1.5 rounded-md text-slate-400 hover:text-teal-300 hover:bg-white/5"
-                                  title="Edit comment"
-                                  aria-label="Edit comment"
+                                  onClick={() => openReport('comment', c.id)}
+                                  className="p-1.5 rounded-md text-slate-400 hover:text-amber-300 hover:bg-white/5"
+                                  title="Report comment"
+                                  aria-label="Report comment"
                                 >
-                                  <Pencil size={13} />
+                                  <Flag size={13} />
                                 </button>
-                                <button
-                                  type="button"
-                                  disabled={deletingId === c.id}
-                                  onClick={() => { setActionError(''); setConfirmDeleteCommentId(c.id) }}
-                                  className="p-1.5 rounded-md text-slate-400 hover:text-red-400 hover:bg-white/5 disabled:opacity-40"
-                                  title="Delete comment"
-                                  aria-label="Delete comment"
-                                >
-                                  {deletingId === c.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
-                                </button>
-                              </div>
-                            )}
+                              )}
+                              {isOwn && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => startEdit(c)}
+                                    className="p-1.5 rounded-md text-slate-400 hover:text-teal-300 hover:bg-white/5"
+                                    title="Edit comment"
+                                    aria-label="Edit comment"
+                                  >
+                                    <Pencil size={13} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={deletingId === c.id}
+                                    onClick={() => { setActionError(''); setConfirmDeleteCommentId(c.id) }}
+                                    className="p-1.5 rounded-md text-slate-400 hover:text-red-400 hover:bg-white/5 disabled:opacity-40"
+                                    title="Delete comment"
+                                    aria-label="Delete comment"
+                                  >
+                                    {deletingId === c.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           </div>
                           <p className="text-slate-600 text-[10px] mt-0.5">
                             {timeAgo(c.created_at)}
@@ -712,19 +780,40 @@ export default function FeedPage() {
         imageUrl = await uploadPostImage(user.id, imageFile)
       }
 
-      const taggedContent = content
-        ? withStreamPrefix(postStream, content)
-        : withStreamPrefix(postStream, imageFile ? 'Shared a photo' : '')
+      const plainBody = content || (imageFile ? 'Shared a photo' : '')
+      // Prefer DB stream column; keep content prefix as fallback for older schemas
+      const taggedContent = withStreamPrefix(postStream, plainBody)
 
-      const { data, error: insertError } = await supabase
+      let data: Post | null = null
+      let insertError: { message: string } | null = null
+
+      const withStream = await supabase
         .from('posts')
         .insert({
           author_id: user.id,
-          content: taggedContent,
+          content: plainBody,
           image_url: imageUrl,
+          stream: postStream,
         })
         .select('*')
         .single()
+
+      if (withStream.error && /stream|schema cache|column/i.test(withStream.error.message)) {
+        const fallback = await supabase
+          .from('posts')
+          .insert({
+            author_id: user.id,
+            content: taggedContent,
+            image_url: imageUrl,
+          })
+          .select('*')
+          .single()
+        data = fallback.data as Post | null
+        insertError = fallback.error
+      } else {
+        data = withStream.data as Post | null
+        insertError = withStream.error
+      }
 
       track('feed_post', { stream: postStream, has_image: !!imageUrl })
 
