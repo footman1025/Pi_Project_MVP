@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  ArrowLeft, Bot, Loader2, SendHorizonal, UserRound, Sparkles, Check,
+  ArrowLeft, Bot, Loader2, SendHorizonal, UserRound, Sparkles, Check, MessageCircleHeart,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { hasGroqKey, type ChatTurn } from '../lib/groqAssistant'
@@ -15,6 +15,7 @@ import {
   submitHandoff,
 } from '../lib/connectAgent'
 import { track } from '../lib/analytics'
+import StatusBadge from '../components/StatusBadge'
 
 const SUGGESTIONS = [
   'I’m an investor exploring Pi',
@@ -68,7 +69,6 @@ export default function ConnectPage() {
     track('connect_open', { team: initialTeam, intent: intentParam || undefined })
   }, [])
 
-  // Deep-link from /partners or /discuss — acknowledge routing intent once
   useEffect(() => {
     if (bootstrapped.current) return
     if (!searchParams.get('team') && !intentParam) return
@@ -90,7 +90,6 @@ export default function ConnectPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, typing, humanOpen])
 
-  // Name only — email always starts blank so the visitor types the address they want
   useEffect(() => {
     if (profile?.full_name && !name) setName(profile.full_name)
   }, [profile?.full_name])
@@ -185,16 +184,33 @@ export default function ConnectPage() {
     ])
   }
 
+  const inputClass =
+    'w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-teal-500/40 transition-colors'
+
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#06090f' }}>
+    <div className="min-h-screen relative flex flex-col overflow-x-hidden" style={{ background: '#06090f' }}>
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-72 opacity-55"
+        style={{ background: 'radial-gradient(ellipse 80% 70% at 20% 0%, rgba(20,184,166,0.22), transparent)' }}
+      />
+      <div
+        className="pointer-events-none absolute top-40 right-0 w-56 h-56 opacity-20 blur-3xl"
+        style={{ background: 'radial-gradient(circle, rgba(251,191,36,0.28), transparent)' }}
+      />
+
       <nav
-        className="sticky top-0 z-40 border-b border-white/5 px-4 sm:px-6 py-3 flex items-center gap-3"
-        style={{ background: 'rgba(6,9,15,0.92)', backdropFilter: 'blur(16px)' }}
+        className="relative sticky top-0 z-40 border-b border-white/[0.06] px-4 sm:px-6 py-3 flex items-center gap-2.5 sm:gap-3"
+        style={{ background: 'rgba(6,9,15,0.88)', backdropFilter: 'blur(18px)' }}
       >
-        <button type="button" onClick={() => navigate('/')} className="text-slate-400 hover:text-white p-1">
+        <button
+          type="button"
+          onClick={() => navigate('/')}
+          className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+          aria-label="Back to home"
+        >
           <ArrowLeft size={18} />
         </button>
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0">
           <div
             className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-black shrink-0"
             style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
@@ -208,24 +224,35 @@ export default function ConnectPage() {
             </p>
           </div>
         </div>
-        <span className="ml-auto text-[10px] sm:text-xs px-2.5 py-1 rounded-full border border-teal-500/25 bg-teal-500/10 text-teal-300 font-semibold shrink-0">
-          {groqOn ? 'AI live' : 'AI guided'}
-        </span>
+        <div className="flex-1" />
+        <StatusBadge kind={groqOn ? 'live' : 'partial'} label={groqOn ? 'AI live' : 'AI guided'} />
       </nav>
 
-      <div className="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 py-6 flex flex-col min-h-0">
-        <div className="mb-4">
-          <p className="text-teal-400 text-xs font-bold uppercase tracking-widest mb-1">AI-native company</p>
-          <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-white mb-2">
-            Every visitor meets Pi AI first
-          </h1>
-          <p className="text-slate-400 text-sm leading-relaxed">
+      <div className="relative flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 py-6 flex flex-col min-h-0">
+        <header className="mb-5">
+          <div className="flex items-start gap-3 mb-2">
+            <div
+              className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-[0_0_24px_rgba(20,184,166,0.3)]"
+              style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+            >
+              <MessageCircleHeart size={20} className="text-white" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-teal-400/90 mb-0.5">
+                AI-native company
+              </p>
+              <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                Every visitor meets Pi AI first
+              </h1>
+            </div>
+          </div>
+          <p className="text-slate-400 text-sm leading-relaxed pl-[56px] max-w-xl">
             Not a “Contact Us” form. Understand intent → guide the product → route with context.
             People become the relationship builders.
           </p>
-        </div>
+        </header>
 
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-3">
+        <div className="flex gap-1.5 overflow-x-auto pb-2 mb-3 scrollbar-none">
           {CONNECT_TEAMS.map(t => (
             <button
               key={t.id}
@@ -235,10 +262,10 @@ export default function ConnectPage() {
                 setTeam(t.id)
                 void send(`I’m here about ${t.label}: ${t.blurb}`)
               }}
-              className={`flex-shrink-0 text-[11px] px-3 py-1.5 rounded-full border transition-all ${
+              className={`flex-shrink-0 text-[11px] px-3 py-1.5 rounded-lg border font-semibold transition-all ${
                 teamHint === t.id
-                  ? 'border-teal-500/40 bg-teal-500/15 text-teal-200'
-                  : 'border-white/10 text-slate-400 hover:text-white'
+                  ? 'border-teal-500/40 bg-teal-500/15 text-teal-100 shadow-[0_0_16px_rgba(20,184,166,0.12)]'
+                  : 'border-white/10 text-slate-400 hover:text-white hover:border-white/20'
               }`}
             >
               {t.label}
@@ -247,12 +274,17 @@ export default function ConnectPage() {
         </div>
 
         <div
-          className="flex-1 rounded-3xl border border-white/10 overflow-hidden flex flex-col min-h-[420px]"
-          style={{ background: 'linear-gradient(160deg, rgba(15,23,42,0.95), rgba(8,13,26,0.98))' }}
+          className="relative flex-1 rounded-3xl border border-white/[0.08] overflow-hidden flex flex-col min-h-[420px]"
+          style={{ background: 'linear-gradient(160deg, rgba(18,28,40,0.96), rgba(8,13,26,0.98))' }}
         >
-          <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
+          <div
+            className="pointer-events-none absolute -top-16 -right-12 w-40 h-40 rounded-full opacity-20 blur-3xl"
+            style={{ background: '#14b8a6' }}
+          />
+
+          <div className="relative flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
             {messages.map((m, i) => (
-              <div key={i} className={`flex gap-2 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div key={i} className={`flex gap-2.5 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 {m.role === 'ai' && (
                   <div
                     className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
@@ -265,20 +297,20 @@ export default function ConnectPage() {
                   className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
                     m.role === 'user'
                       ? 'bg-teal-500/20 border border-teal-500/30 text-teal-50'
-                      : 'bg-white/[0.04] border border-white/10 text-slate-200'
+                      : 'bg-black/30 border border-white/[0.08] text-slate-200'
                   }`}
                 >
                   {m.text}
                 </div>
                 {m.role === 'user' && (
-                  <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-8 h-8 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0 mt-0.5">
                     <UserRound size={14} className="text-slate-300" />
                   </div>
                 )}
               </div>
             ))}
             {typing && (
-              <div className="flex items-center gap-2 text-slate-500 text-xs">
+              <div className="flex items-center gap-2 text-slate-500 text-xs pl-10">
                 <Loader2 size={14} className="animate-spin text-teal-400" /> Pi AI is thinking…
               </div>
             )}
@@ -286,14 +318,14 @@ export default function ConnectPage() {
           </div>
 
           {!humanOpen && messages.length < 4 && (
-            <div className="px-4 pb-2 flex flex-wrap gap-1.5">
+            <div className="relative px-4 pb-2 flex flex-wrap gap-1.5">
               {SUGGESTIONS.map(s => (
                 <button
                   key={s}
                   type="button"
                   disabled={typing}
                   onClick={() => void send(s)}
-                  className="text-[11px] px-2.5 py-1 rounded-lg border border-white/10 text-slate-400 hover:text-teal-200 hover:border-teal-500/30 disabled:opacity-40"
+                  className="text-[11px] px-2.5 py-1 rounded-lg border border-white/10 text-slate-400 hover:text-teal-200 hover:border-teal-500/30 disabled:opacity-40 transition-colors"
                 >
                   {s}
                 </button>
@@ -302,7 +334,10 @@ export default function ConnectPage() {
           )}
 
           {humanOpen ? (
-            <div className="border-t border-white/10 p-4 space-y-3" style={{ background: 'rgba(0,0,0,0.25)' }}>
+            <div
+              className="relative border-t border-white/[0.08] p-4 space-y-3"
+              style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.2), rgba(0,0,0,0.35))' }}
+            >
               {done ? (
                 <div className="text-emerald-300 text-sm py-2 space-y-1">
                   <div className="flex items-center gap-2">
@@ -312,19 +347,24 @@ export default function ConnectPage() {
                 </div>
               ) : (
                 <>
-                  <div className="flex items-center gap-2 mb-1">
-                    <UserRound size={14} className="text-teal-400" />
-                    <p className="text-white text-sm font-bold">Speak with a Human</p>
+                  <div className="flex items-center gap-2.5 mb-1">
+                    <div
+                      className="w-8 h-8 rounded-xl flex items-center justify-center"
+                      style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+                    >
+                      <UserRound size={14} className="text-white" />
+                    </div>
+                    <div>
+                      <p className="text-white text-sm font-bold">Speak with a Human</p>
+                      <p className="text-slate-500 text-[11px]">Pi AI attaches a chat summary so you never repeat yourself.</p>
+                    </div>
                   </div>
-                  <p className="text-slate-500 text-xs leading-relaxed">
-                    Pi AI attaches a chat summary. Type any email below — confirmation goes to that address.
-                  </p>
                   <div className="grid sm:grid-cols-2 gap-2">
                     <input
                       value={name}
                       onChange={e => setName(e.target.value)}
                       placeholder="Your name"
-                      className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-pi-500/40"
+                      className={inputClass}
                     />
                     <input
                       value={email}
@@ -332,19 +372,19 @@ export default function ConnectPage() {
                       placeholder="Type the email you want"
                       type="email"
                       autoComplete="off"
-                      className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-pi-500/40"
+                      className={inputClass}
                     />
                   </div>
                   <input
                     value={org}
                     onChange={e => setOrg(e.target.value)}
                     placeholder="Organization (optional)"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-pi-500/40"
+                    className={inputClass}
                   />
                   <select
                     value={team}
                     onChange={e => setTeam(e.target.value as ConnectTeam)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-pi-500/40"
+                    className={inputClass}
                   >
                     {CONNECT_TEAMS.map(t => (
                       <option key={t.id} value={t.id} className="bg-slate-900">
@@ -357,7 +397,7 @@ export default function ConnectPage() {
                     onChange={e => setNote(e.target.value)}
                     rows={2}
                     placeholder="Anything else for the human? (optional)"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-pi-500/40 resize-none"
+                    className={`${inputClass} resize-none`}
                   />
                   {error && <p className="text-red-400 text-xs">{error}</p>}
                   <div className="flex gap-2">
@@ -365,7 +405,7 @@ export default function ConnectPage() {
                       type="button"
                       disabled={sending}
                       onClick={() => setHumanOpen(false)}
-                      className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-300 border border-white/10"
+                      className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-300 border border-white/10 hover:border-white/20 transition-colors"
                     >
                       Keep chatting
                     </button>
@@ -373,7 +413,7 @@ export default function ConnectPage() {
                       type="button"
                       disabled={sending}
                       onClick={() => void submitHuman()}
-                      className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white inline-flex items-center justify-center gap-2 disabled:opacity-40"
+                      className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white inline-flex items-center justify-center gap-2 disabled:opacity-40 hover:brightness-110 transition-all"
                       style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
                     >
                       {sending ? <Loader2 size={14} className="animate-spin" /> : <SendHorizonal size={14} />}
@@ -384,7 +424,7 @@ export default function ConnectPage() {
               )}
             </div>
           ) : (
-            <div className="border-t border-white/10 p-3 sm:p-4 space-y-2">
+            <div className="relative border-t border-white/[0.08] p-3 sm:p-4 space-y-2">
               <div className="flex gap-2">
                 <textarea
                   ref={inputRef}
@@ -398,14 +438,15 @@ export default function ConnectPage() {
                   }}
                   rows={1}
                   placeholder="Why are you here? Ask Pi AI anything…"
-                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-pi-500/40 resize-none min-h-[42px]"
+                  className={`${inputClass} resize-none min-h-[42px] flex-1`}
                 />
                 <button
                   type="button"
                   disabled={typing || !input.trim()}
                   onClick={() => void send(input)}
-                  className="w-11 h-11 rounded-xl flex items-center justify-center text-white disabled:opacity-40 shrink-0"
+                  className="w-11 h-11 rounded-xl flex items-center justify-center text-white disabled:opacity-40 shrink-0 hover:brightness-110 transition-all"
                   style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+                  aria-label="Send message"
                 >
                   <SendHorizonal size={16} />
                 </button>
@@ -413,7 +454,7 @@ export default function ConnectPage() {
               <button
                 type="button"
                 onClick={openHuman}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-teal-100 border border-teal-500/30 bg-teal-500/10 hover:bg-teal-500/15"
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-teal-100 border border-teal-500/30 bg-teal-500/10 hover:bg-teal-500/15 transition-colors"
               >
                 <UserRound size={14} /> Speak with a Human
               </button>
@@ -421,18 +462,34 @@ export default function ConnectPage() {
           )}
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
-          <button type="button" onClick={() => navigate('/demo')} className="text-teal-300 hover:underline inline-flex items-center gap-1">
+        <div className="mt-5 flex flex-wrap gap-2 text-xs">
+          <button
+            type="button"
+            onClick={() => navigate('/demo')}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-teal-500/25 bg-teal-500/10 text-teal-200 font-semibold hover:bg-teal-500/15 transition-colors"
+          >
             <Sparkles size={12} /> Investor Demo
           </button>
-          <button type="button" onClick={() => navigate('/transparency')} className="hover:text-white">
+          <button
+            type="button"
+            onClick={() => navigate('/transparency')}
+            className="px-3 py-1.5 rounded-lg border border-white/10 text-slate-400 hover:text-white hover:border-white/20 transition-colors"
+          >
             What’s live
           </button>
-          <button type="button" onClick={() => navigate('/investor')} className="hover:text-white">
+          <button
+            type="button"
+            onClick={() => navigate('/investor')}
+            className="px-3 py-1.5 rounded-lg border border-white/10 text-slate-400 hover:text-white hover:border-white/20 transition-colors"
+          >
             Investor Dashboard
           </button>
           {user && (
-            <button type="button" onClick={() => navigate('/handoffs')} className="hover:text-white">
+            <button
+              type="button"
+              onClick={() => navigate('/handoffs')}
+              className="px-3 py-1.5 rounded-lg border border-white/10 text-slate-400 hover:text-white hover:border-white/20 transition-colors"
+            >
               Team handoffs inbox
             </button>
           )}
