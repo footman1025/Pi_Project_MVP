@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase, Message, Profile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { notifyUserOfMessage } from '../lib/notifications'
-import { playConnectSound } from '../lib/connectSound'
+import { playConnectSound, unlockConnectSound } from '../lib/connectSound'
 import { Send, Search, Loader2, MessageCircle, Smile, Paperclip, FileText, Download, ExternalLink, X, Pin, Forward, Trash2, Copy } from 'lucide-react'
 import UserAvatar from '../components/UserAvatar'
 import ProfileName from '../components/ProfileName'
@@ -85,6 +85,15 @@ export default function MessagingPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Keep alien ring unlocked while chatting (browsers block Audio until a gesture)
+  useEffect(() => {
+    if (!selectedUser) return
+    void unlockConnectSound()
+    const unlock = () => { void unlockConnectSound() }
+    window.addEventListener('pointerdown', unlock)
+    return () => window.removeEventListener('pointerdown', unlock)
+  }, [selectedUser?.id])
 
   // Deep-link: /messages?u=<userId> opens that chat (from notifications / Message shortcuts)
   useEffect(() => {
@@ -309,9 +318,9 @@ export default function MessagingPage() {
         if ((msg.sender_id === user.id && msg.receiver_id === selectedUser.id) ||
             (msg.sender_id === selectedUser.id && msg.receiver_id === user.id)) {
           setMessages(m => (m.some(x => x.id === msg.id) ? m : [...m, msg]))
-          // Incoming message from the other person → alien ring
+          // Incoming message (text / image / video / voice) → same alien ring (not replaced)
           if (msg.sender_id === selectedUser.id && msg.receiver_id === user.id) {
-            void playConnectSound()
+            void unlockConnectSound().then(() => playConnectSound())
           }
         }
       })

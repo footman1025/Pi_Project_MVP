@@ -49,25 +49,36 @@ export async function unlockConnectSound() {
 
 /**
  * Plays a short alien “connection” / incoming-message ring.
+ * Not replaced — same sci‑fi cue for follows + incoming messages (incl. video).
  * Safe to call from UI; no-ops if Audio is unavailable. Debounced ~900ms.
  */
 export async function playConnectSound() {
   try {
     const now = Date.now()
     if (now - lastPlayAt < 900) return
-    lastPlayAt = now
 
     const ctx = getCtx()
     if (!ctx) return
-    if (ctx.state === 'suspended') await ctx.resume()
+
+    // iOS / Chrome often keep AudioContext suspended until resume succeeds
+    if (ctx.state === 'suspended') {
+      try {
+        await ctx.resume()
+      } catch {
+        return
+      }
+    }
+    if (ctx.state !== 'running') return
+
+    lastPlayAt = now
 
     const t0 = ctx.currentTime + 0.02
-    // Rising alien chirps + low pulse
-    tone(ctx, 880, t0, 0.22, 'sawtooth', 0.12)
-    tone(ctx, 1320, t0 + 0.18, 0.2, 'square', 0.1)
-    tone(ctx, 660, t0 + 0.36, 0.28, 'triangle', 0.14)
-    tone(ctx, 1760, t0 + 0.55, 0.35, 'sawtooth', 0.11)
-    tone(ctx, 110, t0, 0.9, 'sine', 0.08)
+    // Rising alien chirps + low pulse (slightly clearer for phone speakers)
+    tone(ctx, 880, t0, 0.22, 'sawtooth', 0.16)
+    tone(ctx, 1320, t0 + 0.18, 0.2, 'square', 0.14)
+    tone(ctx, 660, t0 + 0.36, 0.28, 'triangle', 0.18)
+    tone(ctx, 1760, t0 + 0.55, 0.35, 'sawtooth', 0.15)
+    tone(ctx, 110, t0, 0.9, 'sine', 0.1)
   } catch {
     // Ignore autoplay / permission failures
   }

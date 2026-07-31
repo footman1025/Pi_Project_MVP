@@ -141,8 +141,10 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
             message?: string | null
             actor_id?: string | null
           }
-          // Alien ring on connect + when someone messages you
-          if (row?.type === 'follow' || row?.type === 'message') void playConnectSound()
+          // Alien ring on follow + message (incl. video) — same sound, not replaced
+          if (row?.type === 'follow' || row?.type === 'message') {
+            void unlockConnectSound().then(() => playConnectSound())
+          }
           // Skip OS toast for AI suggestions here — push already delivers them with a stable tag
           // (avoids “same alert twice”: push + realtime local toast)
           if (row?.type === 'ai_match' || row?.type === 'ai_opportunity') return
@@ -287,7 +289,7 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
         </main>
 
         <nav
-          className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-white/10 flex items-stretch justify-around px-1 pt-1"
+          className="pi-bottom-tabs lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-white/10 flex items-stretch justify-around px-1 pt-1"
           style={{
             background: 'rgba(8,13,26,0.96)',
             backdropFilter: 'blur(16px)',

@@ -127,6 +127,12 @@ html[data-pi-density='spacious'] .pi-density-pad {
   transition: width 1.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* Hide mobile tab bar while record/send media modals are open (body[data-pi-modal=open]) */
+body[data-pi-modal='open'] .pi-bottom-tabs {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 /* Page transitions */
 .page-enter {
   opacity: 0;

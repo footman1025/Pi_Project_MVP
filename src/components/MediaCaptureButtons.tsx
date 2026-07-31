@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Mic, Video, Square, Loader2, X } from 'lucide-react'
+import { unlockConnectSound } from '../lib/connectSound'
 
 type Mode = 'audio' | 'video' | null
 
@@ -18,6 +20,12 @@ function pickMime(kind: 'audio' | 'video') {
     if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(t)) return t
   }
   return ''
+}
+
+function setOverlayOpen(open: boolean) {
+  if (typeof document === 'undefined') return
+  if (open) document.body.dataset.piModal = 'open'
+  else delete document.body.dataset.piModal
 }
 
 export default function MediaCaptureButtons({ disabled, onCaptured, onError }: Props) {
@@ -46,9 +54,15 @@ export default function MediaCaptureButtons({ disabled, onCaptured, onError }: P
     setRecording(false)
     setSeconds(0)
     setMode(null)
+    setOverlayOpen(false)
   }
 
   useEffect(() => () => cleanup(), [])
+
+  useEffect(() => {
+    if (mode || sending) setOverlayOpen(true)
+    else setOverlayOpen(false)
+  }, [mode, sending])
 
   const stop = () => {
     if (timerRef.current) {
@@ -71,6 +85,8 @@ export default function MediaCaptureButtons({ disabled, onCaptured, onError }: P
       onError?.('Recording is not supported in this browser.')
       return
     }
+    // User gesture — unlock alien ring for later incoming messages
+    void unlockConnectSound()
     try {
       const stream = await navigator.mediaDevices.getUserMedia(
         next === 'audio'
@@ -81,6 +97,7 @@ export default function MediaCaptureButtons({ disabled, onCaptured, onError }: P
       maxRef.current = next === 'video' ? 20 : 60
       setMode(next)
       setSeconds(0)
+      setOverlayOpen(true)
 
       if (next === 'video') {
         requestAnimationFrame(() => {
@@ -152,32 +169,20 @@ export default function MediaCaptureButtons({ disabled, onCaptured, onError }: P
   }
 
   const maxSeconds = mode === 'video' ? 20 : 60
+  const overlayOpen = !!(mode || sending)
 
-  return (
-    <>
-      <button
-        type="button"
-        disabled={disabled || sending || !!mode}
-        onClick={() => start('audio')}
-        className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all disabled:opacity-40"
-        title="Voice message"
-        aria-label="Record voice message"
-      >
-        <Mic size={18} />
-      </button>
-      <button
-        type="button"
-        disabled={disabled || sending || !!mode}
-        onClick={() => start('video')}
-        className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all disabled:opacity-40"
-        title="Video message"
-        aria-label="Record video message"
-      >
-        <Video size={18} />
-      </button>
-
-      {(mode || sending) && (
-        <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-black/70 p-4">
+  const overlay = overlayOpen && typeof document !== 'undefined'
+    ? createPortal(
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/75 p-4"
+          style={{
+            paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
+            paddingTop: 'max(1rem, env(safe-area-inset-top, 0px))',
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-label={mode === 'video' ? 'Recording video' : 'Recording voice'}
+        >
           <div
             className="w-full max-w-sm rounded-2xl border border-white/10 overflow-hidden shadow-2xl"
             style={{ background: 'linear-gradient(160deg, #12182b, #0a0f1c)' }}
@@ -199,7 +204,7 @@ export default function MediaCaptureButtons({ disabled, onCaptured, onError }: P
                 muted
                 playsInline
                 autoPlay
-                className="w-full aspect-square object-cover bg-black"
+                className="w-full aspect-square object-cover bg-black max-h-[45vh]"
               />
             )}
 
@@ -223,7 +228,7 @@ export default function MediaCaptureButtons({ disabled, onCaptured, onError }: P
                 <button
                   type="button"
                   onClick={stop}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-rose-500 hover:bg-rose-400 transition-colors"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-rose-500 hover:bg-rose-400 transition-colors shadow-lg shadow-rose-500/30"
                 >
                   <Square size={14} fill="currentColor" />
                   Stop & send
@@ -231,8 +236,34 @@ export default function MediaCaptureButtons({ disabled, onCaptured, onError }: P
               )}
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+        document.body,
+      )
+    : null
+
+  return (
+    <>
+      <button
+        type="button"
+        disabled={disabled || sending || !!mode}
+        onClick={() => start('audio')}
+        className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all disabled:opacity-40"
+        title="Voice message"
+        aria-label="Record voice message"
+      >
+        <Mic size={18} />
+      </button>
+      <button
+        type="button"
+        disabled={disabled || sending || !!mode}
+        onClick={() => start('video')}
+        className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all disabled:opacity-40"
+        title="Video message"
+        aria-label="Record video message"
+      >
+        <Video size={18} />
+      </button>
+      {overlay}
     </>
   )
 }
