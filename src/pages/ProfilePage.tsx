@@ -15,9 +15,10 @@ import {
   getFollowCounts,
   isFollowing,
 } from '../lib/follows'
-import { REPORT_REASONS, submitContentReport, type ReportReason } from '../lib/contentReports'
+import { submitContentReport, type ReportReason } from '../lib/contentReports'
 import UserAvatar from '../components/UserAvatar'
 import CreatorTipModal from '../components/CreatorTipModal'
+import ReportContentModal from '../components/ReportContentModal'
 import { externalHref, absoluteProfileUrl } from '../lib/urls'
 
 function applySeo(profile: Profile, username: string) {
@@ -503,64 +504,19 @@ export default function ProfilePage() {
               />
             )}
 
-            {reportOpen && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" role="dialog" aria-modal>
-                <div
-                  className="w-full max-w-md rounded-2xl border border-white/10 p-5"
-                  style={{ background: 'linear-gradient(160deg, #0d1220, #06090f)' }}
-                >
-                  <h3 className="text-white font-bold text-base mb-1">Report profile</h3>
-                  <p className="text-slate-500 text-xs mb-4">
-                    Trust & Safety — reports help protect the community. High-risk cases get human review.
-                  </p>
-                  {reportDone ? (
-                    <p className="text-teal-300 text-sm font-medium py-4 text-center">Thanks — report received.</p>
-                  ) : (
-                    <>
-                      <div className="space-y-1.5 mb-3">
-                        {REPORT_REASONS.map(r => (
-                          <label key={r.id} className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="profile-report"
-                              checked={reportReason === r.id}
-                              onChange={() => setReportReason(r.id)}
-                            />
-                            {r.label}
-                          </label>
-                        ))}
-                      </div>
-                      <textarea
-                        value={reportDetails}
-                        onChange={e => setReportDetails(e.target.value)}
-                        rows={2}
-                        placeholder="Optional details…"
-                        className="w-full mb-3 bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-teal-500/40 resize-none"
-                      />
-                      {reportError && <p className="text-red-400 text-xs mb-2">{reportError}</p>}
-                      <div className="flex gap-2 justify-end">
-                        <button
-                          type="button"
-                          onClick={() => setReportOpen(false)}
-                          className="px-3 py-2 rounded-xl text-xs text-slate-400 border border-white/10"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          disabled={reporting}
-                          onClick={() => void submitProfileReport()}
-                          className="px-4 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-40"
-                          style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
-                        >
-                          {reporting ? 'Sending…' : 'Submit report'}
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
+            <ReportContentModal
+              open={reportOpen}
+              title="Report profile"
+              reason={reportReason}
+              details={reportDetails}
+              busy={reporting}
+              done={reportDone}
+              error={reportError}
+              onReasonChange={setReportReason}
+              onDetailsChange={setReportDetails}
+              onClose={() => setReportOpen(false)}
+              onSubmit={() => void submitProfileReport()}
+            />
 
             {seo && (
               <div className="rounded-2xl border border-pi-500/20 overflow-hidden bg-pi-500/[0.05] w-full max-w-full min-w-0">
