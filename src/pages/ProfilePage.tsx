@@ -2,7 +2,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import {
   MapPin, Globe2, Star, Code2, ChevronDown, ChevronUp, ExternalLink,
-  UserPlus, UserCheck, Loader2, MessageCircle, Sparkles, ArrowLeft, Flag,
+  UserPlus, UserCheck, Loader2, MessageCircle, Sparkles, ArrowLeft, Flag, HeartHandshake,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase, Profile } from '../lib/supabase'
@@ -17,6 +17,7 @@ import {
 } from '../lib/follows'
 import { REPORT_REASONS, submitContentReport, type ReportReason } from '../lib/contentReports'
 import UserAvatar from '../components/UserAvatar'
+import CreatorTipModal from '../components/CreatorTipModal'
 import { externalHref, absoluteProfileUrl } from '../lib/urls'
 
 function applySeo(profile: Profile, username: string) {
@@ -123,6 +124,7 @@ export default function ProfilePage() {
   const [reporting, setReporting] = useState(false)
   const [reportDone, setReportDone] = useState(false)
   const [reportError, setReportError] = useState('')
+  const [tipOpen, setTipOpen] = useState(false)
 
   const isLoggedIn = !!session
   const isOwn = !!(user && profile && user.id === profile.id)
@@ -424,7 +426,7 @@ export default function ProfilePage() {
                 <p className="mt-3 text-xs text-red-400 text-center px-2">{followError}</p>
               )}
 
-              <div className={`grid gap-1.5 sm:gap-2 mt-5 w-full min-w-0 max-w-full ${isOwn ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-4'}`}>
+              <div className={`grid gap-1.5 sm:gap-2 mt-5 w-full min-w-0 max-w-full ${isOwn ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3'}`}>
                 {isOwn ? (
                   <button onClick={() => navigate('/profile/edit')}
                     className="w-full min-w-0 py-2.5 sm:py-3 px-1 sm:px-2 rounded-xl font-bold text-white text-xs sm:text-sm pi-mark">
@@ -454,6 +456,20 @@ export default function ProfilePage() {
                       <MessageCircle size={13} className="shrink-0" />
                       <span className="truncate">Message</span>
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!isLoggedIn) {
+                          navigate('/signup')
+                          return
+                        }
+                        setTipOpen(true)
+                      }}
+                      className="w-full min-w-0 py-2.5 sm:py-3 px-1 sm:px-2 rounded-xl border border-pink-500/30 text-pink-200 bg-pink-500/10 text-[11px] sm:text-sm font-medium hover:bg-pink-500/20 flex items-center justify-center gap-1"
+                    >
+                      <HeartHandshake size={13} className="shrink-0" />
+                      <span className="truncate">Tip</span>
+                    </button>
                     {isLoggedIn && (
                       <button
                         type="button"
@@ -476,6 +492,16 @@ export default function ProfilePage() {
                 </button>
               </div>
             </div>
+
+            {tipOpen && user && profile && !isOwn && (
+              <CreatorTipModal
+                open
+                fromUserId={user.id}
+                toUserId={profile.id}
+                toName={profile.full_name || profile.username || 'Member'}
+                onClose={() => setTipOpen(false)}
+              />
+            )}
 
             {reportOpen && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" role="dialog" aria-modal>

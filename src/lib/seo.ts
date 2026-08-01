@@ -249,10 +249,10 @@ export const FEATURE_SEO: FeatureSeo[] = [
     name: 'Creator & User Economy',
     problem: 'Creators and professionals juggle multiple tools for audience, booking, and growth.',
     who: 'Creators, coaches, and professionals building distribution inside one platform.',
-    whyDifferent: 'Live member discovery today; tips, courses, and booking planned as monetization matures.',
+    whyDifferent: 'Live member discovery today; tip intent UI (demo, no payments); courses and booking planned as monetization matures.',
     title: 'Creator & Professional Economy | Pi',
     description:
-      'Discover creators and professionals on Pi. Message and connect now; tips, courses, and booking on the roadmap.',
+      'Discover creators and professionals on Pi. Message, tip intent (demo), and connect now; courses and booking on the roadmap.',
     ctaPath: '/creators',
     ctaLabel: 'Explore creators',
   },

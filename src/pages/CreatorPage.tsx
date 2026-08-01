@@ -7,17 +7,42 @@ import {
 import { useAuth } from '../contexts/AuthContext'
 import { fetchHubProfiles } from '../lib/hubProfiles'
 import { MatchResult } from '../lib/matching'
+import {
+  TipIntent,
+  fetchMyTipIntents,
+  formatTipAmount,
+} from '../lib/creatorTips'
 import UserAvatar from '../components/UserAvatar'
 import StatusBadge from '../components/StatusBadge'
 import ProfileName from '../components/ProfileName'
+import CreatorTipModal from '../components/CreatorTipModal'
 
-const creatorFeatures = [
-  { icon: Clapperboard, label: 'Go Live', desc: 'Host live sessions with your audience', color: 'from-red-500 to-pink-600', to: '/feed', soon: true },
-  { icon: GraduationCap, label: 'Courses', desc: 'Sell premium educational content', color: 'from-pi-500 to-teal-600', to: '/feed', soon: true },
-  { icon: UsersRound, label: 'Communities', desc: 'Build and grow communities', color: 'from-emerald-500 to-teal-600', to: '/communities', soon: false },
-  { icon: Package, label: 'Digital Products', desc: 'Sell templates, tools & more', color: 'from-amber-500 to-orange-600', to: '/feed', soon: true },
-  { icon: HeartHandshake, label: 'Tips & Donations', desc: 'Let your audience support you', color: 'from-pink-500 to-rose-600', to: '/profile/edit', soon: true },
-  { icon: AreaChart, label: 'Analytics', desc: 'Real-time performance insights', color: 'from-cyan-500 to-blue-600', to: '/dashboard', soon: true },
+type Feature = {
+  icon: typeof Clapperboard
+  label: string
+  desc: string
+  color: string
+  to?: string
+  status: 'live' | 'partial' | 'demo' | 'soon'
+  statusLabel?: string
+  action?: 'open-tips-help'
+}
+
+const creatorFeatures: Feature[] = [
+  { icon: Clapperboard, label: 'Go Live', desc: 'Host live sessions with your audience', color: 'from-red-500 to-pink-600', to: '/feed', status: 'soon' },
+  { icon: GraduationCap, label: 'Courses', desc: 'Sell premium educational content', color: 'from-pi-500 to-teal-600', to: '/feed', status: 'soon' },
+  { icon: UsersRound, label: 'Communities', desc: 'Build and grow communities', color: 'from-emerald-500 to-teal-600', to: '/communities', status: 'live' },
+  { icon: Package, label: 'Digital Products', desc: 'Sell templates, tools & more', color: 'from-amber-500 to-orange-600', to: '/feed', status: 'soon' },
+  {
+    icon: HeartHandshake,
+    label: 'Tips & Donations',
+    desc: 'Tip intent UI — no card charged; Stripe = Soon',
+    color: 'from-pink-500 to-rose-600',
+    status: 'partial',
+    statusLabel: 'Partial / Demo',
+    action: 'open-tips-help',
+  },
+  { icon: AreaChart, label: 'Analytics', desc: 'Real-time performance insights', color: 'from-cyan-500 to-blue-600', to: '/dashboard', status: 'soon' },
 ]
 
 export default function CreatorPage() {
@@ -25,6 +50,18 @@ export default function CreatorPage() {
   const { profile, user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [matches, setMatches] = useState<MatchResult[]>([])
+  const [tipTarget, setTipTarget] = useState<{ id: string; name: string } | null>(null)
+  const [myTips, setMyTips] = useState<TipIntent[]>([])
+  const [tipSource, setTipSource] = useState<'supabase' | 'local'>('local')
+  const [showMyTips, setShowMyTips] = useState(false)
+  const [tipsHelp, setTipsHelp] = useState(false)
+
+  const reloadTips = async () => {
+    if (!user?.id) return
+    const res = await fetchMyTipIntents(user.id)
+    setMyTips(res.items)
+    setTipSource(res.source)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -38,7 +75,20 @@ export default function CreatorPage() {
     return () => { cancelled = true }
   }, [profile, user?.id])
 
+  useEffect(() => {
+    void reloadTips()
+  }, [user?.id])
+
   const hasLive = matches.length > 0
+
+  const openTip = (id: string, name: string) => {
+    if (!user?.id) {
+      navigate('/signup')
+      return
+    }
+    if (id === user.id) return
+    setTipTarget({ id, name })
+  }
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -50,9 +100,11 @@ export default function CreatorPage() {
             label={hasLive ? 'Live members' : 'Awaiting creators'}
             size="md"
           />
+          <StatusBadge kind="partial" label="Tips = Partial / Demo" size="md" />
         </div>
         <p className="text-slate-400">
-          Discover creators on Pi and connect via Message. Monetization tools (courses, livestreams, tips) are coming — start by posting and joining communities today.
+          Discover creators on Pi and connect via Message. Tip intent is available as a demo (no payments).
+          Courses and livestreams remain Soon.
         </p>
       </div>
 
@@ -100,22 +152,79 @@ export default function CreatorPage() {
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-slate-300 border border-white/10 hover:border-white/20">
           <UsersRound size={15} /> Browse Communities
         </button>
+        {user && (
+          <button
+            type="button"
+            onClick={() => { setShowMyTips(v => !v); void reloadTips() }}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-pink-200 bg-pink-500/10 border border-pink-500/25 hover:bg-pink-500/15"
+          >
+            <HeartHandshake size={15} />
+            My tip intents ({myTips.length})
+          </button>
+        )}
       </div>
+
+      {showMyTips && user && (
+        <div className="mb-8 p-4 rounded-2xl border border-pink-500/20 bg-pink-500/5">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <p className="text-white text-sm font-bold">Your tip intents</p>
+            <StatusBadge kind="demo" label="No payment" />
+            <StatusBadge
+              kind={tipSource === 'supabase' ? 'partial' : 'demo'}
+              label={tipSource === 'supabase' ? 'Account synced' : 'Local fallback'}
+            />
+          </div>
+          {myTips.length === 0 ? (
+            <p className="text-slate-500 text-xs">None yet — tip a creator on a card below.</p>
+          ) : (
+            <ul className="space-y-2">
+              {myTips.slice(0, 12).map(t => (
+                <li
+                  key={t.id || `${t.to_user_id}-${t.created_at}`}
+                  className="flex items-center justify-between gap-2 text-xs border border-white/5 rounded-xl px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="text-slate-200 font-semibold truncate">
+                      {formatTipAmount(t.amount_cents, t.currency)}
+                      {t.to_name ? ` → ${t.to_name}` : ''}
+                    </p>
+                    <p className="text-slate-500 truncate">
+                      {new Date(t.created_at).toLocaleString()} · {t.status}
+                      {t.note ? ` · “${t.note}”` : ''}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          {tipSource === 'local' && (
+            <p className="text-slate-500 text-[11px] mt-2">
+              Saved on this device. Run <code className="text-pink-300">supabase_creator_tips.sql</code> for account sync.
+            </p>
+          )}
+        </div>
+      )}
 
       <h2 className="text-xl font-bold text-white mb-4">Creator Tools</h2>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-10">
-        {creatorFeatures.map(({ icon: Icon, label, desc, color, to, soon }, i) => (
+        {creatorFeatures.map(({ icon: Icon, label, desc, color, to, status, statusLabel, action }, i) => (
           <button
             key={i}
             type="button"
-            onClick={() => navigate(to)}
+            onClick={() => {
+              if (action === 'open-tips-help') {
+                setTipsHelp(true)
+                return
+              }
+              if (to) navigate(to)
+            }}
             className="p-5 rounded-2xl border border-white/5 hover:border-pi-500/20 transition-all duration-300 hover:scale-[1.02] group text-left relative"
             style={{ background: 'linear-gradient(135deg, rgba(14,20,25,0.5), rgba(14,20,25,0.7))' }}>
-            {soon ? (
-              <StatusBadge kind="soon" className="absolute top-3 right-3" />
-            ) : (
-              <StatusBadge kind="live" className="absolute top-3 right-3" />
-            )}
+            <StatusBadge
+              kind={status}
+              label={statusLabel}
+              className="absolute top-3 right-3"
+            />
             <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
               <Icon size={20} className="text-white" />
             </div>
@@ -124,6 +233,38 @@ export default function CreatorPage() {
           </button>
         ))}
       </div>
+
+      {tipsHelp && (
+        <div
+          className="fixed inset-0 z-[180] flex items-center justify-center bg-black/70 p-4"
+          role="dialog"
+          aria-modal
+          onClick={() => setTipsHelp(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-white/10 p-5"
+            style={{ background: 'linear-gradient(165deg, #1a1220 0%, #0a101c 100%)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <h3 className="text-white font-bold text-base">Tips & Donations</h3>
+              <StatusBadge kind="partial" label="Partial / Demo" />
+            </div>
+            <p className="text-slate-400 text-sm leading-relaxed mb-4">
+              Tip creators from any card below (or a public profile). We record tip intent only —
+              no card is charged. Stripe checkout remains Soon.
+            </p>
+            <button
+              type="button"
+              onClick={() => setTipsHelp(false)}
+              className="w-full py-2.5 rounded-xl text-sm font-bold text-white"
+              style={{ background: 'linear-gradient(135deg, #ec4899, #db2777)' }}
+            >
+              Got it — tip a creator
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         <h2 className="text-xl font-bold text-white">Creators for you</h2>
@@ -155,6 +296,7 @@ export default function CreatorPage() {
             const p = m.profile
             const name = p.full_name || p.username || 'Member'
             const skills = (p.skills || []).slice(0, 3)
+            const isSelf = !!user?.id && p.id === user.id
             return (
               <div
                 key={p.id}
@@ -179,28 +321,50 @@ export default function CreatorPage() {
                   </div>
                 )}
                 <p className="text-slate-500 text-xs mb-4 line-clamp-2">{m.reasons[0] || p.bio || 'Active on Pi'}</p>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/messages?u=${p.id}`)}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-white"
+                      style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+                    >
+                      <MessageCircle size={14} /> Message
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!p.username}
+                      onClick={() => p.username && navigate(`/p/${p.username}`, { state: { from: '/creators' } })}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-slate-300 border border-white/10 hover:border-white/20 transition-all disabled:opacity-40"
+                    >
+                      <UserRound size={14} /> Profile
+                    </button>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => navigate(`/messages?u=${p.id}`)}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-white"
-                    style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+                    disabled={isSelf}
+                    onClick={() => openTip(p.id, name)}
+                    className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-pink-100 border border-pink-500/30 bg-pink-500/10 hover:bg-pink-500/20 transition-all disabled:opacity-40"
                   >
-                    <MessageCircle size={14} /> Message
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!p.username}
-                    onClick={() => p.username && navigate(`/p/${p.username}`, { state: { from: '/creators' } })}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-slate-300 border border-white/10 hover:border-white/20 transition-all disabled:opacity-40"
-                  >
-                    <UserRound size={14} /> Profile
+                    <HeartHandshake size={14} />
+                    {isSelf ? 'That’s you' : 'Tip (Demo)'}
                   </button>
                 </div>
               </div>
             )
           })}
         </div>
+      )}
+
+      {tipTarget && user?.id && (
+        <CreatorTipModal
+          open
+          fromUserId={user.id}
+          toUserId={tipTarget.id}
+          toName={tipTarget.name}
+          onClose={() => setTipTarget(null)}
+          onDone={() => { void reloadTips() }}
+        />
       )}
     </div>
   )
