@@ -80,6 +80,24 @@ function withComputedRisk(row: ContentReport): ContentReport {
   return { ...row, risk_score: risk.score, risk_level: risk.level }
 }
 
+function missingColumnError(message: string, column: string): boolean {
+  return new RegExp(column, 'i').test(message) && /schema cache|column|does not exist/i.test(message)
+}
+
+/** Update a report row; drop optional columns if the DB/schema cache is behind. */
+async function updateContentReportRow(
+  id: string,
+  patch: Record<string, unknown>,
+): Promise<{ error: { message: string } | null }> {
+  let { error } = await supabase.from('content_reports').update(patch).eq('id', id)
+  if (error && missingColumnError(error.message, 'updated_at') && 'updated_at' in patch) {
+    const { updated_at: _drop, ...rest } = patch
+    const retry = await supabase.from('content_reports').update(rest).eq('id', id)
+    error = retry.error
+  }
+  return { error }
+}
+
 /** Submit a content report — prefers Supabase, always keeps a local audit trail. */
 export async function submitContentReport(input: {
   reporterId: string
@@ -207,10 +225,10 @@ export async function updateReportStatus(
     }
     return { ok: false, error: 'Local-only report — apply SQL to manage server status.' }
   }
-  const { error } = await supabase
-    .from('content_reports')
-    .update({ status, updated_at: new Date().toISOString() })
-    .eq('id', id)
+  const { error } = await updateContentReportRow(id, {
+    status,
+    updated_at: new Date().toISOString(),
+  })
 
   if (error) return { ok: false, error: error.message }
   track('content_report_status', { status })
@@ -240,19 +258,16 @@ export async function submitAppeal(
     return { ok: true }
   }
 
-  const { error } = await supabase
-    .from('content_reports')
-    .update({
-      appeal_status: 'requested',
-      appeal_note,
-      appeal_at: patch.appeal_at,
-      status: 'reviewing',
-      updated_at: patch.updated_at,
-    })
-    .eq('id', id)
+  const { error } = await updateContentReportRow(id, {
+    appeal_status: 'requested',
+    appeal_note,
+    appeal_at: patch.appeal_at,
+    status: 'reviewing',
+    updated_at: patch.updated_at,
+  })
 
   if (error) {
-    if (/appeal_status|schema cache|column/i.test(error.message)) {
+    if (/appeal_status|appeal_note|appeal_at|schema cache|column/i.test(error.message)) {
       return { ok: false, error: 'Run supabase_content_reports_v2.sql to enable appeals.' }
     }
     return { ok: false, error: error.message }
@@ -279,12 +294,14 @@ export async function resolveAppeal(
     return { ok: true }
   }
 
-  const { error } = await supabase
-    .from('content_reports')
-    .update(patch)
-    .eq('id', id)
+  const { error } = await updateContentReportRow(id, patch)
 
-  if (error) return { ok: false, error: error.message }
+  if (error) {
+    if (/appeal_status|schema cache|column/i.test(error.message)) {
+      return { ok: false, error: 'Run supabase_content_reports_v2.sql to enable appeals.' }
+    }
+    return { ok: false, error: error.message }
+  }
   track('content_report_appeal_resolve', { decision })
   return { ok: true }
 }

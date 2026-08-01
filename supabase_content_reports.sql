@@ -7,8 +7,13 @@ create table if not exists public.content_reports (
   reason text not null,
   details text,
   status text not null default 'open' check (status in ('open', 'reviewing', 'resolved', 'dismissed')),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  updated_at timestamptz default now()
 );
+
+-- Existing installs that ran an older base script without updated_at
+alter table public.content_reports
+  add column if not exists updated_at timestamptz default now();
 
 create index if not exists content_reports_created_idx on public.content_reports (created_at desc);
 create index if not exists content_reports_status_idx on public.content_reports (status);
