@@ -17,8 +17,17 @@ export function friendlyNetworkError(err: unknown, fallback = 'Something went wr
   if (/bucket|not found|row-level security/i.test(msg)) {
     return msg
   }
-  if (/jwt|session|auth|not authenticated|permission/i.test(lower)) {
+  if (/invalid login|invalid credentials|wrong password|email not confirmed/i.test(lower)) {
+    return msg || 'Email or password is incorrect.'
+  }
+  if (/user already registered|already been registered/i.test(lower)) {
+    return 'An account with this email already exists. Try signing in.'
+  }
+  if (/jwt|session|not authenticated|refresh token/i.test(lower)) {
     return 'Session expired — sign in again, then retry.'
+  }
+  if (/permission/i.test(lower) && /denied|rls|policy/i.test(lower)) {
+    return 'Permission denied. Sign in again, then retry.'
   }
   if (/payload|too large|entity too large|25 mb/i.test(lower)) {
     return msg || 'File is too large (max 25 MB).'
@@ -34,6 +43,9 @@ function isRetryableError(err: unknown): boolean {
   if (!isOnline()) return true
   const msg = err instanceof Error ? err.message : String(err || '')
   if (/bucket|not found|row-level security|not supported|under 25 mb|file type/i.test(msg)) {
+    return false
+  }
+  if (/invalid login|invalid credentials|email not confirmed|user already|weak password|same password/i.test(msg)) {
     return false
   }
   if (/jwt|session|not authenticated|permission denied|violates/i.test(msg)) {

@@ -14,6 +14,7 @@ import ValidationFeedback from './ValidationFeedback'
 import { track } from '../lib/analytics'
 import { applyUgePreferences, hydrateUgeFromProfile, loadUgePreferences } from '../lib/ugePreferences'
 import { playConnectSound, unlockConnectSound } from '../lib/connectSound'
+import { withRetry } from '../lib/messagingReliability'
 import {
   ensureSystemAlertPermission,
   showSystemAlertForRow,
@@ -97,17 +98,27 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
   useEffect(() => {
     if (!user) return
     const fetchCount = async () => {
-      const { count } = await supabase
-        .from('notifications')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('is_read', false)
-      setUnreadNotifs(count || 0)
+      try {
+        const count = await withRetry(async () => {
+          const { count: n, error } = await supabase
+            .from('notifications')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .eq('is_read', false)
+          if (error) throw new Error(error.message)
+          return n ?? 0
+        }, { attempts: 2, baseMs: 350 })
+        setUnreadNotifs(count)
+      } catch {
+        // Keep last known badge count — don't flash to 0 on a glitch
+      }
     }
-    fetchCount()
+    void fetchCount()
 
-    const onRead = () => fetchCount()
+    const onRead = () => { void fetchCount() }
+    const onOnline = () => { void fetchCount() }
     window.addEventListener('pi:notifications-read', onRead)
+    window.addEventListener('online', onOnline)
 
     // Unlock Web Audio + request OS notification permission after first tap
     const unlock = () => {
@@ -151,10 +162,13 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
           showSystemAlertForRow(row)
         })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
-        () => fetchCount())
-      .subscribe()
+        () => { void fetchCount() })
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') void fetchCount()
+      })
     return () => {
       window.removeEventListener('pi:notifications-read', onRead)
+      window.removeEventListener('online', onOnline)
       window.removeEventListener('pointerdown', unlock)
       window.removeEventListener('keydown', unlock)
       window.removeEventListener('pi:system-alert-click', onAlertClick)

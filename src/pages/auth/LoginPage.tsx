@@ -24,7 +24,7 @@ export default function LoginPage() {
     const { error } = await signIn(trimmed, password)
     setLoading(false)
     if (error) {
-      setError(error.message)
+      setError(error.message || 'Sign in failed. Check your connection and try again.')
       track('login_failed')
       return
     }

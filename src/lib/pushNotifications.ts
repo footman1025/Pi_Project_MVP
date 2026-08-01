@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { PI_NOTIF_BADGE_PATH, PI_NOTIF_ICON_PATH, notificationBadgeUrl, notificationIconUrl } from './notificationBrand'
+import { isOnline, withRetry } from './messagingReliability'
 
 const VAPID_PUBLIC = (import.meta.env.VITE_VAPID_PUBLIC_KEY || '').trim()
 
@@ -45,6 +46,7 @@ export async function registerPiServiceWorker() {
 
 /** Enable OS / browser push (gesture required). Saves subscription for closed-app delivery. */
 export async function enablePushNotifications(userId: string): Promise<{ ok: boolean; reason?: string }> {
+  if (!isOnline()) return { ok: false, reason: 'offline' }
   if (!pushSupported()) return { ok: false, reason: 'unsupported' }
   if (!VAPID_PUBLIC) {
     // Still request Notification permission for foreground/background tab toasts via SW
@@ -78,20 +80,25 @@ export async function enablePushNotifications(userId: string): Promise<{ ok: boo
   const auth = json.keys?.auth
   if (!endpoint || !p256dh || !auth) return { ok: false, reason: 'bad-subscription' }
 
-  const { error } = await supabase.from('push_subscriptions').upsert(
-    {
-      user_id: userId,
-      endpoint,
-      p256dh,
-      auth,
-      user_agent: typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 240) : null,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'user_id,endpoint' },
-  )
-
-  if (error) return { ok: false, reason: error.message }
-  return { ok: true }
+  try {
+    await withRetry(async () => {
+      const { error } = await supabase.from('push_subscriptions').upsert(
+        {
+          user_id: userId,
+          endpoint,
+          p256dh,
+          auth,
+          user_agent: typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 240) : null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id,endpoint' },
+      )
+      if (error) throw new Error(error.message)
+    }, { attempts: 2, baseMs: 400, label: 'Could not save push subscription' })
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, reason: err instanceof Error ? err.message : 'save-failed' }
+  }
 }
 
 /** Show notification via SW (works when tab is backgrounded). Falls back to Notification API. */

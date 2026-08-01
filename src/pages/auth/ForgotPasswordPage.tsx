@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { ArrowLeft, Mail } from 'lucide-react'
+import { isValidEmail } from '../../lib/validation'
 
 export default function ForgotPasswordPage() {
   const navigate = useNavigate()
@@ -14,8 +15,13 @@ export default function ForgotPasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    const trimmed = email.trim()
+    if (!isValidEmail(trimmed)) {
+      setError('Please enter a valid email address.')
+      return
+    }
     setLoading(true)
-    const { error } = await resetPassword(email)
+    const { error } = await resetPassword(trimmed)
     setLoading(false)
     if (error) { setError(error.message); return }
     setSent(true)

@@ -4,8 +4,9 @@ import { supabase, Notification } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import {
   Bell, Heart, MessageCircle, UserPlus, Loader2, CheckCheck, Sparkles,
-  Briefcase, Mail, Smartphone, ArrowRight,
+  Briefcase, Mail, Smartphone, ArrowRight, RotateCcw, WifiOff,
 } from 'lucide-react'
+import { friendlyNetworkError, isOnline, withRetry } from '../lib/messagingReliability'
 import LoadingSpinner from '../components/LoadingSpinner'
 import StateMessage from '../components/StateMessage'
 import ProfileName from '../components/ProfileName'
@@ -100,19 +101,63 @@ export default function NotificationsPage() {
   const [emailDraft, setEmailDraft] = useState('')
   const [emailSaving, setEmailSaving] = useState(false)
   const [emailHint, setEmailHint] = useState('')
+  const [listError, setListError] = useState('')
+  const [online, setOnline] = useState(() => isOnline())
 
   useEffect(() => {
-    if (user) {
-      fetchNotifications()
-      void fetchNotificationPrefs(user.id).then(p => {
-        setEmailPrefs(p)
-        setEmailDraft(p.email || user.email || '')
-      })
+    const sync = () => setOnline(isOnline())
+    window.addEventListener('online', sync)
+    window.addEventListener('offline', sync)
+    return () => {
+      window.removeEventListener('online', sync)
+      window.removeEventListener('offline', sync)
     }
+  }, [])
+
+  const fetchNotifications = async () => {
+    if (!user) return
+    setLoading(true)
+    setListError('')
+    try {
+      const data = await withRetry(async () => {
+        const { data: rows, error } = await supabase
+          .from('notifications')
+          .select('*, profiles!notifications_actor_id_fkey(full_name, role, username)')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(50)
+        if (error) throw new Error(error.message)
+        return rows
+      }, { attempts: 3, baseMs: 400, label: 'Could not load notifications' })
+      setNotifications((data as NotifRow[]) || [])
+    } catch (err) {
+      setListError(friendlyNetworkError(err, 'Could not load notifications'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!user) return
+    void fetchNotifications()
+    void fetchNotificationPrefs(user.id).then(({ prefs, error }) => {
+      setEmailPrefs(prefs)
+      setEmailDraft(prefs.email || user.email || '')
+      if (error) setEmailHint(error)
+    })
   }, [user])
+
+  useEffect(() => {
+    if (!online || !user) return
+    if (listError) void fetchNotifications()
+  }, [online])
 
   const saveEmailPrefs = async (next: Partial<NotificationPrefs> & { email?: string | null }) => {
     if (!user) return
+    if (!isOnline()) {
+      setEmailHint('You’re offline. Reconnect, then try again.')
+      return
+    }
     setEmailSaving(true)
     setEmailHint('')
     const merged = {
@@ -143,6 +188,9 @@ export default function NotificationsPage() {
     void enablePushNotifications(user.id).then(r => {
       if (r.ok) setPushHint(r.reason === 'local-only' ? 'Local alerts on' : 'Push connected')
       else if (r.reason === 'denied') setPushHint('Alerts blocked in browser settings')
+      else if (r.reason === 'offline') setPushHint('You’re offline — push will retry when connected')
+      else if (r.reason === 'sw-failed') setPushHint('Could not register alerts — refresh and try again')
+      else if (r.reason) setPushHint(`Push setup: ${r.reason}`)
     })
   }, [user?.id])
 
@@ -156,28 +204,37 @@ export default function NotificationsPage() {
       }, (payload) => {
         setNotifications(n => [payload.new as NotifRow, ...n])
       })
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          void fetchNotifications()
+        }
+      })
     return () => { supabase.removeChannel(channel) }
   }, [user])
 
-  const fetchNotifications = async () => {
-    const { data } = await supabase
-      .from('notifications')
-      .select('*, profiles!notifications_actor_id_fkey(full_name, role, username)')
-      .eq('user_id', user!.id)
-      .order('created_at', { ascending: false })
-      .limit(50)
-    setNotifications((data as NotifRow[]) || [])
-    setLoading(false)
-  }
-
   const markAllRead = async () => {
     if (!user) return
+    if (!isOnline()) {
+      setListError('You’re offline. Reconnect, then try again.')
+      return
+    }
     setMarkingAll(true)
-    await supabase.from('notifications').update({ is_read: true }).eq('user_id', user.id).eq('is_read', false)
-    setNotifications(list => list.map(n => ({ ...n, is_read: true })))
-    window.dispatchEvent(new CustomEvent('pi:notifications-read'))
-    setMarkingAll(false)
+    try {
+      await withRetry(async () => {
+        const { error } = await supabase
+          .from('notifications')
+          .update({ is_read: true })
+          .eq('user_id', user.id)
+          .eq('is_read', false)
+        if (error) throw new Error(error.message)
+      }, { attempts: 2, baseMs: 350 })
+      setNotifications(list => list.map(n => ({ ...n, is_read: true })))
+      window.dispatchEvent(new CustomEvent('pi:notifications-read'))
+    } catch (err) {
+      setListError(friendlyNetworkError(err, 'Could not mark all as read'))
+    } finally {
+      setMarkingAll(false)
+    }
   }
 
   const openNotification = async (n: NotifRow) => {
@@ -237,9 +294,12 @@ export default function NotificationsPage() {
         force: true,
       })
     } else {
-      setPushHint(push.reason === 'denied'
-        ? 'Permission denied — enable in browser site settings'
-        : (push.reason || 'Could not enable'))
+      setPushHint(
+        push.reason === 'denied' ? 'Permission denied — enable in browser site settings'
+          : push.reason === 'offline' ? 'You’re offline — reconnect, then try again'
+            : push.reason === 'sw-failed' ? 'Could not register service worker — refresh and retry'
+              : (push.reason || 'Could not enable'),
+      )
     }
   }
 
@@ -440,9 +500,30 @@ export default function NotificationsPage() {
           </div>
         </section>
 
+        {!online && (
+          <div className="mb-4 flex items-center gap-2 px-3 py-2.5 rounded-xl border border-amber-500/25 bg-amber-500/10 text-amber-100 text-xs">
+            <WifiOff size={14} className="shrink-0" />
+            You’re offline. Prefs and mark-as-read will work again when you reconnect.
+          </div>
+        )}
+
+        {listError && (
+          <div className="mb-4 flex items-start gap-2 px-3 py-2.5 rounded-xl border border-red-500/25 bg-red-500/10">
+            <p className="flex-1 text-red-300 text-xs leading-snug">{listError}</p>
+            <button
+              type="button"
+              disabled={!online}
+              onClick={() => void fetchNotifications()}
+              className="inline-flex items-center gap-1 shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold text-white bg-rose-500/90 hover:bg-rose-400 disabled:opacity-40"
+            >
+              <RotateCcw size={12} /> Retry
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <LoadingSpinner className="py-16" label="Loading notifications…" />
-        ) : notifications.length === 0 ? (
+        ) : !listError && notifications.length === 0 ? (
           <div
             className="rounded-2xl border border-white/[0.06] overflow-hidden"
             style={{ background: 'linear-gradient(160deg, rgba(18,28,40,0.7), rgba(10,14,22,0.9))' }}
@@ -454,7 +535,7 @@ export default function NotificationsPage() {
               icon={Bell}
             />
           </div>
-        ) : (
+        ) : listError ? null : (
           <div className="space-y-2">
             <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 px-0.5 mb-1">
               Recent activity

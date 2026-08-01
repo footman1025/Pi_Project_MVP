@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { sendPushToUser } from './pushNotifications'
 import { sendEmailToUser } from './emailNotifications'
+import { withRetry } from './messagingReliability'
 
 export type NotifType = 'like' | 'comment' | 'follow' | 'message' | 'ai_match' | 'ai_opportunity'
 
@@ -56,17 +57,29 @@ export async function createNotification({
   if (!userId || !actorId) return
   if (userId === actorId && type !== 'ai_opportunity' && type !== 'ai_match') return
 
-  const { data } = await supabase
-    .from('notifications')
-    .insert({
-      user_id: userId,
-      actor_id: actorId,
-      type,
-      post_id: postId,
-      message,
-    })
-    .select('id')
-    .maybeSingle()
+  let data: { id: string } | null = null
+  try {
+    data = await withRetry(async () => {
+      const { data: row, error } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: userId,
+          actor_id: actorId,
+          type,
+          post_id: postId,
+          message,
+        })
+        .select('id')
+        .maybeSingle()
+      if (error) throw new Error(error.message)
+      return row
+    }, { attempts: 2, baseMs: 350, label: 'Notification insert failed' })
+  } catch (err) {
+    console.warn('[notify] insert failed', err instanceof Error ? err.message : err)
+    return
+  }
+
+  if (!data?.id) return
 
   const deepLink = path || defaultPath(type, actorId, postId)
   const notifTitle = title || defaultTitle(type)
@@ -75,11 +88,10 @@ export async function createNotification({
       ? 'pi-ai-match'
       : type === 'ai_opportunity'
         ? 'pi-ai-opp'
-        : data?.id
-          ? `pi-notif-${data.id}`
-          : `pi-${type}-${Date.now()}`
+        : `pi-notif-${data.id}`
 
-  await Promise.all([
+  // Fan-out is best-effort — in-app row already saved
+  await Promise.allSettled([
     sendPushToUser({
       userId,
       title: notifTitle,
