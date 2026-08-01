@@ -26,7 +26,7 @@ const rows: Row[] = [
   { area: 'Messages & alerts', kind: 'live', detail: 'Realtime DMs + in-app; Web Push / Install Pi for cellphone; AI suggestions with 12h cooldown (no duplicate spam); optional email alerts (opt-in on Notifications — needs RESEND_API_KEY + supabase_notification_preferences.sql)' },
   { area: 'Digital Twin', kind: 'live', detail: 'Rules-based twin from profile signals (not a full LLM twin yet); investor storytelling on /investor + /demo' },
   { area: 'Matching', kind: 'partial', detail: 'Live ranked graph when members exist; honest empty state (no fake cards) until seed/invite' },
-  { area: 'Opportunities catalog', kind: 'partial', detail: 'Seeded Supabase catalog + twin fit scores; run supabase_opportunities.sql; apply = Phase 2' },
+  { area: 'Opportunities catalog', kind: 'partial', detail: 'Catalog + twin fit; Mark interest + Apply interest (intent, no payments) via opportunity_interest; formal apply/payments = Soon' },
   { area: 'Demo member seed', kind: 'partial', detail: 'Run supabase_seed_demo_members.sql or npm run seed:demo for an 8-person live graph' },
   { area: 'Creators / Professionals', kind: 'partial', detail: 'Live member discovery + Message/Profile; tips, courses, booking = Soon' },
   { area: 'Communities ranking', kind: 'live', detail: 'Twin-scored reasons from your interests/goals — not hardcoded mock blurbs' },
