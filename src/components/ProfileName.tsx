@@ -15,13 +15,19 @@ export default function ProfileName({ name, username, from, className = '', chil
   const path = profilePath(username)
   const label = children ?? name ?? username ?? 'Member'
 
+  // Keep real names out of browser auto-translate (avoids Hotova→Hoova, Cristian→Cristiano).
   if (!path) {
-    return <span className={className}>{label}</span>
+    return (
+      <span className={className} translate="no">
+        {label}
+      </span>
+    )
   }
 
   return (
     <button
       type="button"
+      translate="no"
       onClick={e => {
         e.stopPropagation()
         e.preventDefault()

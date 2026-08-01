@@ -52,6 +52,48 @@ type NotifRow = Notification & {
   profiles?: { full_name?: string | null; role?: string | null; username?: string | null } | null
 }
 
+const ACTION_SUFFIXES = [
+  'started following you',
+  'liked your post',
+  'commented on your post',
+  'sent you a message',
+] as const
+
+/**
+ * Message rows already include the actor name; the UI also renders ProfileName.
+ * Strip the leading name (and known action templates) so we don't double-print —
+ * which also stops browser translate from mangling surnames like Hotova → Hoova.
+ */
+function notificationActionText(n: NotifRow): string {
+  const raw = (n.message || '').trim()
+  const name = (n.profiles?.full_name || '').trim()
+
+  if (name && raw) {
+    if (raw.toLowerCase().startsWith(name.toLowerCase())) {
+      const rest = raw.slice(name.length).replace(/^[\s,:-]+/, '').trim()
+      if (rest) return rest
+    }
+  }
+
+  for (const suffix of ACTION_SUFFIXES) {
+    const idx = raw.toLowerCase().lastIndexOf(suffix)
+    if (idx >= 0) return raw.slice(idx)
+  }
+
+  switch (n.type) {
+    case 'follow':
+      return 'started following you'
+    case 'like':
+      return 'liked your post'
+    case 'comment':
+      return 'commented on your post'
+    case 'message':
+      return 'sent you a message'
+    default:
+      return raw || `${n.type} update`
+  }
+}
+
 function ToggleSwitch({
   checked,
   disabled,
@@ -589,16 +631,18 @@ export default function NotificationsPage() {
                       )}
                     </div>
                     <p className="text-sm text-slate-200 leading-relaxed">
-                      {n.profiles?.full_name && (
-                        <ProfileName
-                          name={n.profiles.full_name}
-                          username={n.profiles.username}
-                          from="/notifications"
-                          className="text-white font-semibold inline"
-                        />
+                      {(n.profiles?.full_name || n.profiles?.username) && (
+                        <>
+                          <ProfileName
+                            name={n.profiles.full_name}
+                            username={n.profiles.username}
+                            from="/notifications"
+                            className="text-white font-semibold inline"
+                          />
+                          {' '}
+                        </>
                       )}
-                      {' '}
-                      {n.message || `${n.type}d your post`}
+                      <span>{notificationActionText(n)}</span>
                     </p>
                     <p className="text-xs text-slate-500 mt-1.5 flex items-center gap-1.5 flex-wrap">
                       <span>{timeAgo(n.created_at)}</span>
