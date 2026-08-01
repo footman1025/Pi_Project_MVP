@@ -21,7 +21,7 @@ const rows: Row[] = [
   { area: 'Feed & communities', kind: 'live', detail: 'Posts, likes, comments, images; join communities and post' },
   { area: 'Pi Social streams (v101)', kind: 'partial', detail: 'Opportunity Feed streams + posts.stream column (supabase_posts_stream.sql); Twin “why”; reputation breakdown; opportunity actions; share + report' },
   { area: 'Universal Generational Experience', kind: 'partial', detail: '/experience — device prefs + profiles.uge_preferences sync when SQL applied; life-stage companion tone; density CSS vars in AppShell' },
-  { area: 'Trust & Safety / Truth Guarantee', kind: 'partial', detail: '/trust + /moderation inbox; report posts/comments/profiles; content_reports (+ team policies); AI mod / E2E / LE portal = Soon' },
+  { area: 'Trust & Safety / Truth Guarantee', kind: 'partial', detail: '/trust + /moderation (risk triage + appeals v0); report posts/comments/profiles; content_reports_v2 SQL; full AI mod / E2E / LE = Soon' },
   { area: 'Trust-based monetization', kind: 'soon', detail: 'v101: fees only when Pi adds trust/safety value — Truth Guarantee as founding principle' },
   { area: 'Messages & alerts', kind: 'live', detail: 'Realtime DMs + in-app; Web Push / Install Pi for cellphone; AI suggestions with 12h cooldown (no duplicate spam); optional email alerts (opt-in on Notifications — needs RESEND_API_KEY + supabase_notification_preferences.sql)' },
   { area: 'Digital Twin', kind: 'live', detail: 'Rules-based twin from profile signals (not a full LLM twin yet); investor storytelling on /investor + /demo' },

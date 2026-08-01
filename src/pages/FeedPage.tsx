@@ -66,6 +66,7 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
   const [reportDetails, setReportDetails] = useState('')
   const [reporting, setReporting] = useState(false)
   const [reportDone, setReportDone] = useState(false)
+  const [reportRiskLabel, setReportRiskLabel] = useState('')
   const [showWhy, setShowWhy] = useState(false)
 
   const name = displayName(post.profiles)
@@ -120,13 +121,15 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
       setActionError(res.error)
       return
     }
+    setReportRiskLabel(res.risk ? `${res.risk.level} risk · score ${res.risk.score}` : '')
     setReportDone(true)
     setTimeout(() => {
       setReportOpen(false)
       setReportDone(false)
+      setReportRiskLabel('')
       setReportDetails('')
       setReportTarget(null)
-    }, 1400)
+    }, 1800)
   }
 
   const loadComments = async () => {
@@ -410,7 +413,12 @@ function PostCard({ post, onLike, onComment, onDeletePost, actorName }: {
               Trust & Safety — you can appeal enforcement later. Reports are reviewed by humans for high-risk cases.
             </p>
             {reportDone ? (
-              <p className="text-teal-300 text-sm font-medium py-4 text-center">Thanks — report received.</p>
+              <div className="py-4 text-center space-y-1">
+                <p className="text-teal-300 text-sm font-medium">Thanks — report received.</p>
+                {reportRiskLabel && (
+                  <p className="text-slate-500 text-[11px]">Queued for triage ({reportRiskLabel}). You can appeal from Moderation → My reports.</p>
+                )}
+              </div>
             ) : (
               <>
                 <div className="space-y-1.5 mb-3">
