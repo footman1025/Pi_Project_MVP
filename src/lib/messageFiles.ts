@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { friendlyNetworkError, isOnline, withRetry } from './messagingReliability'
 
 const BUCKET = 'message-files'
 const MAX_BYTES = 25 * 1024 * 1024 // 25 MB (short voice/video clips)
@@ -47,6 +48,9 @@ export async function uploadMessageFile(
   peerId: string,
   file: File,
 ): Promise<FileAttachment> {
+  if (!isOnline()) {
+    throw new Error('You’re offline. Reconnect, then tap Retry.')
+  }
   if (!isAllowedMime(file.type)) {
     throw new Error('This file type is not supported. Try an image, PDF, Office doc, text, zip, audio, or short video.')
   }
@@ -55,19 +59,26 @@ export async function uploadMessageFile(
   }
 
   const name = safeFileName(file.name)
-  const path = `${userId}/${peerId}/${Date.now()}_${name}`
+  // Unique path per attempt base — retries reuse same path via upsert after first fail mid-flight
+  const path = `${userId}/${peerId}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${name}`
 
-  const { error } = await supabase.storage
-    .from(BUCKET)
-    .upload(path, file, { upsert: false, contentType: file.type, cacheControl: '3600' })
+  try {
+    await withRetry(async () => {
+      const { error } = await supabase.storage
+        .from(BUCKET)
+        .upload(path, file, { upsert: true, contentType: file.type, cacheControl: '3600' })
 
-  if (error) {
-    if (/bucket|not found|row-level security/i.test(error.message)) {
-      throw new Error(
-        'File storage is not set up yet. In Supabase: run supabase_message_files.sql (creates public bucket “message-files”).',
-      )
-    }
-    throw new Error(error.message)
+      if (error) {
+        if (/bucket|not found|row-level security/i.test(error.message)) {
+          throw new Error(
+            'File storage is not set up yet. In Supabase: run supabase_message_files.sql (creates public bucket “message-files”).',
+          )
+        }
+        throw new Error(error.message)
+      }
+    }, { attempts: 3, baseMs: 600, label: 'Upload failed' })
+  } catch (err) {
+    throw new Error(friendlyNetworkError(err, 'Upload failed. Tap Retry.'))
   }
 
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path)

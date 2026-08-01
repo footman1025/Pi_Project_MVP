@@ -4,7 +4,7 @@ import { supabase, Message, Profile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { notifyUserOfMessage } from '../lib/notifications'
 import { playConnectSound, unlockConnectSound } from '../lib/connectSound'
-import { Send, Search, Loader2, MessageCircle, Smile, Paperclip, FileText, Download, ExternalLink, X, Pin, Forward, Trash2, Copy } from 'lucide-react'
+import { Send, Search, Loader2, MessageCircle, Smile, Paperclip, FileText, Download, ExternalLink, X, Pin, Forward, Trash2, Copy, WifiOff, RotateCcw } from 'lucide-react'
 import UserAvatar from '../components/UserAvatar'
 import ProfileName from '../components/ProfileName'
 import MessagePicker from '../components/MessagePicker'
@@ -22,6 +22,11 @@ import {
   isAudioFile,
   isVideoFile,
 } from '../lib/messageFiles'
+import {
+  friendlyNetworkError,
+  isOnline,
+  withRetry,
+} from '../lib/messagingReliability'
 import {
   encodeReply,
   parseReply,
@@ -59,6 +64,9 @@ export default function MessagingPage() {
   const [searching, setSearching] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [uploadError, setUploadError] = useState('')
+  const [online, setOnline] = useState(() => isOnline())
+  const [failedText, setFailedText] = useState<string | null>(null)
+  const [failedMedia, setFailedMedia] = useState<{ file: File; caption: string } | null>(null)
   const [replyTo, setReplyTo] = useState<(ReplyMeta & { senderId: string }) | null>(null)
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; msg: Message } | null>(null)
   const [copiedToast, setCopiedToast] = useState(false)
@@ -94,6 +102,17 @@ export default function MessagingPage() {
     window.addEventListener('pointerdown', unlock)
     return () => window.removeEventListener('pointerdown', unlock)
   }, [selectedUser?.id])
+
+  useEffect(() => {
+    const sync = () => setOnline(isOnline())
+    window.addEventListener('online', sync)
+    window.addEventListener('offline', sync)
+    sync()
+    return () => {
+      window.removeEventListener('online', sync)
+      window.removeEventListener('offline', sync)
+    }
+  }, [])
 
   // Deep-link: /messages?u=<userId> opens that chat (from notifications / Message shortcuts)
   useEffect(() => {
@@ -172,6 +191,9 @@ export default function MessagingPage() {
     setSelectMode(false)
     setSelectedIds(new Set())
     setForwardMsg(null)
+    setUploadError('')
+    setFailedText(null)
+    setFailedMedia(null)
     setPendingMedia(prev => {
       if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl)
       return null
@@ -201,18 +223,29 @@ export default function MessagingPage() {
     if (pendingMedia?.previewUrl) URL.revokeObjectURL(pendingMedia.previewUrl)
   }, [pendingMedia?.previewUrl])
 
-  const sendMediaFile = async (file: File) => {
+  const sendMediaFile = async (file: File, opts?: { caption?: string; keepPendingOnFail?: boolean }) => {
     if (!user || !selectedUser) return
+    if (!isOnline()) {
+      setUploadError('You’re offline. Reconnect, then tap Retry.')
+      setFailedMedia({ file, caption: opts?.caption || '' })
+      return
+    }
     setUploadError('')
+    setFailedMedia(null)
     setPickerOpen(false)
     setSending(true)
     try {
       const attached = await uploadMessageFile(user.id, selectedUser.id, file)
       await insertMessage(withReply(encodeFileMessage(attached)))
+      if (opts?.caption?.trim()) {
+        await insertMessage(opts.caption.trim())
+      }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to send file'
+      const msg = friendlyNetworkError(err, 'Failed to send file')
       setUploadError(msg)
-      throw err
+      setFailedMedia({ file, caption: opts?.caption || '' })
+      if (!opts?.keepPendingOnFail) throw err
+      return
     } finally {
       setSending(false)
     }
@@ -222,6 +255,7 @@ export default function MessagingPage() {
   const queueOrSendFile = async (file: File) => {
     if (!user || !selectedUser) return
     setUploadError('')
+    setFailedMedia(null)
     setPickerOpen(false)
     if (isImageFile(file.type) || isVideoFile(file.type)) {
       setPendingMedia(prev => {
@@ -238,7 +272,11 @@ export default function MessagingPage() {
     if (!pendingMedia || !user || !selectedUser) return
     const file = pendingMedia.file
     const caption = mediaCaption.trim()
-    clearPendingMedia()
+    if (!isOnline()) {
+      setUploadError('You’re offline. Reconnect, then tap Retry.')
+      setFailedMedia({ file, caption })
+      return
+    }
     setSending(true)
     setUploadError('')
     try {
@@ -247,11 +285,31 @@ export default function MessagingPage() {
       if (caption) {
         await insertMessage(caption)
       }
+      clearPendingMedia()
+      setFailedMedia(null)
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to send media'
-      setUploadError(msg)
+      // Keep preview open so user can retry without re-picking the file
+      setUploadError(friendlyNetworkError(err, 'Failed to send media'))
+      setFailedMedia({ file, caption })
     } finally {
       setSending(false)
+    }
+  }
+
+  const retryFailedSend = async () => {
+    if (failedMedia) {
+      if (pendingMedia) {
+        await confirmSendPendingMedia()
+        return
+      }
+      const { file, caption } = failedMedia
+      await sendMediaFile(file, { caption, keepPendingOnFail: true })
+      return
+    }
+    if (failedText) {
+      const text = failedText
+      setFailedText(null)
+      await sendContent(text)
     }
   }
 
@@ -330,12 +388,22 @@ export default function MessagingPage() {
 
   const insertMessage = async (content: string) => {
     if (!content.trim() || !user || !selectedUser) return
+    if (!isOnline()) {
+      throw new Error('You’re offline. Reconnect, then tap Retry.')
+    }
     const msg = { sender_id: user.id, receiver_id: selectedUser.id, content: content.trim() }
-    const { data } = await supabase.from('messages').insert(msg).select().single()
-    if (data) {
-      setMessages(m => (m.some(x => x.id === data.id) ? m : [...m, data]))
-      const actorName = profile?.full_name || user.email?.split('@')[0] || 'Someone'
+    const data = await withRetry(async () => {
+      const { data: row, error } = await supabase.from('messages').insert(msg).select().single()
+      if (error || !row) throw new Error(error?.message || 'Message failed to send')
+      return row as Message
+    }, { attempts: 3, baseMs: 400, label: 'Message failed to send' })
+
+    setMessages(m => (m.some(x => x.id === data.id) ? m : [...m, data]))
+    const actorName = profile?.full_name || user.email?.split('@')[0] || 'Someone'
+    try {
       await notifyUserOfMessage(selectedUser.id, user.id, actorName)
+    } catch {
+      // Delivery notification is best-effort — message already saved
     }
     if (!conversations.find(c => c.id === selectedUser.id)) {
       setConversations(c => [selectedUser, ...c])
@@ -354,9 +422,19 @@ export default function MessagingPage() {
 
   const sendContent = async (content: string) => {
     if (!content.trim()) return
+    if (!isOnline()) {
+      setUploadError('You’re offline. Reconnect, then tap Retry.')
+      setFailedText(content)
+      return
+    }
     setSending(true)
+    setUploadError('')
     try {
       await insertMessage(withReply(content))
+      setFailedText(null)
+    } catch (err: unknown) {
+      setUploadError(friendlyNetworkError(err, 'Message failed to send'))
+      setFailedText(content)
     } finally {
       setSending(false)
     }
@@ -759,11 +837,31 @@ export default function MessagingPage() {
                 />
                 <p className="text-slate-500 text-xs truncate">{selectedUser.role || 'Pi Member'}</p>
               </div>
-              <div className="ml-auto flex items-center gap-1.5 flex-shrink-0 px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                <span className="text-[10px] font-semibold text-emerald-300 hidden sm:inline">Online</span>
+              <div
+                className={`ml-auto flex items-center gap-1.5 flex-shrink-0 px-2 py-1 rounded-lg border ${
+                  online
+                    ? 'bg-emerald-500/10 border-emerald-500/20'
+                    : 'bg-amber-500/10 border-amber-500/25'
+                }`}
+                title={online ? 'Your connection is online' : 'You’re offline — messages will queue for retry'}
+              >
+                {online ? (
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                ) : (
+                  <WifiOff size={12} className="text-amber-300" />
+                )}
+                <span className={`text-[10px] font-semibold hidden sm:inline ${online ? 'text-emerald-300' : 'text-amber-300'}`}>
+                  {online ? 'Connected' : 'Offline'}
+                </span>
               </div>
             </div>
+
+            {!online && (
+              <div className="flex items-center gap-2 px-3 sm:px-5 py-2 border-b border-amber-500/25 bg-amber-500/10 text-amber-100 text-xs">
+                <WifiOff size={14} className="shrink-0" />
+                <p className="flex-1 leading-snug">You’re offline. Reconnect to send messages, photos, and videos.</p>
+              </div>
+            )}
 
             {pinnedMessage && (
               <button
@@ -1046,8 +1144,27 @@ export default function MessagingPage() {
                 onSticker={sendSticker}
               />
               {uploadError && (
-                <div className="mb-2 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
-                  {uploadError}
+                <div className="mb-2 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 flex items-start gap-2">
+                  <p className="flex-1 text-red-300 text-xs leading-snug min-w-0">{uploadError}</p>
+                  {(failedMedia || failedText) && (
+                    <button
+                      type="button"
+                      disabled={sending || !online}
+                      onClick={() => void retryFailedSend()}
+                      className="inline-flex items-center gap-1 shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold text-white bg-rose-500/90 hover:bg-rose-400 disabled:opacity-40"
+                    >
+                      {sending ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />}
+                      Retry
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { setUploadError(''); setFailedText(null); setFailedMedia(null) }}
+                    className="p-1 rounded-lg text-red-300/70 hover:text-white hover:bg-white/10 shrink-0"
+                    aria-label="Dismiss error"
+                  >
+                    <X size={12} />
+                  </button>
                 </div>
               )}
               {replyTo && (
@@ -1099,17 +1216,19 @@ export default function MessagingPage() {
                   <Paperclip size={18} />
                 </button>
                 <MediaCaptureButtons
-                  disabled={sending || !!pendingMedia}
+                  disabled={sending || !!pendingMedia || !online}
                   onCaptured={async (file) => {
                     try {
                       // Voice notes send immediately; camera video/photos confirm first
-                      if (isAudioFile(file.type)) await sendMediaFile(file)
+                      if (isAudioFile(file.type)) await sendMediaFile(file, { keepPendingOnFail: true })
                       else await queueOrSendFile(file)
                     } catch {
                       /* error already set */
                     }
                   }}
-                  onError={msg => setUploadError(msg)}
+                  onError={msg => {
+                    setUploadError(friendlyNetworkError(msg, msg))
+                  }}
                 />
                 <div className="flex-1 min-w-0 max-w-full overflow-hidden relative bg-black/30 border border-white/10 rounded-2xl focus-within:border-teal-500/40 transition-colors">
                   <textarea
@@ -1148,10 +1267,11 @@ export default function MessagingPage() {
                 <button
                   type="button"
                   onClick={sendMessage}
-                  disabled={sending || !newMsg.trim()}
+                  disabled={sending || !newMsg.trim() || !online}
                   className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-white disabled:opacity-40 transition-all shrink-0 hover:brightness-110"
                   style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
                   aria-label="Send message"
+                  title={!online ? 'You’re offline' : 'Send'}
                 >
                   {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
                 </button>
