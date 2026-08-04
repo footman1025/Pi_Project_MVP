@@ -179,18 +179,20 @@ export async function submitHandoff(input: {
         visitorSent?: boolean
         teamSent?: boolean
         sentTo?: string | null
+        userMessage?: string
         warnings?: string[]
         error?: string
       }
       if (!r.ok) {
         emailNote = json.error || 'Email API not ready — handoff saved in team inbox.'
+      } else if (json.userMessage) {
+        emailNote = json.userMessage
       } else if (json.visitorSent && json.sentTo) {
         emailNote = `Confirmation emailed to ${json.sentTo}.`
-        if (json.warnings?.length) emailNote += ` (${json.warnings[0]})`
-      } else if (json.warnings?.length) {
-        emailNote = json.warnings[0]
       } else if (json.teamSent) {
         emailNote = 'Team was notified by email.'
+      } else if (json.warnings?.length) {
+        emailNote = json.warnings[0]
       }
     } catch {
       emailNote = 'Could not reach email API — handoff saved in team inbox.'
