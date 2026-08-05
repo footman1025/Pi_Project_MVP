@@ -114,7 +114,7 @@ export default function MessagingPage() {
     }
   }, [])
 
-  // Deep-link: /messages?u=<userId> opens that chat (from notifications / Message shortcuts)
+  // Deep-link: /messages?u=<userId>&draft=… opens chat with optional Opportunity Hub prefill
   useEffect(() => {
     if (!user || loading) return
     const targetId = searchParams.get('u')
@@ -133,6 +133,20 @@ export default function MessagingPage() {
       if (!profileToOpen || cancelled) return
       openedFromQuery.current = targetId
       await selectConversation(profileToOpen)
+
+      const draft = searchParams.get('draft')
+      if (draft) {
+        setNewMsg(draft.slice(0, 4000))
+        requestAnimationFrame(() => inputRef.current?.focus())
+      }
+      if (searchParams.get('opp')) {
+        const { track } = await import('../lib/analytics')
+        track('opportunity_conversation_start', {
+          opportunity_id: searchParams.get('opp'),
+          opp_title: searchParams.get('oppTitle'),
+          peer_id: targetId,
+        })
+      }
       // Clear query so back/refresh doesn't re-force the same open awkwardly
       setSearchParams({}, { replace: true })
     }

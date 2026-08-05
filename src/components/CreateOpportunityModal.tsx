@@ -13,7 +13,7 @@ type Props = {
   open: boolean
   ownerId: string
   onClose: () => void
-  onCreated: (item: OpportunityItem, source: 'supabase' | 'local') => void
+  onCreated: (item: OpportunityItem, source: 'supabase') => void
 }
 
 export default function CreateOpportunityModal({ open, ownerId, onClose, onCreated }: Props) {
@@ -80,10 +80,10 @@ export default function CreateOpportunityModal({ open, ownerId, onClose, onCreat
             <div className="min-w-0 pt-0.5">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-white font-bold text-[15px]">Create opportunity</h3>
-                <StatusBadge kind="partial" label="Hub 0→1" />
+                <StatusBadge kind="live" label="Publishes Live" />
               </div>
               <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                Jobs, services, partnerships, co-founders — first validation layer. Featured listing = Soon.
+                Publishes a public indexed page instantly. Jobs, services, partnerships, co-founders — first validation layer.
               </p>
             </div>
           </div>

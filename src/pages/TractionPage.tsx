@@ -190,9 +190,9 @@ export default function TractionPage() {
                 Icon={Sparkles}
               />
               <MetricCard
-                label="Opp. interest"
-                value={String(snap.opportunities.interestMarked)}
-                sub={`${snap.opportunities.pageViews} views · ${snap.opportunities.expands} expand`}
+                label="Opp. Hub loop"
+                value={String(snap.opportunities.applied)}
+                sub={`${snap.opportunities.created} created · ${snap.opportunities.interestMarked} interest · ${snap.opportunities.publicViews} public · ${snap.opportunities.conversationsStarted} chats`}
                 accent="#fbbf24"
                 Icon={Target}
               />

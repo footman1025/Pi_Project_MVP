@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
-  ArrowLeft, Briefcase, Clock4, ExternalLink, Loader2, MapPin, MessageCircle, Share2,
+  ArrowLeft, Briefcase, Clock4, ExternalLink, Loader2, MapPin, MessageCircle, Share2, Send,
 } from 'lucide-react'
 import MockIcon from '../components/MockIcon'
 import StatusBadge from '../components/StatusBadge'
@@ -12,21 +12,29 @@ import {
   fetchOpportunityBySlugOrId,
   type OpportunityItem,
 } from '../lib/opportunities'
+import { opportunityMessagePath } from '../lib/opportunityHub'
+import { upsertOpportunityInterest } from '../lib/opportunityInterest'
+import { applyOpportunitySeo } from '../lib/seo'
 import { track } from '../lib/analytics'
+import { playConnectSound } from '../lib/connectSound'
 
 export default function OpportunityPublicPage() {
   const { slugOrId = '' } = useParams<{ slugOrId: string }>()
   const navigate = useNavigate()
-  const { session, user } = useAuth()
+  const { session, user, profile } = useAuth()
   const [item, setItem] = useState<OpportunityItem | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [isLive, setIsLive] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       setLoading(true)
+      setMsg('')
       const key = decodeURIComponent(slugOrId)
       const res = await fetchOpportunityBySlugOrId(key)
       if (cancelled) return
@@ -36,8 +44,9 @@ export default function OpportunityPublicPage() {
       } else {
         setItem(res.item)
         setNotFound(false)
-        document.title = `${res.item.title} · Opportunities | Pi`
-        track('opportunity_public_view', { id: res.item.id, live: res.isLive })
+        setIsLive(res.isLive)
+        applyOpportunitySeo(res.item)
+        track('opportunity_public_view', { id: res.item.id, live: res.isLive, slug: res.item.slug || null })
       }
       setLoading(false)
     })()
@@ -50,6 +59,7 @@ export default function OpportunityPublicPage() {
     try {
       if (navigator.share) {
         await navigator.share({ title: item.title, text: item.subtitle, url })
+        track('opportunity_share', { id: item.id })
         return
       }
     } catch {
@@ -57,15 +67,34 @@ export default function OpportunityPublicPage() {
     }
     await navigator.clipboard?.writeText(url)
     setCopied(true)
+    track('opportunity_share', { id: item.id, method: 'clipboard' })
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const goApply = () => {
-    if (!session) {
+  const goApply = async () => {
+    if (!item) return
+    if (!session || !user) {
       navigate('/signup')
       return
     }
-    navigate('/opportunities', { state: { focusId: item?.id } })
+    setBusy(true)
+    setMsg('')
+    const res = await upsertOpportunityInterest({
+      userId: user.id,
+      opportunityId: item.id,
+      title: item.title,
+      status: 'applied',
+      ownerId: item.ownerId,
+      slug: item.slug,
+      actorName: profile?.full_name || user.email?.split('@')[0] || 'Someone',
+    })
+    setBusy(false)
+    if (!res.ok) {
+      setMsg(res.error)
+      return
+    }
+    setMsg(res.source === 'supabase' ? 'Apply intent saved — message the poster to connect.' : 'Saved on this device.')
+    void import('../lib/engagement').then(m => m.recordEngagementAction('opportunity_interest'))
   }
 
   const goMessage = () => {
@@ -75,7 +104,15 @@ export default function OpportunityPublicPage() {
       return
     }
     if (user?.id === item.ownerId) return
-    navigate(`/messages?u=${item.ownerId}`)
+    void playConnectSound()
+    navigate(
+      opportunityMessagePath({
+        ownerId: item.ownerId,
+        title: item.title,
+        opportunityId: item.id,
+        status: 'interested',
+      }),
+    )
   }
 
   return (
@@ -92,7 +129,7 @@ export default function OpportunityPublicPage() {
           <span className="text-white font-bold text-sm truncate">Opportunity Hub</span>
         </button>
         <div className="flex-1" />
-        <StatusBadge kind="partial" label="0→1 validation" />
+        <StatusBadge kind={isLive ? 'live' : 'demo'} label={isLive ? 'Live listing' : 'Demo listing'} />
       </nav>
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
@@ -117,7 +154,7 @@ export default function OpportunityPublicPage() {
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap gap-1.5 mb-2">
                   <StatusBadge kind="live" label={item.category} />
-                  {item.source === 'member' && <StatusBadge kind="partial" label="Member posted" />}
+                  {item.source === 'member' && <StatusBadge kind="live" label="Member posted" />}
                   <StatusBadge kind="soon" label="Featured = Soon" />
                 </div>
                 <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-white leading-tight break-words">
@@ -159,14 +196,22 @@ export default function OpportunityPublicPage() {
               </section>
             )}
 
+            {msg && (
+              <p className="mb-4 text-sm text-teal-300 border border-teal-500/25 bg-teal-500/10 rounded-xl px-3 py-2">
+                {msg}
+              </p>
+            )}
+
             <div className="flex flex-col sm:flex-row gap-2 mb-8">
               <button
                 type="button"
-                onClick={goApply}
-                className="flex-1 py-3 rounded-xl text-sm font-bold text-white"
+                disabled={busy}
+                onClick={() => void goApply()}
+                className="flex-1 py-3 rounded-xl text-sm font-bold text-white inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
                 style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}
               >
-                {session ? 'Open in Opportunity Hub' : 'Sign up to apply'}
+                {busy ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+                {session ? 'Apply interest' : 'Sign up to apply'}
               </button>
               {item.ownerId && user?.id !== item.ownerId && (
                 <button
@@ -186,6 +231,16 @@ export default function OpportunityPublicPage() {
                 {copied ? 'Copied' : 'Share'}
               </button>
             </div>
+
+            {session && (
+              <button
+                type="button"
+                onClick={() => navigate('/opportunities', { state: { focusId: item.id } })}
+                className="text-teal-300 text-xs font-semibold hover:underline mb-6 block"
+              >
+                Open in Opportunity Hub →
+              </button>
+            )}
 
             <p className="text-slate-600 text-xs leading-relaxed">
               Pi Opportunity Hub — discover and create opportunities. Interest / apply intent is free;

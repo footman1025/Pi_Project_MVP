@@ -226,10 +226,10 @@ export const FEATURE_SEO: FeatureSeo[] = [
     problem: 'Jobs, clients, co-founders, and partnerships are scattered across apps with no clear next step.',
     who: 'Founders, freelancers, and professionals who need to discover or create real opportunities today.',
     whyDifferent:
-      'Pi’s first 0→1 layer: create listings, twin-ranked discovery, interest/apply intent, public /o pages, and message the poster. Featured paywall = Soon.',
+      'Pi’s first 0→1 layer: Live create → public /o SEO page → apply with owner notify → message with context → measurable outcomes. Featured paywall = Soon.',
     title: 'Opportunity Hub – Discover & Create on Pi',
     description:
-      'Create and discover jobs, partnerships, co-founders, and services on Pi — ranked by your Digital Twin. Apply interest free; featured listings coming soon.',
+      'Create and discover jobs, partnerships, co-founders, and services on Pi — public pages, apply intent, and message the poster. Featured listings coming soon.',
     ctaPath: '/opportunities',
     ctaLabel: 'Open Opportunity Hub',
   },
@@ -347,8 +347,10 @@ export function resolveSeo(pathname: string): SeoPage {
     return {
       path: pathname,
       title: 'Opportunity | Pi',
-      description: 'Public opportunity on Pi Opportunity Hub — discover, apply interest, and connect.',
+      description:
+        'Public opportunity on Pi Opportunity Hub — create, discover, apply, and message the poster.',
       robots: 'index, follow',
+      ogType: 'article',
     }
   }
 
@@ -369,6 +371,48 @@ export function resolveSeo(pathname: string): SeoPage {
     description: SEO_PAGES['/'].description,
     robots: pathname.startsWith('/') ? 'index, follow' : 'noindex, follow',
   }
+}
+
+/** Apply SEO for a loaded public opportunity (indexed /o/:slug page). */
+export function applyOpportunitySeo(item: {
+  title: string
+  subtitle?: string
+  description?: string
+  category?: string
+  location?: string
+  slug?: string | null
+  id: string
+}) {
+  const path = `/o/${encodeURIComponent(item.slug || item.id)}`
+  const description = (
+    item.description ||
+    item.subtitle ||
+    `${item.category || 'Opportunity'} on Pi Opportunity Hub — apply and connect.`
+  ).slice(0, 220)
+
+  applyDocumentSeo({
+    path,
+    title: `${item.title} · Opportunities | Pi`,
+    description,
+    robots: 'index, follow',
+    ogType: 'article',
+    jsonLd: {
+      '@context': 'https://schema.org',
+      '@type': 'JobPosting',
+      title: item.title,
+      description,
+      hiringOrganization: {
+        '@type': 'Organization',
+        name: 'Pi Opportunity Hub',
+        sameAs: SITE_URL,
+      },
+      ...(item.location?.toLowerCase().includes('remote')
+        ? { jobLocationType: 'TELECOMMUTE' }
+        : {}),
+      url: `${SITE_URL}${path}`,
+      industry: item.category || undefined,
+    },
+  })
 }
 
 export function setMeta(attr: 'name' | 'property', key: string, content: string) {

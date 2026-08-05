@@ -173,3 +173,30 @@ export async function notifyUserOfMessage(
     path: `/messages?u=${actorId}`,
   })
 }
+
+/** Notify opportunity owner when someone marks interest or applies. */
+export async function notifyOpportunityOwnerOfInterest(input: {
+  ownerId: string
+  actorId: string
+  actorName: string
+  opportunityTitle: string
+  status: 'interested' | 'applied'
+  opportunityId?: string
+  slug?: string | null
+}) {
+  if (!input.ownerId || input.ownerId === input.actorId) return
+  const verb = input.status === 'applied' ? 'applied to' : 'is interested in'
+  const path = input.slug
+    ? `/o/${encodeURIComponent(input.slug)}`
+    : input.opportunityId
+      ? `/opportunities`
+      : '/opportunities'
+  await createNotification({
+    userId: input.ownerId,
+    actorId: input.actorId,
+    type: 'ai_opportunity',
+    message: `${input.actorName} ${verb} “${input.opportunityTitle.slice(0, 80)}”`,
+    path,
+    title: input.status === 'applied' ? 'New apply on Pi' : 'New interest on Pi',
+  })
+}

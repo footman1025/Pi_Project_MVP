@@ -1,6 +1,7 @@
 import { mockOpportunities } from '../data/mockData'
 import { supabase } from './supabase'
 import { track } from './analytics'
+import { friendlyNetworkError, isOnline } from './messagingReliability'
 
 /** Normalized opportunity shape used by UI + scoring (works for DB, mock, or local). */
 export type OpportunityItem = {
@@ -259,12 +260,15 @@ export async function createOpportunity(input: {
   deadline?: string
   location?: string
 }): Promise<
-  | { ok: true; item: OpportunityItem; source: 'supabase' | 'local' }
+  | { ok: true; item: OpportunityItem; source: 'supabase' }
   | { ok: false; error: string }
 > {
   const title = input.title.trim().slice(0, 120)
   if (title.length < 4) return { ok: false, error: 'Title needs at least 4 characters.' }
   if (!input.ownerId) return { ok: false, error: 'Sign in to create an opportunity.' }
+  if (!isOnline()) {
+    return { ok: false, error: 'You’re offline. Reconnect, then publish so the listing is live and public.' }
+  }
 
   const category = input.category || 'Job'
   const style = styleFor(category)
@@ -275,29 +279,6 @@ export async function createOpportunity(input: {
   const deadline = (input.deadline || 'Open').trim().slice(0, 80)
   const location = (input.location || '').trim().slice(0, 120)
   const aiReason = `Member-posted ${category.toLowerCase()} opportunity on Pi Opportunity Hub.`
-
-  const localItem: OpportunityItem = {
-    id: `local-opp-${Date.now()}`,
-    title,
-    subtitle,
-    prize,
-    deadline,
-    iconName: style.iconName,
-    iconColor: style.iconColor,
-    category,
-    match: 72,
-    color: style.color,
-    border: style.border,
-    aiReason,
-    description,
-    location,
-    slug,
-    ownerId: input.ownerId,
-    source: 'member',
-  }
-
-  pushLocal(localItem)
-  track('opportunity_create', { category, local: true })
 
   try {
     const { data, error } = await supabase
@@ -325,28 +306,39 @@ export async function createOpportunity(input: {
       .maybeSingle()
 
     if (error) {
-      if (/owner_id|slug|description|source|schema cache|column|policy|permission/i.test(error.message)) {
-        return { ok: true, item: localItem, source: 'local' }
+      if (/owner_id|slug|description|source|schema cache|column/i.test(error.message)) {
+        return {
+          ok: false,
+          error:
+            'Database not ready for Opportunity Hub. Run supabase_opportunities.sql then supabase_opportunities_hub.sql in Supabase.',
+        }
       }
-      return { ok: false, error: error.message }
+      if (/policy|permission|row-level security|rls/i.test(error.message)) {
+        return {
+          ok: false,
+          error:
+            'Could not publish (permissions). Confirm you’re signed in and supabase_opportunities_hub.sql policies are applied.',
+        }
+      }
+      return { ok: false, error: friendlyNetworkError(error, error.message) }
     }
 
-    if (data) {
-      const item = fromDb(data as DbRow)
-      // Replace local stub with server row
-      const rest = readLocal().filter(o => o.id !== localItem.id && o.id !== item.id)
-      writeLocal([item, ...rest])
-      track('opportunity_create', { category, local: false })
-      return { ok: true, item, source: 'supabase' }
+    if (!data) {
+      return { ok: false, error: 'Publish failed — no row returned. Check Supabase opportunities table.' }
     }
 
-    return { ok: true, item: localItem, source: 'local' }
+    const item = fromDb(data as DbRow)
+    pushLocal(item)
+    track('opportunity_create', {
+      category,
+      local: false,
+      live: true,
+      id: item.id,
+      slug: item.slug || null,
+    })
+    return { ok: true, item, source: 'supabase' }
   } catch (err) {
-    return {
-      ok: true,
-      item: localItem,
-      source: 'local',
-    }
+    return { ok: false, error: friendlyNetworkError(err, 'Could not publish opportunity') }
   }
 }
 

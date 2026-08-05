@@ -23,6 +23,10 @@ export type TractionSnapshot = {
     pageViews: number
     expands: number
     interestMarked: number
+    created: number
+    applied: number
+    publicViews: number
+    conversationsStarted: number
   }
   communities: {
     joins: number
@@ -81,7 +85,15 @@ export async function fetchTractionSnapshot(windowDays = 7): Promise<TractionSna
     activation: { onboardingComplete: 0, profileComplete: 0, twinViewed: 0, ratePct: null },
     retention: { activeUsers: 0, returningUsers: 0, ratePct: null },
     matching: { matchPageViews: 0, matchExpands: 0, introsStarted: 0 },
-    opportunities: { pageViews: 0, expands: 0, interestMarked: 0 },
+    opportunities: {
+      pageViews: 0,
+      expands: 0,
+      interestMarked: 0,
+      created: 0,
+      applied: 0,
+      publicViews: 0,
+      conversationsStarted: 0,
+    },
     communities: { joins: 0, posts: 0 },
     growth: {
       aiSuggestionsSent: 0,
@@ -180,6 +192,15 @@ export async function fetchTractionSnapshot(windowDays = 7): Promise<TractionSna
       pageViews: count('opportunity_view') + pathViews('/opportunities'),
       expands: count('opportunity_expand'),
       interestMarked: count('opportunity_interest'),
+      created: count('opportunity_create'),
+      applied: events.filter(
+        e =>
+          e.event === 'opportunity_interest' &&
+          (e.props as { status?: string } | null)?.status === 'applied',
+      ).length,
+      publicViews: count('opportunity_public_view'),
+      conversationsStarted:
+        count('opportunity_conversation_start') + count('opportunity_conversation_intent'),
     },
     communities: {
       joins: count('community_join'),

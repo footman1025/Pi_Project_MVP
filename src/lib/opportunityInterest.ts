@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { track } from './analytics'
 import { friendlyNetworkError, isOnline, withRetry } from './messagingReliability'
+import { notifyOpportunityOwnerOfInterest } from './notifications'
 
 export type InterestStatus = 'interested' | 'applied' | 'withdrawn'
 
@@ -70,6 +71,10 @@ export async function upsertOpportunityInterest(input: {
   status: 'interested' | 'applied'
   note?: string
   matchScore?: number
+  /** When set, owner receives in-app + push/email notification */
+  ownerId?: string | null
+  slug?: string | null
+  actorName?: string
 }): Promise<{ ok: true; source: 'supabase' | 'local' } | { ok: false; error: string }> {
   if (!isOnline()) {
     return { ok: false, error: 'You’re offline. Reconnect, then try again.' }
@@ -89,13 +94,6 @@ export async function upsertOpportunityInterest(input: {
   }
 
   writeLocal(row)
-  track('opportunity_interest', {
-    id: input.opportunityId,
-    title: input.title,
-    status: input.status,
-    match: input.matchScore,
-    has_note: !!row.note,
-  })
 
   try {
     await withRetry(async () => {
@@ -114,10 +112,39 @@ export async function upsertOpportunityInterest(input: {
       if (error) throw new Error(error.message)
     }, { attempts: 2, baseMs: 400 })
 
+    track('opportunity_interest', {
+      id: input.opportunityId,
+      title: input.title,
+      status: input.status,
+      match: input.matchScore,
+      has_note: !!row.note,
+      live: true,
+    })
+
+    if (input.ownerId && input.ownerId !== input.userId) {
+      void notifyOpportunityOwnerOfInterest({
+        ownerId: input.ownerId,
+        actorId: input.userId,
+        actorName: input.actorName || 'Someone',
+        opportunityTitle: input.title,
+        status: input.status,
+        opportunityId: input.opportunityId,
+        slug: input.slug,
+      })
+    }
+
     return { ok: true, source: 'supabase' }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     if (/relation|does not exist|schema cache/i.test(msg)) {
+      track('opportunity_interest', {
+        id: input.opportunityId,
+        title: input.title,
+        status: input.status,
+        match: input.matchScore,
+        has_note: !!row.note,
+        live: false,
+      })
       return { ok: true, source: 'local' }
     }
     return { ok: false, error: friendlyNetworkError(err, 'Could not save interest') }

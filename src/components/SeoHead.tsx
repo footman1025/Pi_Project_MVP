@@ -10,7 +10,8 @@ export default function SeoHead() {
   const { pathname } = useLocation()
 
   useEffect(() => {
-    if (pathname.startsWith('/p/')) return
+    // Profiles + public opportunity pages set richer document SEO themselves
+    if (pathname.startsWith('/p/') || pathname.startsWith('/o/')) return
     applyDocumentSeo(resolveSeo(pathname))
   }, [pathname])
 

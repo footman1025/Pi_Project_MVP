@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Briefcase, Sparkles, Clock4, ChevronDown, ChevronUp, Loader2, Heart, Zap,
-  Send, X, Inbox, Plus, ExternalLink, MessageCircle,
+  Send, X, Inbox, Plus, ExternalLink, MessageCircle, BarChart3, Users,
 } from 'lucide-react'
 import MockIcon from '../components/MockIcon'
 import StatusBadge from '../components/StatusBadge'
@@ -21,6 +21,13 @@ import {
   type InterestStatus,
   type OpportunityInterest,
 } from '../lib/opportunityInterest'
+import {
+  fetchOpportunityHubMetrics,
+  fetchOwnerOpportunityInbox,
+  opportunityMessagePath,
+  type OpportunityHubMetrics,
+  type OwnerInterestRow,
+} from '../lib/opportunityHub'
 import { track } from '../lib/analytics'
 import { playConnectSound } from '../lib/connectSound'
 
@@ -42,6 +49,7 @@ type ScoredOpp = OpportunityItem & {
 
 export default function OpportunityPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, profile } = useAuth()
   const [active, setActive] = useState('All')
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -52,10 +60,16 @@ export default function OpportunityPage() {
   const [interestSource, setInterestSource] = useState<'supabase' | 'local'>('local')
   const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [applyFor, setApplyFor] = useState<ScoredOpp | null>(null)
   const [applyNote, setApplyNote] = useState('')
   const [showMine, setShowMine] = useState(false)
+  const [showInbox, setShowInbox] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
+  const [hubMetrics, setHubMetrics] = useState<OpportunityHubMetrics | null>(null)
+  const [inbox, setInbox] = useState<OwnerInterestRow[]>([])
+  const [postApply, setPostApply] = useState<ScoredOpp | null>(null)
+  const [postApplyNote, setPostApplyNote] = useState('')
 
   const reloadCatalog = useCallback(async () => {
     setLoading(true)
@@ -95,12 +109,60 @@ export default function OpportunityPage() {
     void loadInterests()
   }, [loadInterests])
 
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const m = await fetchOpportunityHubMetrics(30)
+      if (!cancelled) setHubMetrics(m)
+    })()
+    return () => { cancelled = true }
+  }, [interestMap, items.length])
+
+  useEffect(() => {
+    if (!user) {
+      setInbox([])
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      const res = await fetchOwnerOpportunityInbox(user.id)
+      if (!cancelled) setInbox(res.items)
+    })()
+    return () => { cancelled = true }
+  }, [user, interestMap])
+
+  useEffect(() => {
+    const focusId = (location.state as { focusId?: string } | null)?.focusId
+    if (!focusId || loading) return
+    setExpandedId(focusId)
+    const el = document.getElementById(`opp-${focusId}`)
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [location.state, loading, items])
+
   const openCreate = () => {
     if (!user) {
       navigate('/login')
       return
     }
     setCreateOpen(true)
+  }
+
+  const messagePoster = (o: OpportunityItem, status?: InterestStatus | null, note?: string) => {
+    if (!user) {
+      navigate('/login')
+      return
+    }
+    if (!o.ownerId || o.ownerId === user.id) return
+    void playConnectSound()
+    navigate(
+      opportunityMessagePath({
+        ownerId: o.ownerId,
+        title: o.title,
+        opportunityId: o.id,
+        note,
+        status: status || 'interested',
+      }),
+    )
   }
 
   const filtered = active === 'All' ? items : items.filter(o => o.category === active)
@@ -128,6 +190,7 @@ export default function OpportunityPage() {
     }
     setBusyId(o.id)
     setError('')
+    setSuccess('')
     const res = await upsertOpportunityInterest({
       userId: user.id,
       opportunityId: o.id,
@@ -135,6 +198,9 @@ export default function OpportunityPage() {
       status,
       note,
       matchScore: o.personalizedMatch,
+      ownerId: o.ownerId,
+      slug: o.slug,
+      actorName: profile?.full_name || user.email?.split('@')[0] || 'Someone',
     })
     setBusyId(null)
     if (!res.ok) {
@@ -145,8 +211,17 @@ export default function OpportunityPage() {
     void import('../lib/engagement').then(m => m.recordEngagementAction('opportunity_interest'))
     await loadInterests()
     if (status === 'applied') {
+      setPostApply(o)
+      setPostApplyNote(note || '')
       setApplyFor(null)
       setApplyNote('')
+      setSuccess(
+        o.ownerId && o.ownerId !== user.id
+          ? 'Apply intent saved — message the poster to start the conversation.'
+          : 'Apply intent saved.',
+      )
+    } else {
+      setSuccess('Interest saved. The poster is notified when the listing is Live.')
     }
   }
 
@@ -195,12 +270,12 @@ export default function OpportunityPage() {
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Opportunity Hub</h1>
             <StatusBadge kind={isLive ? 'live' : 'demo'} label={isLive ? 'Live catalog' : 'Demo catalog'} />
-            <StatusBadge kind="partial" label="0→1 focus" />
+            <StatusBadge kind="live" label="0→1 loop" />
           </div>
           <p className="text-slate-400 text-sm leading-relaxed max-w-2xl mb-3">
-            Discover and create opportunities — jobs, clients, co-founders, services, partnerships —
-            ranked by <span className="text-teal-300 font-semibold">fit from your Digital Twin</span>.
-            Interest / apply intent is free; featured listings = Soon.
+            Create → public page → apply → message → outcome. Ranked by{' '}
+            <span className="text-teal-300 font-semibold">fit from your Digital Twin</span>.
+            Interest / apply is free; featured listings = Soon.
           </p>
           <div className="flex flex-wrap gap-1.5 items-center mb-3">
             <button
@@ -217,8 +292,8 @@ export default function OpportunityPage() {
             />
             <StatusBadge kind="live" label="Twin fit scores" />
             <StatusBadge
-              kind="partial"
-              label={interestSource === 'supabase' ? 'Interest / Apply saved' : 'Interest local fallback'}
+              kind={interestSource === 'supabase' ? 'live' : 'partial'}
+              label={interestSource === 'supabase' ? 'Interest / Apply Live' : 'Interest local fallback'}
             />
             <StatusBadge kind="soon" label="Featured = Soon" />
             {user && myList.length > 0 && (
@@ -231,13 +306,121 @@ export default function OpportunityPage() {
                 My interests ({myList.length})
               </button>
             )}
+            {user && inbox.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowInbox(s => !s)}
+                className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-200 border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 rounded-lg"
+              >
+                <Users size={12} />
+                Applications ({inbox.length})
+              </button>
+            )}
           </div>
+
+          {hubMetrics?.tableReady && (
+            <div
+              className="mb-4 grid grid-cols-2 sm:grid-cols-5 gap-2 rounded-2xl border border-white/[0.07] p-3"
+              style={{ background: 'rgba(0,0,0,0.28)' }}
+            >
+              <div className="col-span-2 sm:col-span-5 flex items-center gap-1.5 mb-0.5">
+                <BarChart3 size={12} className="text-amber-300" />
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+                  Hub outcomes · last {hubMetrics.windowDays}d
+                </p>
+              </div>
+              {[
+                ['Created', hubMetrics.created],
+                ['Interest', hubMetrics.interestMarked],
+                ['Applied', hubMetrics.applied],
+                ['Public views', hubMetrics.publicViews],
+                ['Conversations', hubMetrics.conversationsStarted],
+              ].map(([label, value]) => (
+                <div key={String(label)} className="rounded-xl border border-white/5 bg-white/[0.02] px-2.5 py-2">
+                  <p className="text-lg font-black text-white leading-none">{value}</p>
+                  <p className="text-[10px] text-slate-500 mt-1 font-semibold">{label}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </header>
 
         {error && (
           <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
             {error}
           </div>
+        )}
+        {success && (
+          <div className="mb-4 px-4 py-3 rounded-xl bg-teal-500/10 border border-teal-500/25 text-teal-200 text-sm flex flex-wrap items-center gap-2 justify-between">
+            <span>{success}</span>
+            {postApply?.ownerId && postApply.ownerId !== user?.id && (
+              <button
+                type="button"
+                onClick={() => messagePoster(postApply, 'applied', postApplyNote || interestMap[postApply.id]?.note || undefined)}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-white"
+                style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+              >
+                <MessageCircle size={12} /> Message poster
+              </button>
+            )}
+          </div>
+        )}
+
+        {showInbox && user && (
+          <section
+            className="mb-5 rounded-2xl border border-amber-500/20 p-4"
+            style={{ background: 'linear-gradient(160deg, rgba(40,28,12,0.95), rgba(10,14,22,0.98))' }}
+          >
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <p className="text-white text-sm font-bold">Applications on your listings</p>
+              <button type="button" onClick={() => setShowInbox(false)} className="text-slate-500 hover:text-white p-1">
+                <X size={14} />
+              </button>
+            </div>
+            {inbox.length === 0 ? (
+              <p className="text-slate-500 text-xs">No applies yet — share your public /o page.</p>
+            ) : (
+              <ul className="space-y-2">
+                {inbox.map(row => (
+                  <li
+                    key={`${row.opportunity_id}-${row.user_id}`}
+                    className="flex flex-wrap items-center gap-2 text-xs border border-white/5 rounded-xl px-3 py-2 bg-black/20"
+                  >
+                    <span className="text-white font-semibold min-w-0 truncate">
+                      {row.applicant_name}
+                    </span>
+                    <span className="text-slate-500 truncate flex-1">{row.opportunity_title}</span>
+                    <span className={`px-2 py-0.5 rounded-md border font-bold uppercase tracking-wider text-[10px] ${
+                      row.status === 'applied'
+                        ? 'text-amber-200 border-amber-500/30 bg-amber-500/10'
+                        : 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10'
+                    }`}>
+                      {row.status}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void playConnectSound()
+                        navigate(
+                          opportunityMessagePath({
+                            ownerId: row.user_id,
+                            title: row.opportunity_title || 'your opportunity',
+                            opportunityId: row.opportunity_id,
+                            note: row.note,
+                            status: row.status,
+                            as: 'owner',
+                          }),
+                        )
+                      }}
+                      className="inline-flex items-center gap-1 text-teal-300 font-semibold"
+                    >
+                      <MessageCircle size={12} /> Reply
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         )}
 
         {showMine && user && (
@@ -342,6 +525,7 @@ export default function OpportunityPage() {
 
               return (
                 <article
+                  id={`opp-${o.id}`}
                   key={o.id}
                   className="group relative overflow-hidden rounded-2xl border border-white/[0.07] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/15"
                   style={{
@@ -438,11 +622,7 @@ export default function OpportunityPage() {
                       {o.ownerId && o.ownerId !== user?.id && (
                         <button
                           type="button"
-                          onClick={() => {
-                            if (!user) { navigate('/login'); return }
-                            void playConnectSound()
-                            navigate(`/messages?u=${o.ownerId}`)
-                          }}
+                          onClick={() => messagePoster(o, status, interestMap[o.id]?.note || undefined)}
                           className="flex items-center justify-center gap-1 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-200 border border-white/10 hover:border-teal-500/30 hover:text-teal-200"
                         >
                           <MessageCircle size={12} /> Message
@@ -573,14 +753,13 @@ export default function OpportunityPage() {
           open
           ownerId={user.id}
           onClose={() => setCreateOpen(false)}
-          onCreated={(item, source) => {
+          onCreated={item => {
             setItems(prev => [item, ...prev.filter(p => p.id !== item.id)])
-            if (source === 'local') {
-              setError('Saved on this device. Run supabase_opportunities_hub.sql for account sync + public SEO.')
-            } else {
-              setError('')
-            }
+            setError('')
+            setSuccess('Published live — public page is ready to share.')
+            setIsLive(true)
             void reloadCatalog()
+            navigate(opportunityPublicPath(item))
           }}
         />
       )}
