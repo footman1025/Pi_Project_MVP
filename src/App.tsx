@@ -20,6 +20,7 @@ import DashboardPage from './pages/DashboardPage'
 import FeedPage from './pages/FeedPage'
 import MatchmakingPage from './pages/MatchmakingPage'
 import OpportunityPage from './pages/OpportunityPage'
+import OpportunityPublicPage from './pages/OpportunityPublicPage'
 import CreatorPage from './pages/CreatorPage'
 import ProfessionalPage from './pages/ProfessionalPage'
 import CommunityPage from './pages/CommunityPage'
@@ -86,12 +87,14 @@ export default function App() {
   const isInvitePath =
     location.pathname === '/invite' || location.pathname.startsWith('/invite/')
   const isGrowPath = location.pathname === '/grow'
+  const isOppPublicPath = location.pathname.startsWith('/o/')
   // Logged-in members see profiles / transparency / connect / grow inside AppShell. Guests get public layout.
   // Features + investor + partners/discuss stay public for SEO even when signed in.
   const isPublic =
     ALWAYS_PUBLIC.includes(location.pathname) ||
     isFeaturesPath ||
     isInvitePath ||
+    (isOppPublicPath && !session && !authLoading) ||
     (isGrowPath && !session && !authLoading) ||
     ((isProfilePath || isTransparencyPath || isTrustPath || isExperiencePath || isConnectPath) && !session && !authLoading)
 
@@ -99,7 +102,7 @@ export default function App() {
   useEffect(() => { trackPageView(location.pathname) }, [location.pathname])
 
   // Wait for auth before deciding public vs app shell for dual-mode URLs
-  if ((isProfilePath || isTransparencyPath || isTrustPath || isExperiencePath || isConnectPath || isGrowPath) && authLoading) {
+  if ((isProfilePath || isTransparencyPath || isTrustPath || isExperiencePath || isConnectPath || isGrowPath || isOppPublicPath) && authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-dark-950">
         <LoadingSpinner size="lg" label="Loading Pi…" />
@@ -132,6 +135,7 @@ export default function App() {
           <Route path="/invite" element={<InviteLandingPage />} />
           <Route path="/invite/:code" element={<InviteLandingPage />} />
           <Route path="/p/:username" element={<ProfilePage />} />
+          <Route path="/o/:slugOrId" element={<OpportunityPublicPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       ) : (
@@ -142,6 +146,7 @@ export default function App() {
               <Route path="/feed" element={<FeedPage />} />
               <Route path="/match" element={<MatchmakingPage />} />
               <Route path="/opportunities" element={<OpportunityPage />} />
+              <Route path="/o/:slugOrId" element={<OpportunityPublicPage />} />
               <Route path="/creators" element={<CreatorPage />} />
               <Route path="/professionals" element={<ProfessionalPage />} />
               <Route path="/communities" element={<CommunityPage />} />

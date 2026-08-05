@@ -264,13 +264,14 @@ export default function LandingPage() {
               className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-white/95 max-w-2xl leading-[1.15] mb-5"
               style={{ animation: 'piRise 0.9s ease-out 0.08s both' }}
             >
-              One platform for people, opportunity, and AI that actually acts.
+              Discover and create opportunities — then grow with AI.
             </h1>
             <p
               className="text-base sm:text-lg text-slate-400 max-w-xl leading-relaxed mb-9"
               style={{ animation: 'piRise 0.9s ease-out 0.16s both' }}
             >
-              Digital Twin matching, communities, and opportunity intelligence — built as one ecosystem.
+              Opportunity Hub is Pi’s first layer: jobs, clients, co-founders, and partnerships —
+              with Twin fit, apply intent, and messaging. The full AI ecosystem expands from here.
             </p>
             <div
               className="flex flex-col sm:flex-row gap-3"
@@ -278,11 +279,11 @@ export default function LandingPage() {
             >
               <button
                 type="button"
-                onClick={() => navigate(isLoggedIn ? '/dashboard' : '/signup')}
+                onClick={() => navigate(isLoggedIn ? '/opportunities' : '/signup')}
                 className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-2xl font-bold text-white text-base transition-transform hover:scale-[1.02] active:scale-[0.98]"
                 style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)', boxShadow: '0 12px 40px rgba(20,184,166,0.28)' }}
               >
-                {isLoggedIn ? 'Open dashboard' : 'Get started'}
+                {isLoggedIn ? 'Open Opportunity Hub' : 'Get started'}
                 <ArrowRight size={18} />
               </button>
               <button

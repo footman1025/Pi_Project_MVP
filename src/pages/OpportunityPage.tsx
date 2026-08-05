@@ -2,13 +2,18 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Briefcase, Sparkles, Clock4, ChevronDown, ChevronUp, Loader2, Heart, Zap,
-  Send, X, Inbox,
+  Send, X, Inbox, Plus, ExternalLink, MessageCircle,
 } from 'lucide-react'
 import MockIcon from '../components/MockIcon'
 import StatusBadge from '../components/StatusBadge'
+import CreateOpportunityModal from '../components/CreateOpportunityModal'
 import { useAuth } from '../contexts/AuthContext'
 import { opportunityReasonForUser, scoreOpportunityForUser } from '../lib/matching'
-import { fetchOpportunities, OpportunityItem } from '../lib/opportunities'
+import {
+  fetchOpportunities,
+  opportunityPublicPath,
+  type OpportunityItem,
+} from '../lib/opportunities'
 import {
   fetchMyOpportunityInterests,
   upsertOpportunityInterest,
@@ -17,8 +22,12 @@ import {
   type OpportunityInterest,
 } from '../lib/opportunityInterest'
 import { track } from '../lib/analytics'
+import { playConnectSound } from '../lib/connectSound'
 
-const categories = ['All', 'Competition', 'Funding', 'Community', 'Co-founder', 'Talent', 'Accelerator']
+const categories = [
+  'All', 'Job', 'Service', 'Partnership', 'Co-founder', 'Talent', 'Project',
+  'Competition', 'Funding', 'Community', 'Accelerator',
+]
 
 function matchColor(pct: number) {
   if (pct >= 70) return '#34d399'
@@ -46,6 +55,15 @@ export default function OpportunityPage() {
   const [applyFor, setApplyFor] = useState<ScoredOpp | null>(null)
   const [applyNote, setApplyNote] = useState('')
   const [showMine, setShowMine] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
+
+  const reloadCatalog = useCallback(async () => {
+    setLoading(true)
+    const res = await fetchOpportunities()
+    setItems(res.items)
+    setIsLive(res.isLive)
+    setLoading(false)
+  }, [])
 
   const loadInterests = useCallback(async () => {
     if (!user) {
@@ -76,6 +94,14 @@ export default function OpportunityPage() {
   useEffect(() => {
     void loadInterests()
   }, [loadInterests])
+
+  const openCreate = () => {
+    if (!user) {
+      navigate('/login')
+      return
+    }
+    setCreateOpen(true)
+  }
 
   const filtered = active === 'All' ? items : items.filter(o => o.category === active)
 
@@ -167,15 +193,24 @@ export default function OpportunityPage() {
             >
               <Briefcase size={18} className="text-white" />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Opportunities</h1>
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Opportunity Hub</h1>
             <StatusBadge kind={isLive ? 'live' : 'demo'} label={isLive ? 'Live catalog' : 'Demo catalog'} />
+            <StatusBadge kind="partial" label="0→1 focus" />
           </div>
           <p className="text-slate-400 text-sm leading-relaxed max-w-2xl mb-3">
-            Funding, roles, grants, accelerators, and partnerships — ranked by{' '}
-            <span className="text-teal-300 font-semibold">fit from your Digital Twin</span>.
-            Express interest or apply intent (no payments — routing & marketplace come later).
+            Discover and create opportunities — jobs, clients, co-founders, services, partnerships —
+            ranked by <span className="text-teal-300 font-semibold">fit from your Digital Twin</span>.
+            Interest / apply intent is free; featured listings = Soon.
           </p>
-          <div className="flex flex-wrap gap-1.5 items-center">
+          <div className="flex flex-wrap gap-1.5 items-center mb-3">
+            <button
+              type="button"
+              onClick={openCreate}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white"
+              style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}
+            >
+              <Plus size={14} /> Create opportunity
+            </button>
             <StatusBadge
               kind={isLive ? 'live' : 'demo'}
               label={isLive ? 'Supabase catalog' : 'Demo fallback'}
@@ -185,6 +220,7 @@ export default function OpportunityPage() {
               kind="partial"
               label={interestSource === 'supabase' ? 'Interest / Apply saved' : 'Interest local fallback'}
             />
+            <StatusBadge kind="soon" label="Featured = Soon" />
             {user && myList.length > 0 && (
               <button
                 type="button"
@@ -399,6 +435,27 @@ export default function OpportunityPage() {
                         <Send size={12} />
                         {status === 'applied' ? 'Applied' : 'Apply interest'}
                       </button>
+                      {o.ownerId && o.ownerId !== user?.id && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!user) { navigate('/login'); return }
+                            void playConnectSound()
+                            navigate(`/messages?u=${o.ownerId}`)
+                          }}
+                          className="flex items-center justify-center gap-1 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-200 border border-white/10 hover:border-teal-500/30 hover:text-teal-200"
+                        >
+                          <MessageCircle size={12} /> Message
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => navigate(opportunityPublicPath(o))}
+                        className="flex items-center justify-center gap-1 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-300 border border-white/10 hover:border-white/20"
+                        title="Public page"
+                      >
+                        <ExternalLink size={12} /> Public
+                      </button>
                       <button
                         type="button"
                         onClick={() => {
@@ -509,6 +566,23 @@ export default function OpportunityPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {createOpen && user && (
+        <CreateOpportunityModal
+          open
+          ownerId={user.id}
+          onClose={() => setCreateOpen(false)}
+          onCreated={(item, source) => {
+            setItems(prev => [item, ...prev.filter(p => p.id !== item.id)])
+            if (source === 'local') {
+              setError('Saved on this device. Run supabase_opportunities_hub.sql for account sync + public SEO.')
+            } else {
+              setError('')
+            }
+            void reloadCatalog()
+          }}
+        />
       )}
     </div>
   )

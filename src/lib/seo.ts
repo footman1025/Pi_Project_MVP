@@ -222,15 +222,16 @@ export const FEATURE_SEO: FeatureSeo[] = [
   },
   {
     slug: 'opportunities',
-    name: 'Opportunities',
-    problem: 'Jobs, funding, and projects live in scattered feeds with no personal fit signal.',
-    who: 'People hunting roles, capital, collaborations, and projects that match their Twin.',
-    whyDifferent: 'Opportunity catalog scored against your Twin — interest tracking now, marketplace apply later.',
-    title: 'Opportunities – Twin Fit-Scored Catalog | Pi',
+    name: 'Opportunity Hub',
+    problem: 'Jobs, clients, co-founders, and partnerships are scattered across apps with no clear next step.',
+    who: 'Founders, freelancers, and professionals who need to discover or create real opportunities today.',
+    whyDifferent:
+      'Pi’s first 0→1 layer: create listings, twin-ranked discovery, interest/apply intent, public /o pages, and message the poster. Featured paywall = Soon.',
+    title: 'Opportunity Hub – Discover & Create on Pi',
     description:
-      'Discover opportunities on Pi with fit scores from your Digital Twin — roles, capital, and collaborations in one place.',
+      'Create and discover jobs, partnerships, co-founders, and services on Pi — ranked by your Digital Twin. Apply interest free; featured listings coming soon.',
     ctaPath: '/opportunities',
-    ctaLabel: 'View opportunities',
+    ctaLabel: 'Open Opportunity Hub',
   },
   {
     slug: 'messaging',
@@ -338,6 +339,15 @@ export function resolveSeo(pathname: string): SeoPage {
       path: pathname,
       title: 'Profile | Pi',
       description: 'Public Pi member profile.',
+      robots: 'index, follow',
+    }
+  }
+
+  if (pathname.startsWith('/o/')) {
+    return {
+      path: pathname,
+      title: 'Opportunity | Pi',
+      description: 'Public opportunity on Pi Opportunity Hub — discover, apply interest, and connect.',
       robots: 'index, follow',
     }
   }
