@@ -1,8 +1,10 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Briefcase, Sparkles, Clock4, ChevronDown, ChevronUp, Loader2, Heart, Zap,
-  Send, X, Inbox, Plus, ExternalLink, MessageCircle, BarChart3, Users,
+  Send, X, Inbox, Plus, ExternalLink, MessageCircle, BarChart3, Users, MapPin,
+  ArrowRight,
 } from 'lucide-react'
 import MockIcon from '../components/MockIcon'
 import StatusBadge from '../components/StatusBadge'
@@ -36,10 +38,45 @@ const categories = [
   'Competition', 'Funding', 'Community', 'Accelerator',
 ]
 
+const LOOP_STEPS = ['Create', 'Discover', 'Apply', 'Connect', 'Outcome'] as const
+
 function matchColor(pct: number) {
   if (pct >= 70) return '#34d399'
   if (pct >= 50) return '#2dd4bf'
   return '#fbbf24'
+}
+
+function MatchRing({ pct }: { pct: number }) {
+  const accent = matchColor(pct)
+  const r = 16
+  const c = 2 * Math.PI * r
+  const offset = c - (Math.min(100, Math.max(0, pct)) / 100) * c
+  return (
+    <div className="relative w-12 h-12 shrink-0" title={`${pct}% Twin fit`}>
+      <svg viewBox="0 0 40 40" className="w-12 h-12 -rotate-90">
+        <circle cx="20" cy="20" r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="3" />
+        <circle
+          cx="20"
+          cy="20"
+          r={r}
+          fill="none"
+          stroke={accent}
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={offset}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-[11px] font-black tabular-nums leading-none" style={{ color: accent }}>
+          {pct}
+        </span>
+        <span className="text-[8px] font-bold uppercase tracking-wider text-slate-500 leading-none mt-0.5">
+          fit
+        </span>
+      </div>
+    </div>
+  )
 }
 
 type ScoredOpp = OpportunityItem & {
@@ -253,269 +290,404 @@ export default function OpportunityPage() {
   const statusOf = (id: string): InterestStatus | null => interestMap[id]?.status || null
 
   return (
-    <div className="min-h-full relative">
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-52 opacity-50"
-        style={{ background: 'radial-gradient(ellipse 65% 80% at 15% 0%, rgba(251,191,36,0.14), transparent)' }}
-      />
+    <div className="min-h-full relative overflow-hidden">
+      {/* Atmosphere */}
+      <div className="pointer-events-none absolute inset-0">
+        <div
+          className="absolute -top-24 -left-20 w-[28rem] h-[28rem] rounded-full opacity-40 blur-3xl"
+          style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.18), transparent 70%)' }}
+        />
+        <div
+          className="absolute top-40 -right-16 w-[22rem] h-[22rem] rounded-full opacity-30 blur-3xl"
+          style={{ background: 'radial-gradient(circle, rgba(20,184,166,0.16), transparent 70%)' }}
+        />
+        <div
+          className="absolute inset-0 opacity-[0.035]"
+          style={{
+            backgroundImage:
+              'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
+            backgroundSize: '48px 48px',
+          }}
+        />
+      </div>
 
-      <div className="relative p-4 sm:p-6 max-w-5xl mx-auto">
-        <header className="mb-7">
-          <div className="flex items-center gap-2.5 mb-2 flex-wrap">
-            <div
-              className="w-10 h-10 rounded-2xl flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}
-            >
-              <Briefcase size={18} className="text-white" />
+      <div className="relative px-4 sm:px-6 py-6 sm:py-8 max-w-6xl mx-auto">
+        {/* Hero */}
+        <motion.header
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45 }}
+          className="mb-8"
+        >
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5 mb-6">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-300/90">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  Opportunity Hub
+                </span>
+                <StatusBadge kind={isLive ? 'live' : 'demo'} label={isLive ? 'Live' : 'Demo'} />
+                <StatusBadge
+                  kind={interestSource === 'supabase' ? 'live' : 'partial'}
+                  label={interestSource === 'supabase' ? 'Apply synced' : 'Apply local'}
+                />
+              </div>
+              <h1 className="font-display text-3xl sm:text-4xl lg:text-[2.75rem] font-extrabold text-white tracking-tight leading-[1.1] mb-3">
+                Discover & create
+                <span className="block text-transparent bg-clip-text" style={{
+                  backgroundImage: 'linear-gradient(135deg, #fbbf24, #f59e0b 45%, #14b8a6)',
+                  WebkitBackgroundClip: 'text',
+                }}>
+                  real opportunities
+                </span>
+              </h1>
+              <p className="text-slate-400 text-sm sm:text-[15px] leading-relaxed max-w-xl">
+                Jobs, clients, co-founders, services, partnerships — ranked by Twin fit.
+                Create in minutes, share a public page, apply, and connect.
+              </p>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Opportunity Hub</h1>
-            <StatusBadge kind={isLive ? 'live' : 'demo'} label={isLive ? 'Live catalog' : 'Demo catalog'} />
-            <StatusBadge kind="live" label="0→1 loop" />
+
+            <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={openCreate}
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold text-white transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                style={{
+                  background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                  boxShadow: '0 12px 40px rgba(245,158,11,0.25)',
+                }}
+              >
+                <Plus size={16} />
+                Create opportunity
+              </button>
+              <div className="flex gap-2">
+                {user && myList.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => { setShowMine(s => !s); setShowInbox(false) }}
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-3 rounded-2xl text-xs font-semibold border transition-colors ${
+                      showMine
+                        ? 'text-teal-200 border-teal-500/40 bg-teal-500/15'
+                        : 'text-slate-300 border-white/10 bg-white/[0.03] hover:border-white/20'
+                    }`}
+                  >
+                    <Inbox size={14} />
+                    Mine ({myList.length})
+                  </button>
+                )}
+                {user && inbox.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => { setShowInbox(s => !s); setShowMine(false) }}
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-3 rounded-2xl text-xs font-semibold border transition-colors ${
+                      showInbox
+                        ? 'text-amber-100 border-amber-500/40 bg-amber-500/15'
+                        : 'text-slate-300 border-white/10 bg-white/[0.03] hover:border-white/20'
+                    }`}
+                  >
+                    <Users size={14} />
+                    Inbox ({inbox.length})
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
-          <p className="text-slate-400 text-sm leading-relaxed max-w-2xl mb-3">
-            Create → public page → apply → message → outcome. Ranked by{' '}
-            <span className="text-teal-300 font-semibold">fit from your Digital Twin</span>.
-            Interest / apply is free; featured listings = Soon.
-          </p>
-          <div className="flex flex-wrap gap-1.5 items-center mb-3">
+
+          {/* Loop strip */}
+          <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-1 mb-5">
+            {LOOP_STEPS.map((step, i) => (
+              <div key={step} className="flex items-center gap-1 sm:gap-2 shrink-0">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-white/[0.03]">
+                  <span className="w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center text-amber-950"
+                    style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)' }}
+                  >
+                    {i + 1}
+                  </span>
+                  <span className="text-[11px] font-semibold text-slate-300">{step}</span>
+                </div>
+                {i < LOOP_STEPS.length - 1 && (
+                  <ArrowRight size={12} className="text-slate-600 hidden sm:block" />
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Metrics */}
+          {hubMetrics?.tableReady && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="grid grid-cols-2 sm:grid-cols-5 gap-2"
+            >
+              {[
+                ['Created', hubMetrics.created, '#f59e0b'],
+                ['Interest', hubMetrics.interestMarked, '#2dd4bf'],
+                ['Applied', hubMetrics.applied, '#34d399'],
+                ['Public views', hubMetrics.publicViews, '#38bdf8'],
+                ['Conversations', hubMetrics.conversationsStarted, '#a78bfa'],
+              ].map(([label, value, accent], idx) => (
+                <div
+                  key={String(label)}
+                  className={`relative overflow-hidden rounded-2xl border border-white/[0.07] px-3.5 py-3 ${
+                    idx === 4 ? 'col-span-2 sm:col-span-1' : ''
+                  }`}
+                  style={{ background: 'linear-gradient(160deg, rgba(18,28,40,0.9), rgba(10,14,22,0.95))' }}
+                >
+                  <div
+                    className="pointer-events-none absolute -top-6 -right-4 w-16 h-16 rounded-full opacity-30 blur-2xl"
+                    style={{ background: String(accent) }}
+                  />
+                  <div className="relative flex items-center justify-between mb-1">
+                    <BarChart3 size={12} style={{ color: String(accent) }} />
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500">
+                      {hubMetrics.windowDays}d
+                    </span>
+                  </div>
+                  <p className="relative text-2xl font-black text-white tabular-nums leading-none">
+                    {value}
+                  </p>
+                  <p className="relative text-[11px] text-slate-500 mt-1.5 font-medium">{label}</p>
+                </div>
+              ))}
+            </motion.div>
+          )}
+        </motion.header>
+
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="mb-4 px-4 py-3 rounded-2xl bg-rose-500/10 border border-rose-500/25 text-rose-300 text-sm"
+            >
+              {error}
+            </motion.div>
+          )}
+          {success && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="mb-4 px-4 py-3 rounded-2xl bg-teal-500/10 border border-teal-500/25 text-teal-200 text-sm flex flex-wrap items-center gap-2 justify-between"
+            >
+              <span>{success}</span>
+              {postApply?.ownerId && postApply.ownerId !== user?.id && (
+                <button
+                  type="button"
+                  onClick={() => messagePoster(postApply, 'applied', postApplyNote || interestMap[postApply.id]?.note || undefined)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white"
+                  style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+                >
+                  <MessageCircle size={12} /> Message poster
+                </button>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Owner inbox */}
+        <AnimatePresence>
+          {showInbox && user && (
+            <motion.section
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-5 overflow-hidden"
+            >
+              <div
+                className="rounded-3xl border border-amber-500/20 p-4 sm:p-5"
+                style={{ background: 'linear-gradient(160deg, rgba(40,28,12,0.92), rgba(10,14,22,0.98))' }}
+              >
+                <div className="flex items-center justify-between gap-2 mb-4">
+                  <div>
+                    <p className="text-white text-sm font-bold">Applications inbox</p>
+                    <p className="text-slate-500 text-xs mt-0.5">People who applied to your listings</p>
+                  </div>
+                  <button type="button" onClick={() => setShowInbox(false)} className="p-2 rounded-xl text-slate-500 hover:text-white hover:bg-white/5">
+                    <X size={14} />
+                  </button>
+                </div>
+                {inbox.length === 0 ? (
+                  <p className="text-slate-500 text-xs">No applies yet — share your public page.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {inbox.map(row => (
+                      <li
+                        key={`${row.opportunity_id}-${row.user_id}`}
+                        className="flex flex-wrap items-center gap-2 text-xs border border-white/5 rounded-2xl px-3.5 py-2.5 bg-black/25"
+                      >
+                        <span className="text-white font-semibold">{row.applicant_name}</span>
+                        <span className="text-slate-500 truncate flex-1">{row.opportunity_title}</span>
+                        <span className={`px-2 py-0.5 rounded-lg border font-bold uppercase tracking-wider text-[10px] ${
+                          row.status === 'applied'
+                            ? 'text-amber-200 border-amber-500/30 bg-amber-500/10'
+                            : 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10'
+                        }`}>
+                          {row.status}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void playConnectSound()
+                            navigate(
+                              opportunityMessagePath({
+                                ownerId: row.user_id,
+                                title: row.opportunity_title || 'your opportunity',
+                                opportunityId: row.opportunity_id,
+                                note: row.note,
+                                status: row.status,
+                                as: 'owner',
+                              }),
+                            )
+                          }}
+                          className="inline-flex items-center gap-1 text-teal-300 font-semibold px-2 py-1 rounded-lg hover:bg-teal-500/10"
+                        >
+                          <MessageCircle size={12} /> Reply
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </motion.section>
+          )}
+        </AnimatePresence>
+
+        {/* My interests */}
+        <AnimatePresence>
+          {showMine && user && (
+            <motion.section
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-5 overflow-hidden"
+            >
+              <div
+                className="rounded-3xl border border-white/[0.07] p-4 sm:p-5"
+                style={{ background: 'linear-gradient(160deg, rgba(18,28,40,0.95), rgba(10,14,22,0.98))' }}
+              >
+                <div className="flex items-center justify-between gap-2 mb-4">
+                  <div>
+                    <p className="text-white text-sm font-bold">Your interests</p>
+                    <p className="text-slate-500 text-xs mt-0.5">Saved apply intents on this account</p>
+                  </div>
+                  <button type="button" onClick={() => setShowMine(false)} className="p-2 rounded-xl text-slate-500 hover:text-white hover:bg-white/5">
+                    <X size={14} />
+                  </button>
+                </div>
+                {myList.length === 0 ? (
+                  <p className="text-slate-500 text-xs">None yet — mark interest or apply below.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {myList.map(row => (
+                      <li
+                        key={row.opportunity_id}
+                        className="flex flex-wrap items-center gap-2 text-xs border border-white/5 rounded-2xl px-3.5 py-2.5 bg-black/25"
+                      >
+                        <span className="text-white font-semibold flex-1 min-w-0 truncate">
+                          {row.opportunity_title || row.opportunity_id}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-lg border font-bold uppercase tracking-wider text-[10px] ${
+                          row.status === 'applied'
+                            ? 'text-amber-200 border-amber-500/30 bg-amber-500/10'
+                            : 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10'
+                        }`}>
+                          {row.status}
+                        </span>
+                        {typeof row.match_score === 'number' && (
+                          <span className="text-slate-500">{row.match_score}% fit</span>
+                        )}
+                        <button
+                          type="button"
+                          disabled={busyId === row.opportunity_id}
+                          onClick={() => void withdraw(row.opportunity_id)}
+                          className="text-slate-400 hover:text-rose-300 font-semibold"
+                        >
+                          Withdraw
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </motion.section>
+          )}
+        </AnimatePresence>
+
+        {/* Filters */}
+        <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 mb-5 backdrop-blur-xl"
+          style={{ background: 'linear-gradient(180deg, rgba(8,13,26,0.92), rgba(8,13,26,0.78))' }}
+        >
+          <div className="flex items-center justify-between gap-3 mb-2.5">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">
+              Browse
+            </p>
+            {!loading && (
+              <p className="text-[11px] text-slate-500">
+                {withReasons.length} · sorted by Twin fit
+              </p>
+            )}
+          </div>
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+            {categories.map(c => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setActive(c)}
+                className={`shrink-0 px-3.5 py-2 rounded-full text-xs font-semibold transition-all ${
+                  active === c
+                    ? 'text-white shadow-lg shadow-teal-900/40'
+                    : 'text-slate-400 bg-white/[0.03] border border-white/10 hover:text-white hover:border-white/20'
+                }`}
+                style={
+                  active === c
+                    ? { background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }
+                    : undefined
+                }
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Catalog */}
+        {loading ? (
+          <div className="grid md:grid-cols-2 gap-4">
+            {[0, 1, 2, 3].map(i => (
+              <div
+                key={i}
+                className="h-52 rounded-3xl border border-white/[0.06] animate-pulse"
+                style={{ background: 'rgba(18,28,40,0.6)' }}
+              />
+            ))}
+          </div>
+        ) : withReasons.length === 0 ? (
+          <div
+            className="rounded-3xl border border-dashed border-white/10 px-6 py-16 text-center"
+            style={{ background: 'rgba(14,20,25,0.45)' }}
+          >
+            <div
+              className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #f59e0b33, #d9770633)' }}
+            >
+              <Briefcase size={22} className="text-amber-300" />
+            </div>
+            <p className="text-white font-bold text-lg mb-1">No opportunities here</p>
+            <p className="text-slate-500 text-sm mb-5">Try another category — or be the first to publish.</p>
             <button
               type="button"
               onClick={openCreate}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white"
               style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}
             >
               <Plus size={14} /> Create opportunity
             </button>
-            <StatusBadge
-              kind={isLive ? 'live' : 'demo'}
-              label={isLive ? 'Supabase catalog' : 'Demo fallback'}
-            />
-            <StatusBadge kind="live" label="Twin fit scores" />
-            <StatusBadge
-              kind={interestSource === 'supabase' ? 'live' : 'partial'}
-              label={interestSource === 'supabase' ? 'Interest / Apply Live' : 'Interest local fallback'}
-            />
-            <StatusBadge kind="soon" label="Featured = Soon" />
-            {user && myList.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setShowMine(s => !s)}
-                className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-teal-300 border border-teal-500/30 bg-teal-500/10 px-2.5 py-1 rounded-lg"
-              >
-                <Inbox size={12} />
-                My interests ({myList.length})
-              </button>
-            )}
-            {user && inbox.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setShowInbox(s => !s)}
-                className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-200 border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 rounded-lg"
-              >
-                <Users size={12} />
-                Applications ({inbox.length})
-              </button>
-            )}
-          </div>
-
-          {hubMetrics?.tableReady && (
-            <div
-              className="mb-4 grid grid-cols-2 sm:grid-cols-5 gap-2 rounded-2xl border border-white/[0.07] p-3"
-              style={{ background: 'rgba(0,0,0,0.28)' }}
-            >
-              <div className="col-span-2 sm:col-span-5 flex items-center gap-1.5 mb-0.5">
-                <BarChart3 size={12} className="text-amber-300" />
-                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
-                  Hub outcomes · last {hubMetrics.windowDays}d
-                </p>
-              </div>
-              {[
-                ['Created', hubMetrics.created],
-                ['Interest', hubMetrics.interestMarked],
-                ['Applied', hubMetrics.applied],
-                ['Public views', hubMetrics.publicViews],
-                ['Conversations', hubMetrics.conversationsStarted],
-              ].map(([label, value]) => (
-                <div key={String(label)} className="rounded-xl border border-white/5 bg-white/[0.02] px-2.5 py-2">
-                  <p className="text-lg font-black text-white leading-none">{value}</p>
-                  <p className="text-[10px] text-slate-500 mt-1 font-semibold">{label}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </header>
-
-        {error && (
-          <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="mb-4 px-4 py-3 rounded-xl bg-teal-500/10 border border-teal-500/25 text-teal-200 text-sm flex flex-wrap items-center gap-2 justify-between">
-            <span>{success}</span>
-            {postApply?.ownerId && postApply.ownerId !== user?.id && (
-              <button
-                type="button"
-                onClick={() => messagePoster(postApply, 'applied', postApplyNote || interestMap[postApply.id]?.note || undefined)}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-white"
-                style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
-              >
-                <MessageCircle size={12} /> Message poster
-              </button>
-            )}
-          </div>
-        )}
-
-        {showInbox && user && (
-          <section
-            className="mb-5 rounded-2xl border border-amber-500/20 p-4"
-            style={{ background: 'linear-gradient(160deg, rgba(40,28,12,0.95), rgba(10,14,22,0.98))' }}
-          >
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <p className="text-white text-sm font-bold">Applications on your listings</p>
-              <button type="button" onClick={() => setShowInbox(false)} className="text-slate-500 hover:text-white p-1">
-                <X size={14} />
-              </button>
-            </div>
-            {inbox.length === 0 ? (
-              <p className="text-slate-500 text-xs">No applies yet — share your public /o page.</p>
-            ) : (
-              <ul className="space-y-2">
-                {inbox.map(row => (
-                  <li
-                    key={`${row.opportunity_id}-${row.user_id}`}
-                    className="flex flex-wrap items-center gap-2 text-xs border border-white/5 rounded-xl px-3 py-2 bg-black/20"
-                  >
-                    <span className="text-white font-semibold min-w-0 truncate">
-                      {row.applicant_name}
-                    </span>
-                    <span className="text-slate-500 truncate flex-1">{row.opportunity_title}</span>
-                    <span className={`px-2 py-0.5 rounded-md border font-bold uppercase tracking-wider text-[10px] ${
-                      row.status === 'applied'
-                        ? 'text-amber-200 border-amber-500/30 bg-amber-500/10'
-                        : 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10'
-                    }`}>
-                      {row.status}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void playConnectSound()
-                        navigate(
-                          opportunityMessagePath({
-                            ownerId: row.user_id,
-                            title: row.opportunity_title || 'your opportunity',
-                            opportunityId: row.opportunity_id,
-                            note: row.note,
-                            status: row.status,
-                            as: 'owner',
-                          }),
-                        )
-                      }}
-                      className="inline-flex items-center gap-1 text-teal-300 font-semibold"
-                    >
-                      <MessageCircle size={12} /> Reply
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        )}
-
-        {showMine && user && (
-          <section
-            className="mb-5 rounded-2xl border border-white/[0.07] p-4"
-            style={{ background: 'linear-gradient(160deg, rgba(18,28,40,0.95), rgba(10,14,22,0.98))' }}
-          >
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <p className="text-white text-sm font-bold">Your interests & apply intents</p>
-              <button type="button" onClick={() => setShowMine(false)} className="text-slate-500 hover:text-white p-1">
-                <X size={14} />
-              </button>
-            </div>
-            {myList.length === 0 ? (
-              <p className="text-slate-500 text-xs">None yet — mark interest or apply on a card below.</p>
-            ) : (
-              <ul className="space-y-2">
-                {myList.map(row => (
-                  <li
-                    key={row.opportunity_id}
-                    className="flex flex-wrap items-center gap-2 text-xs border border-white/5 rounded-xl px-3 py-2 bg-black/20"
-                  >
-                    <span className="text-white font-semibold flex-1 min-w-0 truncate">
-                      {row.opportunity_title || row.opportunity_id}
-                    </span>
-                    <span className={`px-2 py-0.5 rounded-md border font-bold uppercase tracking-wider text-[10px] ${
-                      row.status === 'applied'
-                        ? 'text-amber-200 border-amber-500/30 bg-amber-500/10'
-                        : 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10'
-                    }`}>
-                      {row.status}
-                    </span>
-                    {typeof row.match_score === 'number' && (
-                      <span className="text-slate-500">{row.match_score}% fit</span>
-                    )}
-                    <button
-                      type="button"
-                      disabled={busyId === row.opportunity_id}
-                      onClick={() => void withdraw(row.opportunity_id)}
-                      className="text-slate-400 hover:text-rose-300 font-semibold"
-                    >
-                      Withdraw
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {interestSource === 'local' && (
-              <p className="text-[11px] text-amber-200/80 mt-3">
-                Saved on this device. Run <code className="text-teal-300">supabase_opportunity_interest.sql</code> for account sync.
-              </p>
-            )}
-          </section>
-        )}
-
-        <div
-          className="flex gap-1 overflow-x-auto pb-1 mb-6 p-1 rounded-2xl border border-white/10"
-          style={{ background: 'rgba(0,0,0,0.35)' }}
-        >
-          {categories.map(c => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setActive(c)}
-              className={`flex-shrink-0 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
-                active === c ? 'text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'
-              }`}
-              style={active === c ? { background: 'linear-gradient(135deg, #14b8a6, #0d9488)' } : undefined}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-
-        {!loading && (
-          <p className="text-[11px] text-slate-500 mb-3">
-            {withReasons.length} opportunit{withReasons.length === 1 ? 'y' : 'ies'}
-            {active !== 'All' ? ` · ${active}` : ''} · sorted by match
-          </p>
-        )}
-
-        {loading ? (
-          <div className="flex items-center justify-center py-24 text-slate-400 text-sm gap-2">
-            <Loader2 size={18} className="animate-spin text-amber-400" /> Loading opportunities…
-          </div>
-        ) : withReasons.length === 0 ? (
-          <div
-            className="rounded-2xl border border-white/[0.07] p-10 text-center"
-            style={{ background: 'rgba(14,20,25,0.6)' }}
-          >
-            <p className="text-white font-semibold mb-1">No opportunities in this filter</p>
-            <p className="text-slate-500 text-sm">Try All or another category.</p>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 gap-3.5">
+          <div className="grid md:grid-cols-2 gap-4">
             {withReasons.map((o, i) => {
               const pct = o.personalizedMatch
               const accent = matchColor(pct)
@@ -524,229 +696,263 @@ export default function OpportunityPage() {
               const busy = busyId === o.id
 
               return (
-                <article
+                <motion.article
                   id={`opp-${o.id}`}
                   key={o.id}
-                  className="group relative overflow-hidden rounded-2xl border border-white/[0.07] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/15"
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, delay: Math.min(i * 0.04, 0.24) }}
+                  className={`group relative overflow-hidden rounded-3xl border transition-all duration-300 ${
+                    open
+                      ? 'border-teal-500/35'
+                      : 'border-white/[0.07] hover:border-white/15 hover:-translate-y-0.5'
+                  }`}
                   style={{
-                    background: 'linear-gradient(160deg, rgba(18,28,40,0.95), rgba(10,14,22,0.98))',
-                    animationDelay: `${i * 40}ms`,
+                    background: 'linear-gradient(165deg, rgba(18,28,40,0.96) 0%, rgba(8,12,20,0.98) 100%)',
                   }}
                 >
                   <div
-                    className="pointer-events-none absolute -top-12 -right-10 w-32 h-32 rounded-full opacity-20 blur-2xl"
+                    className="pointer-events-none absolute inset-x-0 top-0 h-px"
+                    style={{ background: `linear-gradient(90deg, transparent, ${accent}88, transparent)` }}
+                  />
+                  <div
+                    className="pointer-events-none absolute -top-16 -right-12 w-40 h-40 rounded-full opacity-20 blur-3xl transition-opacity group-hover:opacity-35"
                     style={{ background: accent }}
                   />
 
-                  <div className="relative p-4 sm:p-5">
-                    <div className="flex items-start gap-3.5">
+                  <div className="relative p-5">
+                    <div className="flex items-start gap-3.5 mb-4">
                       <div
-                        className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${o.iconColor} flex items-center justify-center flex-shrink-0 shadow-lg`}
+                        className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${o.iconColor} flex items-center justify-center shrink-0 ring-1 ring-white/10`}
                       >
                         <MockIcon name={o.iconName} size={20} />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <h3 className="text-white font-bold text-[15px] leading-snug">{o.title}</h3>
-                          <div
-                            className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full border"
-                            style={{
-                              color: accent,
-                              borderColor: `${accent}44`,
-                              background: `${accent}18`,
-                            }}
-                          >
-                            <Zap size={10} />
-                            {pct}%
+                      <div className="flex-1 min-w-0 pt-0.5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h3 className="text-white font-bold text-[15px] sm:text-base leading-snug tracking-tight">
+                              {o.title}
+                            </h3>
+                            <p className="text-slate-400 text-xs leading-relaxed mt-1.5 line-clamp-2">
+                              {o.subtitle}
+                            </p>
                           </div>
-                        </div>
-                        <p className="text-slate-400 text-xs leading-relaxed mb-3 line-clamp-2">{o.subtitle}</p>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[10px] font-bold text-slate-200 bg-white/10 px-2 py-0.5 rounded-full">
-                            {o.prize}
-                          </span>
-                          <span className="inline-flex items-center gap-1 text-[10px] text-slate-500">
-                            <Clock4 size={10} />
-                            {o.deadline}
-                          </span>
-                          {o.category && (
-                            <span className="text-[10px] text-slate-500 border border-white/10 px-2 py-0.5 rounded-full">
-                              {o.category}
-                            </span>
-                          )}
-                          {status && (
-                            <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
-                              status === 'applied'
-                                ? 'text-amber-200 border-amber-500/30 bg-amber-500/10'
-                                : 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10'
-                            }`}>
-                              {status}
-                            </span>
-                          )}
+                          <MatchRing pct={pct} />
                         </div>
                       </div>
                     </div>
 
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => markInterest(o)}
-                        disabled={busy || status === 'interested' || status === 'applied'}
-                        className={`flex-1 min-w-[7rem] flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all disabled:opacity-60 ${
-                          status === 'interested' || status === 'applied'
-                            ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300'
-                            : 'text-white'
-                        }`}
-                        style={
-                          status === 'interested' || status === 'applied'
-                            ? undefined
-                            : { background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }
-                        }
-                      >
-                        {busy ? <Loader2 size={12} className="animate-spin" /> : <Heart size={12} fill={status ? 'currentColor' : 'none'} />}
-                        {status === 'interested' || status === 'applied' ? 'Interested' : 'Mark interest'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openApply(o)}
-                        disabled={busy || status === 'applied'}
-                        className={`flex-1 min-w-[7rem] flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold border transition-colors disabled:opacity-60 ${
+                    <div className="flex items-center gap-1.5 flex-wrap mb-4">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-100/90 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded-lg">
+                        <Briefcase size={10} />
+                        {o.prize || 'Open'}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 bg-white/[0.03] border border-white/10 px-2 py-1 rounded-lg">
+                        <Clock4 size={10} />
+                        {o.deadline}
+                      </span>
+                      {o.location && (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 bg-white/[0.03] border border-white/10 px-2 py-1 rounded-lg">
+                          <MapPin size={10} />
+                          {o.location}
+                        </span>
+                      )}
+                      <span className="text-[10px] font-semibold text-slate-300 bg-white/5 border border-white/10 px-2 py-1 rounded-lg">
+                        {o.category}
+                      </span>
+                      {status && (
+                        <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-lg border ${
                           status === 'applied'
-                            ? 'text-amber-200 border-amber-500/35 bg-amber-500/10'
-                            : 'text-amber-100 border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/15'
-                        }`}
-                      >
-                        <Send size={12} />
-                        {status === 'applied' ? 'Applied' : 'Apply interest'}
-                      </button>
-                      {o.ownerId && o.ownerId !== user?.id && (
+                            ? 'text-amber-200 border-amber-500/30 bg-amber-500/10'
+                            : 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10'
+                        }`}>
+                          {status}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-2">
                         <button
                           type="button"
-                          onClick={() => messagePoster(o, status, interestMap[o.id]?.note || undefined)}
-                          className="flex items-center justify-center gap-1 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-200 border border-white/10 hover:border-teal-500/30 hover:text-teal-200"
+                          onClick={() => openApply(o)}
+                          disabled={busy || status === 'applied'}
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-55 transition-transform hover:scale-[1.01] active:scale-[0.99]"
+                          style={
+                            status === 'applied'
+                              ? { background: 'rgba(245,158,11,0.18)', color: '#fde68a', border: '1px solid rgba(245,158,11,0.3)' }
+                              : { background: 'linear-gradient(135deg, #f59e0b, #d97706)' }
+                          }
                         >
-                          <MessageCircle size={12} /> Message
+                          {busy ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                          {status === 'applied' ? 'Applied' : 'Apply'}
                         </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => navigate(opportunityPublicPath(o))}
-                        className="flex items-center justify-center gap-1 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-300 border border-white/10 hover:border-white/20"
-                        title="Public page"
-                      >
-                        <ExternalLink size={12} /> Public
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const next = open ? null : o.id
-                          if (next) track('opportunity_expand', { id: o.id, match: pct })
-                          setExpandedId(next)
-                        }}
-                        className={`flex items-center justify-center gap-1 px-3 py-2.5 rounded-xl text-xs font-semibold border transition-colors ${
-                          open
-                            ? 'text-teal-200 border-teal-500/35 bg-teal-500/10'
-                            : 'text-slate-300 border-white/10 bg-white/[0.03] hover:border-white/20'
-                        }`}
-                      >
-                        <Sparkles size={12} />
-                        Why
-                        {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => markInterest(o)}
+                          disabled={busy || status === 'interested' || status === 'applied'}
+                          className={`inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold border transition-colors disabled:opacity-55 ${
+                            status === 'interested' || status === 'applied'
+                              ? 'bg-emerald-500/12 border-emerald-500/30 text-emerald-300'
+                              : 'text-slate-200 border-white/10 bg-white/[0.03] hover:border-teal-500/30 hover:text-teal-200'
+                          }`}
+                        >
+                          <Heart size={13} fill={status ? 'currentColor' : 'none'} />
+                          {status === 'interested' || status === 'applied' ? 'Saved' : 'Interest'}
+                        </button>
+                      </div>
+                      <div className="flex gap-2">
+                        {o.ownerId && o.ownerId !== user?.id && (
+                          <button
+                            type="button"
+                            onClick={() => messagePoster(o, status, interestMap[o.id]?.note || undefined)}
+                            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-200 border border-white/10 hover:border-teal-500/35 hover:text-teal-200 hover:bg-teal-500/5"
+                          >
+                            <MessageCircle size={12} /> Message
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => navigate(opportunityPublicPath(o))}
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 border border-white/10 hover:border-white/20 hover:bg-white/[0.03]"
+                        >
+                          <ExternalLink size={12} /> Public
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = open ? null : o.id
+                            if (next) track('opportunity_expand', { id: o.id, match: pct })
+                            setExpandedId(next)
+                          }}
+                          className={`inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${
+                            open
+                              ? 'text-teal-200 border-teal-500/35 bg-teal-500/10'
+                              : 'text-slate-300 border-white/10 hover:border-white/20'
+                          }`}
+                        >
+                          <Sparkles size={12} />
+                          Why
+                          {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                        </button>
+                      </div>
                     </div>
                   </div>
 
-                  {open && (
-                    <div className="relative px-4 sm:px-5 pb-5">
-                      <div
-                        className="rounded-xl border border-teal-500/20 p-4"
-                        style={{ background: 'rgba(20,184,166,0.08)' }}
+                  <AnimatePresence>
+                    {open && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
                       >
-                        <div className="flex items-center gap-2 mb-2">
-                          <Sparkles size={12} className="text-teal-400" />
-                          <p className="text-teal-300 text-[10px] font-bold uppercase tracking-[0.12em]">
-                            Twin fit reason
-                          </p>
+                        <div className="px-5 pb-5">
+                          <div
+                            className="rounded-2xl border border-teal-500/20 p-4"
+                            style={{ background: 'rgba(20,184,166,0.08)' }}
+                          >
+                            <div className="flex items-center gap-2 mb-2">
+                              <Zap size={12} className="text-teal-400" />
+                              <p className="text-teal-300 text-[10px] font-bold uppercase tracking-[0.14em]">
+                                Twin fit reason
+                              </p>
+                            </div>
+                            <p className="text-slate-300 text-sm leading-relaxed">{o.personalizedReason}</p>
+                            <button
+                              type="button"
+                              onClick={() => navigate('/twin')}
+                              className="mt-3 inline-flex items-center gap-1 text-xs text-teal-300 font-semibold hover:text-teal-200"
+                            >
+                              Improve twin signals <ArrowRight size={12} />
+                            </button>
+                          </div>
                         </div>
-                        <p className="text-slate-300 text-sm leading-relaxed">{o.personalizedReason}</p>
-                        <button
-                          type="button"
-                          onClick={() => navigate('/twin')}
-                          className="mt-3 text-xs text-teal-300 font-semibold hover:text-teal-200"
-                        >
-                          Improve twin signals →
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </article>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.article>
               )
             })}
           </div>
         )}
       </div>
 
-      {applyFor && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4"
-          role="dialog"
-          aria-modal
-          onClick={() => !busyId && setApplyFor(null)}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl border border-white/10 p-5 shadow-2xl"
-            style={{ background: 'linear-gradient(160deg, #12182b, #0a0f1c)' }}
-            onClick={e => e.stopPropagation()}
+      {/* Apply modal */}
+      <AnimatePresence>
+        {applyFor && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm p-0 sm:p-4"
+            role="dialog"
+            aria-modal
+            onClick={() => !busyId && setApplyFor(null)}
           >
-            <div className="flex items-start justify-between gap-2 mb-3">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-amber-400/90 mb-0.5">
-                  Apply interest · no payment
-                </p>
-                <h2 className="text-white font-bold text-base leading-snug">{applyFor.title}</h2>
-                <p className="text-slate-500 text-xs mt-1">{applyFor.personalizedMatch}% twin fit · intent only</p>
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 16 }}
+              className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl border border-white/10 p-5 sm:p-6"
+              style={{
+                background: 'linear-gradient(165deg, #141a28 0%, #0a0e18 100%)',
+                boxShadow: '0 24px 80px rgba(0,0,0,0.55)',
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="sm:hidden flex justify-center pt-0 pb-3">
+                <span className="w-10 h-1 rounded-full bg-white/15" />
               </div>
-              <button
-                type="button"
-                onClick={() => setApplyFor(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <p className="text-slate-400 text-xs leading-relaxed mb-3">
-              This records your intent on Pi — not a formal application or payment. Teams can follow up later when marketplace / intro routing ships.
-            </p>
-            <textarea
-              value={applyNote}
-              onChange={e => setApplyNote(e.target.value)}
-              rows={3}
-              placeholder="Optional note: why you’re a fit, timeline, or what you’re looking for…"
-              className="w-full mb-3 bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/40 resize-none"
-            />
-            <div className="flex gap-2 justify-end">
-              <button
-                type="button"
-                disabled={!!busyId}
-                onClick={() => setApplyFor(null)}
-                className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 border border-white/10"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={!!busyId}
-                onClick={() => void saveInterest(applyFor, 'applied', applyNote)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-40"
-                style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}
-              >
-                {busyId === applyFor.id ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-                Submit apply interest
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              <div className="flex items-start justify-between gap-2 mb-4">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-400/90 mb-1">
+                    Apply interest · free
+                  </p>
+                  <h2 className="text-white font-bold text-lg leading-snug">{applyFor.title}</h2>
+                  <p className="text-slate-500 text-xs mt-1.5">
+                    {applyFor.personalizedMatch}% Twin fit · records intent, not payment
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setApplyFor(null)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <textarea
+                value={applyNote}
+                onChange={e => setApplyNote(e.target.value)}
+                rows={3}
+                placeholder="Optional note: why you’re a fit, timeline, or what you’re looking for…"
+                className="w-full mb-4 bg-black/35 border border-white/10 rounded-2xl px-3.5 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/40 resize-none"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={!!busyId}
+                  onClick={() => setApplyFor(null)}
+                  className="flex-1 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-300 border border-white/10"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!!busyId}
+                  onClick={() => void saveInterest(applyFor, 'applied', applyNote)}
+                  className="flex-[1.4] inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-40"
+                  style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}
+                >
+                  {busyId === applyFor.id ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                  Submit apply
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {createOpen && user && (
         <CreateOpportunityModal
