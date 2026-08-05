@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Copy, Check, UserPlus } from 'lucide-react'
 import { captureInviteRef, inviteUrl } from '../lib/acquisition'
 import { track } from '../lib/analytics'
 import { useEffect } from 'react'
+import PiLogo from '../components/PiLogo'
 
 /** Public invite landing — captures ?ref / :code then sends visitor to signup. */
 export default function InviteLandingPage() {
@@ -29,8 +30,7 @@ export default function InviteLandingPage() {
           <ArrowLeft size={18} />
         </button>
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-black"
-            style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>π</div>
+          <PiLogo size={32} className="ring-1 ring-white/10" />
           <span className="text-white font-bold text-sm">You’re invited to Pi</span>
         </div>
       </nav>

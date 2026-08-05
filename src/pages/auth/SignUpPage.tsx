@@ -5,6 +5,7 @@ import { Eye, EyeOff, Sparkles, ArrowRight } from 'lucide-react'
 import { isValidEmail, validatePassword } from '../../lib/validation'
 import { track } from '../../lib/analytics'
 import { getStoredInviteRef, trackSignupAttribution } from '../../lib/acquisition'
+import PiLogo from '../../components/PiLogo'
 
 export default function SignUpPage() {
   const navigate = useNavigate()
@@ -50,8 +51,7 @@ export default function SignUpPage() {
       <div className="w-full max-w-md relative">
         {/* Logo — identical to login */}
         <div className="flex items-center justify-center gap-2 mb-8 cursor-pointer" onClick={() => navigate('/')}>
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-xl"
-            style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>π</div>
+          <PiLogo size={40} className="shadow-lg ring-1 ring-white/10" />
           <span className="text-white font-bold text-2xl">Pi</span>
         </div>
 

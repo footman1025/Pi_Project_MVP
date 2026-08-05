@@ -5,6 +5,7 @@ import {
   Rocket, Building2, Bot,
   Link2, TrendingUp, Globe2, ShieldCheck
 } from 'lucide-react'
+import PiLogo from '../components/PiLogo'
 
 const nodes = [
   { label: 'People', Icon: UserCircle2, color: 'from-pi-500 to-teal-600', x: 50, y: 6 },
@@ -68,8 +69,11 @@ export default function VisionPage() {
             </div>
           ))}
           <div className="col-span-2 flex flex-col items-center gap-2 py-2">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-500 to-pi-600 flex items-center justify-center text-white font-extrabold text-2xl"
-              style={{ boxShadow: '0 0 30px rgba(20,184,166,0.5)' }}>π</div>
+            <PiLogo
+              size={56}
+              rounded="rounded-2xl"
+              className="shadow-[0_0_30px_rgba(20,184,166,0.5)] ring-1 ring-white/10"
+            />
             <span className="text-xs font-semibold text-teal-300">AI Layer</span>
           </div>
         </div>
@@ -107,10 +111,10 @@ export default function VisionPage() {
                 transition: `opacity 0.5s ease ${i * 150}ms, transform 0.5s cubic-bezier(0.34,1.56,0.64,1) ${i * 150}ms`,
               }}>
               <div
-                className={`bg-gradient-to-br ${node.color} rounded-2xl flex items-center justify-center text-white shadow-lg ${node.center ? 'w-16 h-16' : 'w-12 h-12'}`}
+                className={`rounded-2xl flex items-center justify-center overflow-hidden shadow-lg ${node.center ? 'w-16 h-16' : `bg-gradient-to-br ${node.color} w-12 h-12 text-white`}`}
                 style={node.center ? { boxShadow: '0 0 30px rgba(20,184,166,0.6)' } : {}}>
                 {node.center
-                  ? <span className="font-extrabold text-2xl">π</span>
+                  ? <PiLogo size={64} rounded="rounded-2xl" />
                   : node.Icon && <node.Icon size={20} className="text-white" />
                 }
               </div>
@@ -211,12 +215,11 @@ export default function VisionPage() {
       {/* CTA */}
       <div className="p-8 rounded-3xl border border-pi-500/20 text-center"
         style={{ background: 'linear-gradient(135deg, rgba(20,184,166,0.1), rgba(13,148,136,0.05))', boxShadow: '0 0 60px rgba(20,184,166,0.15)' }}>
-        <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white font-extrabold text-3xl"
-          style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)', boxShadow: '0 0 40px rgba(20,184,166,0.4)' }}>
-          π
+        <div className="w-16 h-16 rounded-2xl mx-auto mb-4 overflow-hidden shadow-[0_0_40px_rgba(20,184,166,0.4)] ring-1 ring-white/10">
+          <PiLogo size={64} rounded="rounded-2xl" />
         </div>
         <h2 className="font-display text-3xl font-extrabold text-white mb-3">The Future of Human Connection Starts Here.</h2>
-        <p className="text-slate-400 mb-6">Pi (π). One Platform. Infinite Opportunities.</p>
+        <p className="text-slate-400 mb-6">Pi. One Platform. Infinite Opportunities.</p>
         <button onClick={() => navigate('/dashboard')}
           className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl font-bold text-white text-lg transition-all hover:scale-105 active:scale-95"
           style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)', boxShadow: '0 0 40px rgba(20,184,166,0.4)' }}>

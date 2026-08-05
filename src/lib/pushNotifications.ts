@@ -25,8 +25,8 @@ export function pushSupported() {
 export async function registerPiServiceWorker() {
   if (!('serviceWorker' in navigator)) return null
   try {
-    const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
-    // Force update so new Pi PNG icons apply after deploy
+    const reg = await navigator.serviceWorker.register('/sw.js?v=brand-icon-v2', { scope: '/' })
+    // Force update so new brand PNG icons apply after deploy
     void reg.update()
     await navigator.serviceWorker.ready
 

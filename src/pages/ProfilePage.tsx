@@ -19,6 +19,7 @@ import { submitContentReport, type ReportReason } from '../lib/contentReports'
 import UserAvatar from '../components/UserAvatar'
 import CreatorTipModal from '../components/CreatorTipModal'
 import ReportContentModal from '../components/ReportContentModal'
+import PiLogo from '../components/PiLogo'
 import { externalHref, absoluteProfileUrl } from '../lib/urls'
 
 function applySeo(profile: Profile, username: string) {
@@ -301,7 +302,7 @@ export default function ProfilePage() {
           <span className="hidden sm:inline">Back</span>
         </button>
         <div className="flex items-center gap-2 cursor-pointer shrink-0 min-w-0" onClick={() => navigate('/')}>
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-display font-extrabold text-lg pi-mark">π</div>
+          <PiLogo size={32} className="ring-1 ring-white/10" />
           <span className="font-display text-white font-bold text-xl hidden sm:inline">Pi</span>
         </div>
         <div className="flex-1 min-w-0" />

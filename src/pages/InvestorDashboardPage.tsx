@@ -7,6 +7,7 @@ import {
 import { investorSearchPresets, runInvestorSearch } from '../data/investorDemo'
 import { track } from '../lib/analytics'
 import StatusBadge from '../components/StatusBadge'
+import PiLogo from '../components/PiLogo'
 
 const visionBullets = [
   'AI-native human opportunity operating system — not another social feed.',
@@ -112,12 +113,7 @@ export default function InvestorDashboardPage() {
           <ArrowLeft size={18} />
         </button>
         <div className="flex items-center gap-2.5 min-w-0">
-          <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-black shrink-0"
-            style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
-          >
-            π
-          </div>
+          <PiLogo size={32} className="shrink-0 ring-1 ring-white/10" />
           <div className="min-w-0">
             <p className="text-white font-bold text-sm leading-none truncate">Pi · Investor view</p>
             <p className="text-[10px] text-slate-500 mt-0.5 truncate">Company narrative · not just an app screen</p>

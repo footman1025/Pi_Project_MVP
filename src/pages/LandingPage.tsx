@@ -7,6 +7,7 @@ import {
 import { useAuth } from '../contexts/AuthContext'
 import UserAvatar from '../components/UserAvatar'
 import HeroOpportunityGraph from '../components/HeroOpportunityGraph'
+import PiLogo from '../components/PiLogo'
 import { supabase } from '../lib/supabase'
 
 const pillars = [
@@ -109,12 +110,7 @@ export default function LandingPage() {
       >
         <div className="max-w-6xl mx-auto flex items-center gap-3">
           <button type="button" onClick={() => navigate('/')} className="flex items-center gap-2.5 group">
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-lg transition-transform group-hover:scale-105"
-              style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
-            >
-              π
-            </div>
+            <PiLogo size={36} className="transition-transform group-hover:scale-105 shadow-lg ring-1 ring-white/10" />
             <span className="font-display text-white font-bold text-lg tracking-tight">Pi</span>
           </button>
 
@@ -524,7 +520,9 @@ export default function LandingPage() {
       <footer className="px-4 sm:px-6 py-10 border-t border-white/[0.06]">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center gap-4 sm:justify-between">
           <div className="flex items-center gap-2">
-            <span className="font-display text-white font-bold">π Pi</span>
+            <span className="font-display text-white font-bold inline-flex items-center gap-2">
+              <PiLogo size={22} rounded="rounded-lg" /> Pi
+            </span>
             <span className="text-slate-600 text-sm">One platform. Infinite opportunities.</span>
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">

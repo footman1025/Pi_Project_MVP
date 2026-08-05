@@ -21,6 +21,7 @@ import {
 } from '../lib/systemAlerts'
 import { registerPiServiceWorker, enablePushNotifications } from '../lib/pushNotifications'
 import { maybeSendAiSuggestions } from '../lib/aiSuggestions'
+import PiLogo from './PiLogo'
 
 const navItems = [
   { to: '/dashboard', icon: LayoutGrid, label: 'Dashboard', core: true },
@@ -191,10 +192,7 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
       >
         <div className="flex items-center gap-3 px-6 py-5 border-b border-white/5 cursor-pointer hover:bg-white/5 transition-colors"
           onClick={() => { navigate('/'); setSidebarOpen(false) }}>
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-lg"
-            style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
-            π
-          </div>
+          <PiLogo size={36} className="shadow-lg ring-1 ring-white/10" />
           <span className="text-white font-bold text-xl tracking-tight">Pi</span>
           <span className="ml-auto text-xs text-teal-300 bg-teal-500/10 px-2 py-0.5 rounded-full border border-teal-500/20">Beta</span>
         </div>

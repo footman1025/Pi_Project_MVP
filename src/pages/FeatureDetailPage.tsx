@@ -2,6 +2,7 @@ import { useNavigate, useParams, Navigate } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Target, Users, Sparkles } from 'lucide-react'
 import { featureBySlug, FEATURE_SEO } from '../lib/seo'
 import { useAuth } from '../contexts/AuthContext'
+import PiLogo from '../components/PiLogo'
 
 export default function FeatureDetailPage() {
   const { slug = '' } = useParams<{ slug: string }>()
@@ -30,8 +31,7 @@ export default function FeatureDetailPage() {
           <ArrowLeft size={18} />
         </button>
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-black shrink-0"
-            style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>π</div>
+          <PiLogo size={32} className="shrink-0 ring-1 ring-white/10" />
           <p className="text-white font-bold text-sm truncate">{feature.name}</p>
         </div>
       </nav>

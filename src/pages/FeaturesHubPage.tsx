@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Search } from 'lucide-react'
 import { FEATURE_SEO } from '../lib/seo'
+import PiLogo from '../components/PiLogo'
 
 export default function FeaturesHubPage() {
   const navigate = useNavigate()
@@ -13,8 +14,7 @@ export default function FeaturesHubPage() {
           <ArrowLeft size={18} />
         </button>
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-black"
-            style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>π</div>
+          <PiLogo size={32} className="ring-1 ring-white/10" />
           <div>
             <p className="text-white font-bold text-sm leading-none">Pi Features</p>
             <p className="text-[10px] text-slate-500 mt-0.5">Discoverable product identity</p>

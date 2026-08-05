@@ -16,6 +16,7 @@ import {
 } from '../lib/connectAgent'
 import { track } from '../lib/analytics'
 import StatusBadge from '../components/StatusBadge'
+import PiLogo from '../components/PiLogo'
 
 const SUGGESTIONS = [
   'I’m an investor exploring Pi',
@@ -211,12 +212,7 @@ export default function ConnectPage() {
           <ArrowLeft size={18} />
         </button>
         <div className="flex items-center gap-2.5 min-w-0">
-          <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-black shrink-0"
-            style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
-          >
-            π
-          </div>
+          <PiLogo size={32} className="shrink-0 ring-1 ring-white/10" />
           <div className="min-w-0">
             <p className="text-white font-bold text-sm leading-none truncate">Meet Pi AI</p>
             <p className="text-[10px] text-slate-500 mt-0.5 truncate">

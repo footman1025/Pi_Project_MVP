@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { ArrowLeft, Lock, CheckCircle2 } from 'lucide-react'
+import PiLogo from '../../components/PiLogo'
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate()
@@ -91,7 +92,7 @@ export default function ResetPasswordPage() {
 
       <div className="w-full max-w-md relative animate-rise">
         <div className="flex items-center justify-center gap-2.5 mb-8 cursor-pointer" onClick={() => navigate('/')}>
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-display font-extrabold text-xl pi-mark">π</div>
+          <PiLogo size={40} className="ring-1 ring-white/10" />
           <span className="font-display text-white font-bold text-2xl">Pi</span>
         </div>
 

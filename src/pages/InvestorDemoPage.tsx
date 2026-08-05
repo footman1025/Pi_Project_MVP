@@ -9,6 +9,7 @@ import {
 } from '../data/investorDemo'
 import { track } from '../lib/analytics'
 import StatusBadge from '../components/StatusBadge'
+import PiLogo from '../components/PiLogo'
 
 const stages = [
   { id: 'thesis', label: 'Why Pi' },
@@ -123,12 +124,7 @@ export default function InvestorDemoPage() {
         style={{ background: 'rgba(6,9,15,0.88)', backdropFilter: 'blur(18px)' }}
       >
         <button type="button" onClick={() => navigate('/')} className="flex items-center gap-2 shrink-0">
-          <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-black"
-            style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
-          >
-            π
-          </div>
+          <PiLogo size={32} className="ring-1 ring-white/10" />
           <span className="text-white font-bold hidden xs:inline sm:inline">Pi</span>
         </button>
         <StatusBadge kind="demo" label="Scripted tour" />

@@ -9,6 +9,7 @@ import { Profile } from '../lib/supabase'
 import { track } from '../lib/analytics'
 import StatusBadge from '../components/StatusBadge'
 import CommunityIcon from '../components/CommunityIcon'
+import PiLogo from '../components/PiLogo'
 
 const steps = [
   'What best describes you?',
@@ -133,8 +134,7 @@ export default function OnboardingPage() {
       </div>
 
       <div className="flex items-center gap-2 mb-8 sm:mb-10 cursor-pointer" onClick={() => navigate('/')}>
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-extrabold text-xl"
-          style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>π</div>
+        <PiLogo size={36} className="ring-1 ring-white/10" />
         <span className="text-white font-bold text-2xl">Pi</span>
       </div>
 
@@ -260,10 +260,11 @@ export default function OnboardingPage() {
         {step === 5 && aiResults && (
           <div className="animate-slide-up w-full max-w-lg mx-auto">
             <div className="text-center mb-8">
-              <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white font-extrabold text-3xl"
-                style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)', boxShadow: '0 0 40px rgba(20,184,166,0.4)' }}>
-                π
-              </div>
+              <PiLogo
+                size={64}
+                rounded="rounded-2xl"
+                className="mx-auto mb-4 shadow-[0_0_40px_rgba(20,184,166,0.35)] ring-1 ring-white/10"
+              />
               <h2 className="text-2xl sm:text-3xl font-extrabold text-white mb-2">You’re in</h2>
               <p className="text-slate-400 text-sm max-w-sm mx-auto leading-relaxed">{aiResults.summary}</p>
             </div>
