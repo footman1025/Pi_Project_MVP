@@ -56,7 +56,7 @@ export default function InstallPiBanner() {
       style={{ background: 'rgba(20,184,166,0.1)' }}
     >
       <div className="flex items-start gap-3 flex-1 min-w-0">
-        <img src="/pi-logo-192.png" alt="Pi" className="w-10 h-10 rounded-xl shrink-0" />
+        <img src="/pi_logo.png" alt="Pi" className="w-10 h-10 rounded-xl shrink-0 object-contain bg-white" />
         <div className="min-w-0">
           <p className="text-white text-sm font-bold">Install Pi as an app</p>
           <p className="text-slate-400 text-xs leading-relaxed mt-0.5">

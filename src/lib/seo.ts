@@ -6,7 +6,7 @@ export const SITE_URL = (
     : 'https://pi-project-mvp.vercel.app'
 ).replace(/\/$/, '')
 
-export const DEFAULT_OG_IMAGE = `${SITE_URL}/pi-logo-512.png`
+export const DEFAULT_OG_IMAGE = `${SITE_URL}/pi_logo.png`
 
 export type SeoPage = {
   path: string
