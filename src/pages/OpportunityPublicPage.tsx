@@ -10,6 +10,7 @@ import { useAuth } from '../contexts/AuthContext'
 import {
   absoluteOpportunityUrl,
   fetchOpportunityBySlugOrId,
+  opportunityPublicPath,
   type OpportunityItem,
 } from '../lib/opportunities'
 import { opportunityMessagePath } from '../lib/opportunityHub'
@@ -42,6 +43,13 @@ export default function OpportunityPublicPage() {
         setNotFound(true)
         setItem(null)
       } else {
+        // Canonical clean URL — drop legacy random suffix (e.g. -167ud)
+        const canonical = opportunityPublicPath(res.item)
+        const current = `/o/${encodeURIComponent(key)}`
+        if (res.item.slug && canonical !== current && canonical !== `/o/${key}`) {
+          navigate(canonical, { replace: true })
+          return
+        }
         setItem(res.item)
         setNotFound(false)
         setIsLive(res.isLive)
@@ -51,7 +59,7 @@ export default function OpportunityPublicPage() {
       setLoading(false)
     })()
     return () => { cancelled = true }
-  }, [slugOrId])
+  }, [slugOrId, navigate])
 
   const share = async () => {
     if (!item) return

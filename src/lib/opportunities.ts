@@ -84,15 +84,41 @@ function styleFor(category: string) {
   return STYLE_BY_CATEGORY[category] || STYLE_BY_CATEGORY.Job
 }
 
+/** Clean SEO slug from title — no random suffix (e.g. the-opportunity-for-everyone). */
 export function slugifyTitle(title: string): string {
   const base = title
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
-    .slice(0, 60)
-  const suffix = Math.random().toString(36).slice(2, 7)
-  return `${base || 'opportunity'}-${suffix}`
+    .slice(0, 80)
+  return base || 'opportunity'
+}
+
+/** Strip legacy random suffix like -167ud from older URLs. */
+export function stripLegacySlugSuffix(slug: string): string {
+  const s = slug.trim()
+  // Random suffix was 5 base36 chars: -[a-z0-9]{5}
+  const stripped = s.replace(/-[a-z0-9]{4,6}$/i, '')
+  return stripped || s
+}
+
+/** Reserve a unique clean slug; only append -2, -3… on collision. */
+async function allocateUniqueSlug(base: string): Promise<string> {
+  const root = slugifyTitle(base)
+  for (let n = 1; n <= 50; n++) {
+    const candidate = n === 1 ? root : `${root}-${n}`
+    const { data, error } = await supabase
+      .from('opportunities')
+      .select('id')
+      .eq('slug', candidate)
+      .maybeSingle()
+    if (error && /column|schema|does not exist/i.test(error.message)) {
+      return candidate
+    }
+    if (!data) return candidate
+  }
+  return `${root}-${Date.now().toString(36)}`
 }
 
 function readLocal(): OpportunityItem[] {
@@ -220,15 +246,36 @@ export async function fetchOpportunityBySlugOrId(
   if (!key) return { item: null, isLive: false }
 
   const local = readLocal().find(o => o.slug === key || o.id === key)
+  const trySlugs = [key]
+  const cleaned = stripLegacySlugSuffix(key)
+  if (cleaned !== key) trySlugs.push(cleaned)
+
   try {
-    const bySlug = await supabase
-      .from('opportunities')
-      .select(SELECT_COLS)
-      .eq('is_active', true)
-      .eq('slug', key)
-      .maybeSingle()
-    if (!bySlug.error && bySlug.data) {
-      return { item: fromDb(bySlug.data as DbRow), isLive: true }
+    for (const slug of trySlugs) {
+      const bySlug = await supabase
+        .from('opportunities')
+        .select(SELECT_COLS)
+        .eq('is_active', true)
+        .eq('slug', slug)
+        .maybeSingle()
+      if (!bySlug.error && bySlug.data) {
+        return { item: fromDb(bySlug.data as DbRow), isLive: true }
+      }
+    }
+
+    // Legacy rows still stored as title-xxxxx — match by cleaned base prefix
+    if (cleaned !== key || trySlugs.length) {
+      const { data: prefixRows } = await supabase
+        .from('opportunities')
+        .select(SELECT_COLS)
+        .eq('is_active', true)
+        .like('slug', `${cleaned}-%`)
+        .limit(8)
+      const match = (prefixRows as DbRow[] | null)?.find(row => {
+        const s = row.slug || ''
+        return s === cleaned || stripLegacySlugSuffix(s) === cleaned
+      })
+      if (match) return { item: fromDb(match), isLive: true }
     }
 
     const byId = await supabase
@@ -272,7 +319,7 @@ export async function createOpportunity(input: {
 
   const category = input.category || 'Job'
   const style = styleFor(category)
-  const slug = slugifyTitle(title)
+  const slug = await allocateUniqueSlug(title)
   const description = (input.description || '').trim().slice(0, 2000)
   const subtitle = (input.subtitle || description.slice(0, 100) || category).trim().slice(0, 160)
   const prize = (input.prize || 'Open').trim().slice(0, 80)
@@ -343,7 +390,10 @@ export async function createOpportunity(input: {
 }
 
 export function opportunityPublicPath(item: Pick<OpportunityItem, 'slug' | 'id'>): string {
-  return `/o/${encodeURIComponent(item.slug || item.id)}`
+  const raw = (item.slug || '').trim()
+  const clean = raw ? stripLegacySlugSuffix(raw) : ''
+  const slug = clean || raw || item.id
+  return `/o/${encodeURIComponent(slug)}`
 }
 
 export function absoluteOpportunityUrl(item: Pick<OpportunityItem, 'slug' | 'id'>): string {
