@@ -17,20 +17,26 @@ export default async function handler(req, res) {
   }
 
   const stripeKey = (process.env.STRIPE_SECRET_KEY || '').trim()
-  const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').trim()
+  const supabaseUrl = (
+    process.env.SUPABASE_URL ||
+    process.env.VITE_SUPABASE_URL ||
+    'https://enozvyhkjbqsgcjonxlr.supabase.co'
+  ).trim()
   const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim()
   const anonKey = (
     process.env.VITE_SUPABASE_ANON_KEY ||
     process.env.SUPABASE_ANON_KEY ||
-    ''
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVub3p2eWhramJxc2djam9ueGxyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2NjI4NDQsImV4cCI6MjEwMDIzODg0NH0.0S3ZMyPUVzRyRFDseAJNf1QT2ZygyItXLh3mVqR7D7o'
   ).trim()
 
   if (!stripeKey) {
     res.status(503).json({ error: 'Stripe not configured' })
     return
   }
-  if (!supabaseUrl || !serviceKey || !anonKey) {
-    res.status(503).json({ error: 'Supabase server env incomplete' })
+  if (!supabaseUrl || !serviceKey) {
+    res.status(503).json({
+      error: 'Supabase server env incomplete — set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY, then redeploy.',
+    })
     return
   }
 

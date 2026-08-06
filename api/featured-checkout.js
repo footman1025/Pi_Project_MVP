@@ -39,13 +39,20 @@ export default async function handler(req, res) {
   }
 
   const stripeKey = (process.env.STRIPE_SECRET_KEY || '').trim()
-  const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').trim()
+  const supabaseUrl = (
+    process.env.SUPABASE_URL ||
+    process.env.VITE_SUPABASE_URL ||
+    'https://enozvyhkjbqsgcjonxlr.supabase.co'
+  ).trim()
   const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim()
+  // Prefer anon for user-scoped inserts; service role can still validate JWTs
   const anonKey = (
     process.env.VITE_SUPABASE_ANON_KEY ||
     process.env.SUPABASE_ANON_KEY ||
-    ''
+    // Same public anon key used by the Pi client (safe to expose)
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVub3p2eWhramJxc2djam9ueGxyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2NjI4NDQsImV4cCI6MjEwMDIzODg0NH0.0S3ZMyPUVzRyRFDseAJNf1QT2ZygyItXLh3mVqR7D7o'
   ).trim()
+  const authKey = anonKey || serviceKey
   const amountCents = Math.max(
     100,
     parseInt(process.env.STRIPE_FEATURED_PRICE_CENTS || String(DEFAULT_CENTS), 10) || DEFAULT_CENTS,
@@ -61,8 +68,11 @@ export default async function handler(req, res) {
     res.status(401).json({ error: 'Sign in required' })
     return
   }
-  if (!supabaseUrl || !anonKey) {
-    res.status(503).json({ error: 'Supabase not configured on server' })
+  if (!supabaseUrl || !authKey) {
+    res.status(503).json({
+      error:
+        'Supabase not configured on server. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or VITE_SUPABASE_ANON_KEY) on Vercel, then redeploy.',
+    })
     return
   }
 
@@ -75,21 +85,25 @@ export default async function handler(req, res) {
       return
     }
 
-    const anon = createClient(supabaseUrl, anonKey, {
+    const authClient = createClient(supabaseUrl, authKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
       global: { headers: { Authorization: `Bearer ${token}` } },
     })
-    const { data: userData, error: userErr } = await anon.auth.getUser(token)
+    const { data: userData, error: userErr } = await authClient.auth.getUser(token)
     if (userErr || !userData?.user) {
       res.status(401).json({ error: 'Invalid session' })
       return
     }
     const userId = userData.user.id
 
-    // Verify ownership when service role available; otherwise trust client + RLS on insert
-    if (serviceKey) {
-      const admin = createClient(supabaseUrl, serviceKey, {
-        auth: { autoRefreshToken: false, persistSession: false },
-      })
+    const admin = serviceKey
+      ? createClient(supabaseUrl, serviceKey, {
+          auth: { autoRefreshToken: false, persistSession: false },
+        })
+      : null
+
+    // Verify ownership when service role available
+    if (admin) {
       const { data: opp } = await admin
         .from('opportunities')
         .select('id, owner_id, title, is_active')
@@ -105,13 +119,16 @@ export default async function handler(req, res) {
       }
     }
 
+    // Prefer service role for order writes (works even if anon key missing)
+    const db = admin || authClient
+
     const origin = appOrigin()
     const successUrl = `${origin}/opportunities?featured=success&session_id={CHECKOUT_SESSION_ID}`
     const cancelUrl = `${origin}/opportunities?featured=cancel`
 
     // No Stripe key → honest intent path (willingness signal, No Surprise)
     if (!stripeKey) {
-      const { data: order, error: orderErr } = await anon
+      const { data: order, error: orderErr } = await db
         .from('opportunity_featured_orders')
         .insert({
           opportunity_id: opportunityId,
@@ -129,7 +146,9 @@ export default async function handler(req, res) {
       if (orderErr) {
         res.status(503).json({
           error:
-            orderErr.message.includes('does not exist') || orderErr.message.includes('schema')
+            orderErr.message.includes('does not exist') ||
+            orderErr.message.includes('schema') ||
+            orderErr.message.includes('PGRST205')
               ? 'Run supabase_opportunity_featured.sql in Supabase, then retry.'
               : orderErr.message,
           mode: 'intent',
@@ -150,7 +169,7 @@ export default async function handler(req, res) {
     }
 
     // Create pending order then Stripe Checkout Session
-    const { data: pending, error: pendingErr } = await anon
+    const { data: pending, error: pendingErr } = await db
       .from('opportunity_featured_orders')
       .insert({
         opportunity_id: opportunityId,
@@ -167,7 +186,8 @@ export default async function handler(req, res) {
     if (pendingErr || !pending?.id) {
       res.status(503).json({
         error:
-          pendingErr?.message?.includes('does not exist')
+          pendingErr?.message?.includes('does not exist') ||
+          pendingErr?.message?.includes('PGRST205')
             ? 'Run supabase_opportunity_featured.sql in Supabase, then retry.'
             : pendingErr?.message || 'Could not create order',
       })
@@ -212,7 +232,7 @@ export default async function handler(req, res) {
       return
     }
 
-    await anon
+    await db
       .from('opportunity_featured_orders')
       .update({
         stripe_session_id: session.id,
