@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
-  ArrowLeft, Briefcase, Clock4, ExternalLink, Loader2, MapPin, MessageCircle, Share2, Send,
+  ArrowLeft, Briefcase, Clock4, ExternalLink, Loader2, MapPin, MessageCircle, Share2, Send, Star,
 } from 'lucide-react'
 import MockIcon from '../components/MockIcon'
 import StatusBadge from '../components/StatusBadge'
@@ -15,6 +15,8 @@ import {
 } from '../lib/opportunities'
 import { opportunityMessagePath } from '../lib/opportunityHub'
 import { upsertOpportunityInterest } from '../lib/opportunityInterest'
+import { isFeaturedActive } from '../lib/opportunityFeatured'
+import FeatureOpportunityModal from '../components/FeatureOpportunityModal'
 import { applyOpportunitySeo } from '../lib/seo'
 import { track } from '../lib/analytics'
 import { playConnectSound } from '../lib/connectSound'
@@ -30,6 +32,7 @@ export default function OpportunityPublicPage() {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const [isLive, setIsLive] = useState(false)
+  const [featureOpen, setFeatureOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -163,7 +166,12 @@ export default function OpportunityPublicPage() {
                 <div className="flex flex-wrap gap-1.5 mb-2">
                   <StatusBadge kind="live" label={item.category} />
                   {item.source === 'member' && <StatusBadge kind="live" label="Member posted" />}
-                  <StatusBadge kind="soon" label="Featured = Soon" />
+                  {isFeaturedActive(item) && (
+                    <StatusBadge kind="live" label="Featured" />
+                  )}
+                  {!isFeaturedActive(item) && item.ownerId && user?.id === item.ownerId && (
+                    <StatusBadge kind="partial" label="Feature available" />
+                  )}
                 </div>
                 <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-white leading-tight break-words">
                   {item.title}
@@ -221,6 +229,16 @@ export default function OpportunityPublicPage() {
                 {busy ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
                 {session ? 'Apply interest' : 'Sign up to apply'}
               </button>
+              {item.ownerId && user?.id === item.ownerId && !isFeaturedActive(item) && (
+                <button
+                  type="button"
+                  onClick={() => setFeatureOpen(true)}
+                  className="flex-1 py-3 rounded-xl text-sm font-bold text-amber-950 inline-flex items-center justify-center gap-1.5"
+                  style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)' }}
+                >
+                  <Star size={15} fill="currentColor" /> Feature listing
+                </button>
+              )}
               {item.ownerId && user?.id !== item.ownerId && (
                 <button
                   type="button"
@@ -251,12 +269,22 @@ export default function OpportunityPublicPage() {
             )}
 
             <p className="text-slate-600 text-xs leading-relaxed">
-              Pi Opportunity Hub — discover and create opportunities. Interest / apply intent is free;
-              featured listings and payments are Soon. Built with the No Surprise Standard.
+              Pi Opportunity Hub — discover and create opportunities. Interest / apply is free.
+              Featured priority placement is optional (€9 / 7 days when Stripe is configured).
+              Built with the No Surprise Standard.
             </p>
           </>
         )}
       </main>
+
+      {featureOpen && item && (
+        <FeatureOpportunityModal
+          open
+          item={item}
+          onClose={() => setFeatureOpen(false)}
+          onIntentRecorded={message => setMsg(message)}
+        />
+      )}
     </div>
   )
 }

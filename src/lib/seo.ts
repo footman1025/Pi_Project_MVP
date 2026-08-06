@@ -226,10 +226,10 @@ export const FEATURE_SEO: FeatureSeo[] = [
     problem: 'Jobs, clients, co-founders, and partnerships are scattered across apps with no clear next step.',
     who: 'Founders, freelancers, and professionals who need to discover or create real opportunities today.',
     whyDifferent:
-      'Pi’s first 0→1 layer: Live create → public /o SEO page → apply with owner notify → message with context → measurable outcomes. Featured paywall = Soon.',
+      'Pi’s first 0→1 layer: Live create → public /o SEO page → apply with owner notify → message with context → Featured pay experiment → measurable outcomes.',
     title: 'Opportunity Hub – Discover & Create on Pi',
     description:
-      'Create and discover jobs, partnerships, co-founders, and services on Pi — public pages, apply intent, and message the poster. Featured listings coming soon.',
+      'Create and discover jobs, partnerships, co-founders, and services on Pi — public pages, apply intent, message the poster, optional Featured priority listing.',
     ctaPath: '/opportunities',
     ctaLabel: 'Open Opportunity Hub',
   },

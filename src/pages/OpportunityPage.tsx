@@ -4,11 +4,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Briefcase, Sparkles, Clock4, ChevronDown, ChevronUp, Loader2, Heart, Zap,
   Send, X, Inbox, Plus, ExternalLink, MessageCircle, BarChart3, Users, MapPin,
-  ArrowRight,
+  ArrowRight, Star,
 } from 'lucide-react'
 import MockIcon from '../components/MockIcon'
 import StatusBadge from '../components/StatusBadge'
 import CreateOpportunityModal from '../components/CreateOpportunityModal'
+import FeatureOpportunityModal from '../components/FeatureOpportunityModal'
 import { useAuth } from '../contexts/AuthContext'
 import { opportunityReasonForUser, scoreOpportunityForUser } from '../lib/matching'
 import {
@@ -30,6 +31,10 @@ import {
   type OpportunityHubMetrics,
   type OwnerInterestRow,
 } from '../lib/opportunityHub'
+import {
+  confirmFeaturedCheckout,
+  isFeaturedActive,
+} from '../lib/opportunityFeatured'
 import { track } from '../lib/analytics'
 import { playConnectSound } from '../lib/connectSound'
 
@@ -107,6 +112,7 @@ export default function OpportunityPage() {
   const [inbox, setInbox] = useState<OwnerInterestRow[]>([])
   const [postApply, setPostApply] = useState<ScoredOpp | null>(null)
   const [postApplyNote, setPostApplyNote] = useState('')
+  const [featureFor, setFeatureFor] = useState<OpportunityItem | null>(null)
 
   const reloadCatalog = useCallback(async () => {
     setLoading(true)
@@ -211,8 +217,46 @@ export default function OpportunityPage() {
         personalizedReason: opportunityReasonForUser(profile, o.aiReason, o.title),
         personalizedMatch: scoreOpportunityForUser(profile, o),
       }))
-      .sort((a, b) => b.personalizedMatch - a.personalizedMatch),
+      .sort((a, b) => {
+        const af = isFeaturedActive(a) ? 1 : 0
+        const bf = isFeaturedActive(b) ? 1 : 0
+        if (bf !== af) return bf - af
+        return b.personalizedMatch - a.personalizedMatch
+      }),
   [filtered, profile])
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const featured = params.get('featured')
+    if (featured === 'cancel') {
+      setSuccess('')
+      setError('Featured checkout cancelled — no charge. Your listing stays free.')
+      navigate('/opportunities', { replace: true })
+      return
+    }
+    if (featured !== 'success') return
+    const sessionId = params.get('session_id')
+    if (!sessionId) {
+      setError('Payment returned without a session. Contact support if you were charged.')
+      navigate('/opportunities', { replace: true })
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      const res = await confirmFeaturedCheckout(sessionId)
+      if (cancelled) return
+      navigate('/opportunities', { replace: true })
+      if (!res.ok) {
+        setError(res.error)
+        return
+      }
+      setError('')
+      setSuccess('Payment confirmed — your listing is Featured and pinned to the top.')
+      void reloadCatalog()
+      track('opportunity_featured_success_view', { opportunity_id: res.opportunityId })
+    })()
+    return () => { cancelled = true }
+  }, [location.search, navigate, reloadCatalog])
 
   const myList = useMemo(() => Object.values(interestMap), [interestMap])
 
@@ -343,7 +387,7 @@ export default function OpportunityPage() {
               </h1>
               <p className="text-slate-400 text-sm sm:text-[15px] leading-relaxed max-w-xl">
                 Jobs, clients, co-founders, services, partnerships — ranked by Twin fit.
-                Create in minutes, share a public page, apply, and connect.
+                Create in minutes, share a public page, apply, connect — or Feature for priority placement.
               </p>
             </div>
 
@@ -418,7 +462,7 @@ export default function OpportunityPage() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="grid grid-cols-2 sm:grid-cols-5 gap-2"
+              className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2"
             >
               {[
                 ['Created', hubMetrics.created, '#f59e0b'],
@@ -426,12 +470,11 @@ export default function OpportunityPage() {
                 ['Applied', hubMetrics.applied, '#34d399'],
                 ['Public views', hubMetrics.publicViews, '#38bdf8'],
                 ['Conversations', hubMetrics.conversationsStarted, '#a78bfa'],
-              ].map(([label, value, accent], idx) => (
+                ['Featured', hubMetrics.featuredCheckout, '#fbbf24'],
+              ].map(([label, value, accent]) => (
                 <div
                   key={String(label)}
-                  className={`relative overflow-hidden rounded-2xl border border-white/[0.07] px-3.5 py-3 ${
-                    idx === 4 ? 'col-span-2 sm:col-span-1' : ''
-                  }`}
+                  className="relative overflow-hidden rounded-2xl border border-white/[0.07] px-3.5 py-3"
                   style={{ background: 'linear-gradient(160deg, rgba(18,28,40,0.9), rgba(10,14,22,0.95))' }}
                 >
                   <div
@@ -694,6 +737,8 @@ export default function OpportunityPage() {
               const status = statusOf(o.id)
               const open = expandedId === o.id
               const busy = busyId === o.id
+              const featured = isFeaturedActive(o)
+              const isOwner = !!(user && o.ownerId && o.ownerId === user.id)
 
               return (
                 <motion.article
@@ -703,14 +748,25 @@ export default function OpportunityPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.35, delay: Math.min(i * 0.04, 0.24) }}
                   className={`group relative overflow-hidden rounded-3xl border transition-all duration-300 ${
-                    open
-                      ? 'border-teal-500/35'
-                      : 'border-white/[0.07] hover:border-white/15 hover:-translate-y-0.5'
+                    featured
+                      ? 'border-amber-500/40'
+                      : open
+                        ? 'border-teal-500/35'
+                        : 'border-white/[0.07] hover:border-white/15 hover:-translate-y-0.5'
                   }`}
                   style={{
-                    background: 'linear-gradient(165deg, rgba(18,28,40,0.96) 0%, rgba(8,12,20,0.98) 100%)',
+                    background: featured
+                      ? 'linear-gradient(165deg, rgba(40,28,12,0.96) 0%, rgba(8,12,20,0.98) 100%)'
+                      : 'linear-gradient(165deg, rgba(18,28,40,0.96) 0%, rgba(8,12,20,0.98) 100%)',
                   }}
                 >
+                  {featured && (
+                    <div className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider text-amber-950"
+                      style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)' }}
+                    >
+                      <Star size={10} fill="currentColor" /> Featured
+                    </div>
+                  )}
                   <div
                     className="pointer-events-none absolute inset-x-0 top-0 h-px"
                     style={{ background: `linear-gradient(90deg, transparent, ${accent}88, transparent)` }}
@@ -802,6 +858,16 @@ export default function OpportunityPage() {
                         </button>
                       </div>
                       <div className="flex gap-2">
+                        {isOwner && !featured && (
+                          <button
+                            type="button"
+                            onClick={() => setFeatureFor(o)}
+                            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-amber-950"
+                            style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)' }}
+                          >
+                            <Star size={12} fill="currentColor" /> Feature
+                          </button>
+                        )}
                         {o.ownerId && o.ownerId !== user?.id && (
                           <button
                             type="button"
@@ -953,6 +1019,18 @@ export default function OpportunityPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {featureFor && (
+        <FeatureOpportunityModal
+          open
+          item={featureFor}
+          onClose={() => setFeatureFor(null)}
+          onIntentRecorded={message => {
+            setError('')
+            setSuccess(message)
+          }}
+        />
+      )}
 
       {createOpen && user && (
         <CreateOpportunityModal

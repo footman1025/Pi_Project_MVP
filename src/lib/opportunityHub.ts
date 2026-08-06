@@ -59,6 +59,7 @@ export type OpportunityHubMetrics = {
   applied: number
   publicViews: number
   conversationsStarted: number
+  featuredCheckout: number
   windowDays: number
   tableReady: boolean
   error?: string
@@ -73,6 +74,7 @@ export async function fetchOpportunityHubMetrics(windowDays = 30): Promise<Oppor
     applied: 0,
     publicViews: 0,
     conversationsStarted: 0,
+    featuredCheckout: 0,
     windowDays,
     tableReady: false,
   }
@@ -88,6 +90,9 @@ export async function fetchOpportunityHubMetrics(windowDays = 30): Promise<Oppor
         'opportunity_public_view',
         'opportunity_conversation_start',
         'opportunity_conversation_intent',
+        'opportunity_featured_checkout',
+        'opportunity_featured_intent',
+        'opportunity_featured_paid',
       ])
       .limit(5000)
 
@@ -115,6 +120,10 @@ export async function fetchOpportunityHubMetrics(windowDays = 30): Promise<Oppor
       publicViews: count('opportunity_public_view'),
       conversationsStarted:
         count('opportunity_conversation_start') + count('opportunity_conversation_intent'),
+      featuredCheckout:
+        count('opportunity_featured_checkout') +
+        count('opportunity_featured_intent') +
+        count('opportunity_featured_paid'),
       windowDays,
       tableReady: true,
     }

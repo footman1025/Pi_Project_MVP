@@ -19,15 +19,17 @@ export type TractionSnapshot = {
     matchExpands: number
     introsStarted: number
   }
-  opportunities: {
-    pageViews: number
-    expands: number
-    interestMarked: number
-    created: number
-    applied: number
-    publicViews: number
-    conversationsStarted: number
-  }
+    opportunities: {
+      pageViews: number
+      expands: number
+      interestMarked: number
+      created: number
+      applied: number
+      publicViews: number
+      conversationsStarted: number
+      featuredPaid: number
+      featuredIntent: number
+    }
   communities: {
     joins: number
     posts: number
@@ -93,6 +95,8 @@ export async function fetchTractionSnapshot(windowDays = 7): Promise<TractionSna
       applied: 0,
       publicViews: 0,
       conversationsStarted: 0,
+      featuredPaid: 0,
+      featuredIntent: 0,
     },
     communities: { joins: 0, posts: 0 },
     growth: {
@@ -201,6 +205,9 @@ export async function fetchTractionSnapshot(windowDays = 7): Promise<TractionSna
       publicViews: count('opportunity_public_view'),
       conversationsStarted:
         count('opportunity_conversation_start') + count('opportunity_conversation_intent'),
+      featuredPaid: count('opportunity_featured_paid'),
+      featuredIntent:
+        count('opportunity_featured_intent') + count('opportunity_featured_checkout'),
     },
     communities: {
       joins: count('community_join'),

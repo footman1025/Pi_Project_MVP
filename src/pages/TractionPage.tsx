@@ -192,7 +192,7 @@ export default function TractionPage() {
               <MetricCard
                 label="Opp. Hub loop"
                 value={String(snap.opportunities.applied)}
-                sub={`${snap.opportunities.created} created · ${snap.opportunities.interestMarked} interest · ${snap.opportunities.publicViews} public · ${snap.opportunities.conversationsStarted} chats`}
+                sub={`${snap.opportunities.created} created · ${snap.opportunities.interestMarked} interest · ${snap.opportunities.publicViews} public · ${snap.opportunities.conversationsStarted} chats · ${snap.opportunities.featuredPaid} paid featured · ${snap.opportunities.featuredIntent} featured intent`}
                 accent="#fbbf24"
                 Icon={Target}
               />

@@ -2,6 +2,7 @@ import { mockOpportunities } from '../data/mockData'
 import { supabase } from './supabase'
 import { track } from './analytics'
 import { friendlyNetworkError, isOnline } from './messagingReliability'
+import { isFeaturedActive } from './opportunityFeatured'
 
 /** Normalized opportunity shape used by UI + scoring (works for DB, mock, or local). */
 export type OpportunityItem = {
@@ -22,6 +23,9 @@ export type OpportunityItem = {
   slug?: string | null
   ownerId?: string | null
   source?: 'platform' | 'member' | string
+  isFeatured?: boolean
+  featuredUntil?: string | null
+  featuredAt?: string | null
 }
 
 export type OpportunitiesResult = {
@@ -65,6 +69,9 @@ type DbRow = {
   slug?: string | null
   owner_id?: string | null
   source?: string | null
+  is_featured?: boolean | null
+  featured_until?: string | null
+  featured_at?: string | null
 }
 
 const STYLE_BY_CATEGORY: Record<string, { iconName: string; iconColor: string; color: string; border: string }> = {
@@ -180,18 +187,30 @@ function fromDb(row: DbRow): OpportunityItem {
     slug: row.slug || null,
     ownerId: row.owner_id || null,
     source: row.source || (row.owner_id ? 'member' : 'platform'),
+    isFeatured: !!row.is_featured,
+    featuredUntil: row.featured_until || null,
+    featuredAt: row.featured_at || null,
   }
 }
 
 const SELECT_COLS =
-  'id, title, subtitle, prize, deadline, category, icon_name, icon_color, color, border, ai_reason, baseline_match, description, location, slug, owner_id, source'
+  'id, title, subtitle, prize, deadline, category, icon_name, icon_color, color, border, ai_reason, baseline_match, description, location, slug, owner_id, source, is_featured, featured_until, featured_at'
 
 /**
  * Load active opportunities from Supabase.
  * Merges member-created local listings; falls back to mock if DB empty/errors.
+ * Featured (active) listings are sorted to the top.
  */
 export async function fetchOpportunities(): Promise<OpportunitiesResult> {
   const local = readLocal().filter(o => o.source === 'member')
+  const sortFeaturedFirst = (items: OpportunityItem[]) =>
+    [...items].sort((a, b) => {
+      const af = isFeaturedActive(a) ? 1 : 0
+      const bf = isFeaturedActive(b) ? 1 : 0
+      if (bf !== af) return bf - af
+      return 0
+    })
+
   try {
     const { data, error } = await supabase
       .from('opportunities')
@@ -200,30 +219,46 @@ export async function fetchOpportunities(): Promise<OpportunitiesResult> {
       .order('created_at', { ascending: false })
 
     if (error) {
-      // Older schema without new columns
+      // Older schema without hub/featured columns
       if (/column|schema cache/i.test(error.message)) {
         const legacy = await supabase
+          .from('opportunities')
+          .select(
+            'id, title, subtitle, prize, deadline, category, icon_name, icon_color, color, border, ai_reason, baseline_match, description, location, slug, owner_id, source',
+          )
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+        if (!legacy.error && legacy.data?.length) {
+          const items = sortFeaturedFirst(mergeUnique((legacy.data as DbRow[]).map(fromDb), local))
+          return { items, isLive: true }
+        }
+        const bare = await supabase
           .from('opportunities')
           .select(
             'id, title, subtitle, prize, deadline, category, icon_name, icon_color, color, border, ai_reason, baseline_match',
           )
           .eq('is_active', true)
           .order('baseline_match', { ascending: false })
-        if (!legacy.error && legacy.data?.length) {
-          const items = mergeUnique((legacy.data as DbRow[]).map(fromDb), local)
-          return { items, isLive: true }
+        if (!bare.error && bare.data?.length) {
+          return {
+            items: sortFeaturedFirst(mergeUnique((bare.data as DbRow[]).map(fromDb), local)),
+            isLive: true,
+          }
         }
       }
-      return { items: mergeUnique(fromMock(), local), isLive: false }
+      return { items: sortFeaturedFirst(mergeUnique(fromMock(), local)), isLive: false }
     }
 
     if (!data?.length) {
-      return { items: mergeUnique(fromMock(), local), isLive: false }
+      return { items: sortFeaturedFirst(mergeUnique(fromMock(), local)), isLive: false }
     }
 
-    return { items: mergeUnique((data as DbRow[]).map(fromDb), local), isLive: true }
+    return {
+      items: sortFeaturedFirst(mergeUnique((data as DbRow[]).map(fromDb), local)),
+      isLive: true,
+    }
   } catch {
-    return { items: mergeUnique(fromMock(), local), isLive: false }
+    return { items: sortFeaturedFirst(mergeUnique(fromMock(), local)), isLive: false }
   }
 }
 
