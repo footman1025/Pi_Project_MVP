@@ -193,8 +193,11 @@ function fromDb(row: DbRow): OpportunityItem {
   }
 }
 
-const SELECT_COLS =
-  'id, title, subtitle, prize, deadline, category, icon_name, icon_color, color, border, ai_reason, baseline_match, description, location, slug, owner_id, source, is_featured, featured_until, featured_at'
+const SELECT_HUB =
+  'id, title, subtitle, prize, deadline, category, icon_name, icon_color, color, border, ai_reason, baseline_match, description, location, slug, owner_id, source'
+
+const SELECT_FULL =
+  `${SELECT_HUB}, is_featured, featured_until, featured_at`
 
 /**
  * Load active opportunities from Supabase.
@@ -212,14 +215,30 @@ export async function fetchOpportunities(): Promise<OpportunitiesResult> {
     })
 
   try {
-    const { data, error } = await supabase
+    let data: DbRow[] | null = null
+    let error: { message: string } | null = null
+
+    const full = await supabase
       .from('opportunities')
-      .select(SELECT_COLS)
+      .select(SELECT_FULL)
       .eq('is_active', true)
       .order('created_at', { ascending: false })
 
+    if (full.error && /is_featured|featured_until|featured_at|column|schema cache/i.test(full.error.message)) {
+      const hub = await supabase
+        .from('opportunities')
+        .select(SELECT_HUB)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+      data = hub.data as DbRow[] | null
+      error = hub.error
+    } else {
+      data = full.data as DbRow[] | null
+      error = full.error
+    }
+
     if (error) {
-      // Older schema without hub/featured columns
+      // Older schema without hub columns
       if (/column|schema cache/i.test(error.message)) {
         const legacy = await supabase
           .from('opportunities')
@@ -254,7 +273,7 @@ export async function fetchOpportunities(): Promise<OpportunitiesResult> {
     }
 
     return {
-      items: sortFeaturedFirst(mergeUnique((data as DbRow[]).map(fromDb), local)),
+      items: sortFeaturedFirst(mergeUnique(data.map(fromDb), local)),
       isLive: true,
     }
   } catch {
@@ -289,7 +308,7 @@ export async function fetchOpportunityBySlugOrId(
     for (const slug of trySlugs) {
       const bySlug = await supabase
         .from('opportunities')
-        .select(SELECT_COLS)
+        .select(SELECT_HUB)
         .eq('is_active', true)
         .eq('slug', slug)
         .maybeSingle()
@@ -302,7 +321,7 @@ export async function fetchOpportunityBySlugOrId(
     if (cleaned !== key || trySlugs.length) {
       const { data: prefixRows } = await supabase
         .from('opportunities')
-        .select(SELECT_COLS)
+        .select(SELECT_HUB)
         .eq('is_active', true)
         .like('slug', `${cleaned}-%`)
         .limit(8)
@@ -315,7 +334,7 @@ export async function fetchOpportunityBySlugOrId(
 
     const byId = await supabase
       .from('opportunities')
-      .select(SELECT_COLS)
+      .select(SELECT_HUB)
       .eq('id', key)
       .eq('is_active', true)
       .maybeSingle()
@@ -363,6 +382,7 @@ export async function createOpportunity(input: {
   const aiReason = `Member-posted ${category.toLowerCase()} opportunity on Pi Opportunity Hub.`
 
   try {
+    // Use hub columns only — featured cols may not exist until supabase_opportunity_featured.sql
     const { data, error } = await supabase
       .from('opportunities')
       .insert({
@@ -384,25 +404,26 @@ export async function createOpportunity(input: {
         location: location || null,
         source: 'member',
       })
-      .select(SELECT_COLS)
+      .select(SELECT_HUB)
       .maybeSingle()
 
     if (error) {
-      if (/owner_id|slug|description|source|schema cache|column/i.test(error.message)) {
+      const msg = error.message || ''
+      if (/owner_id|slug|description|location|source|schema cache/i.test(msg) && /column|could not find|schema/i.test(msg)) {
         return {
           ok: false,
           error:
-            'Database not ready for Opportunity Hub. Run supabase_opportunities.sql then supabase_opportunities_hub.sql in Supabase.',
+            'Database missing Opportunity Hub columns. In Supabase SQL Editor run supabase_opportunities_hub.sql, then retry.',
         }
       }
-      if (/policy|permission|row-level security|rls/i.test(error.message)) {
+      if (/policy|permission|row-level security|rls/i.test(msg)) {
         return {
           ok: false,
           error:
             'Could not publish (permissions). Confirm you’re signed in and supabase_opportunities_hub.sql policies are applied.',
         }
       }
-      return { ok: false, error: friendlyNetworkError(error, error.message) }
+      return { ok: false, error: friendlyNetworkError(error, msg) }
     }
 
     if (!data) {
