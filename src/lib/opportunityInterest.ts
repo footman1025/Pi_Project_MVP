@@ -96,6 +96,20 @@ export async function upsertOpportunityInterest(input: {
   writeLocal(row)
 
   try {
+    // Only notify owner when status actually changes (avoid re-apply / re-interest doubles)
+    let previousStatus: InterestStatus | null = null
+    try {
+      const { data: prev } = await supabase
+        .from('opportunity_interest')
+        .select('status')
+        .eq('user_id', input.userId)
+        .eq('opportunity_id', input.opportunityId)
+        .maybeSingle()
+      previousStatus = (prev?.status as InterestStatus) || null
+    } catch {
+      /* ignore */
+    }
+
     await withRetry(async () => {
       const { error } = await supabase.from('opportunity_interest').upsert(
         {
@@ -121,7 +135,8 @@ export async function upsertOpportunityInterest(input: {
       live: true,
     })
 
-    if (input.ownerId && input.ownerId !== input.userId) {
+    const statusChanged = previousStatus !== input.status
+    if (statusChanged && input.ownerId && input.ownerId !== input.userId) {
       void notifyOpportunityOwnerOfInterest({
         ownerId: input.ownerId,
         actorId: input.userId,

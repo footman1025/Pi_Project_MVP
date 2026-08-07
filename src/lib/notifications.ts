@@ -1,7 +1,6 @@
 import { supabase } from './supabase'
 import { sendPushToUser } from './pushNotifications'
 import { sendEmailToUser } from './emailNotifications'
-import { withRetry } from './messagingReliability'
 
 export type NotifType = 'like' | 'comment' | 'follow' | 'message' | 'ai_match' | 'ai_opportunity'
 
@@ -14,6 +13,24 @@ type NotifyInput = {
   /** Deep link for push tap */
   path?: string
   title?: string
+}
+
+/** How far back to treat an identical event as a duplicate (not a new alert). */
+const DEDUPE_WINDOW_MS = 10 * 60 * 1000
+
+/** Session guard — same event must not push twice from parallel client + trigger paths. */
+const fannedThisSession = new Set<string>()
+
+function eventKey(input: {
+  userId: string
+  actorId: string
+  type: NotifType
+  postId?: string | null
+  message: string
+}) {
+  const post = input.postId || ''
+  const msg = input.type === 'ai_opportunity' || input.type === 'message' ? input.message : ''
+  return `${input.userId}|${input.type}|${input.actorId}|${post}|${msg}`
 }
 
 function defaultPath(type: NotifType, actorId: string, _postId?: string | null) {
@@ -44,7 +61,122 @@ function defaultTitle(type: NotifType) {
   }
 }
 
-/** Create an in-app notification + Web Push (cellphone) + email if opted in. */
+function pushTagFor(type: NotifType, id: string, actorId: string) {
+  // Stable tags so OS replaces, never stacks duplicates of the same event.
+  if (type === 'message') return `pi-msg-${actorId}`
+  if (type === 'follow') return `pi-follow-${actorId}`
+  if (type === 'like') return `pi-like-${id}`
+  if (type === 'comment') return `pi-comment-${id}`
+  if (type === 'ai_match') return 'pi-ai-match'
+  if (type === 'ai_opportunity') return 'pi-ai-opp'
+  return `pi-notif-${id}`
+}
+
+/** One unread message row per sender — refresh text and delete extras. */
+async function coalesceUnreadMessage(input: {
+  userId: string
+  actorId: string
+  message: string
+}): Promise<{ id: string } | null> {
+  const { data } = await supabase
+    .from('notifications')
+    .select('id')
+    .eq('user_id', input.userId)
+    .eq('actor_id', input.actorId)
+    .eq('type', 'message')
+    .eq('is_read', false)
+    .order('created_at', { ascending: false })
+    .limit(20)
+
+  const rows = data || []
+  if (!rows.length) return null
+
+  const keepId = rows[0].id as string
+  const dropIds = rows.slice(1).map(r => r.id as string)
+
+  await supabase
+    .from('notifications')
+    .update({ message: input.message, is_read: false })
+    .eq('id', keepId)
+
+  if (dropIds.length) {
+    await supabase.from('notifications').delete().in('id', dropIds)
+  }
+
+  return { id: keepId }
+}
+
+/** If trigger + client both wrote the same event, keep one row. */
+async function collapseRecentDuplicates(input: {
+  userId: string
+  actorId: string
+  type: NotifType
+  postId?: string | null
+  message: string
+}): Promise<{ id: string } | null> {
+  const since = new Date(Date.now() - DEDUPE_WINDOW_MS).toISOString()
+  let q = supabase
+    .from('notifications')
+    .select('id')
+    .eq('user_id', input.userId)
+    .eq('actor_id', input.actorId)
+    .eq('type', input.type)
+    .gte('created_at', since)
+    .order('created_at', { ascending: false })
+    .limit(20)
+
+  if (input.postId) q = q.eq('post_id', input.postId)
+  else q = q.is('post_id', null)
+  if (input.type === 'ai_opportunity') q = q.eq('message', input.message)
+
+  const { data } = await q
+  const rows = data || []
+  if (!rows.length) return null
+
+  const keepId = rows[0].id as string
+  const dropIds = rows.slice(1).map(r => r.id as string)
+  if (dropIds.length) {
+    await supabase.from('notifications').delete().in('id', dropIds)
+  }
+  return { id: keepId }
+}
+
+async function fanOut(input: {
+  userId: string
+  notifId: string
+  type: NotifType
+  actorId: string
+  message: string
+  path?: string
+  title?: string
+  postId?: string | null
+}) {
+  const deepLink = input.path || defaultPath(input.type, input.actorId, input.postId)
+  const notifTitle = input.title || defaultTitle(input.type)
+  const tag = pushTagFor(input.type, input.notifId, input.actorId)
+
+  await Promise.allSettled([
+    sendPushToUser({
+      userId: input.userId,
+      title: notifTitle,
+      body: input.message,
+      path: deepLink,
+      tag,
+    }),
+    sendEmailToUser({
+      userId: input.userId,
+      title: notifTitle,
+      body: input.message,
+      path: deepLink,
+    }),
+  ])
+}
+
+/**
+ * Create an in-app notification + Web Push + email if opted in.
+ * Dedupes against DB triggers / retries / rapid re-fires so the same event
+ * never creates two rows or two alerts.
+ */
 export async function createNotification({
   userId,
   actorId,
@@ -57,55 +189,96 @@ export async function createNotification({
   if (!userId || !actorId) return
   if (userId === actorId && type !== 'ai_opportunity' && type !== 'ai_match') return
 
-  let data: { id: string } | null = null
-  try {
-    data = await withRetry(async () => {
-      const { data: row, error } = await supabase
-        .from('notifications')
-        .insert({
-          user_id: userId,
-          actor_id: actorId,
-          type,
-          post_id: postId,
-          message,
-        })
-        .select('id')
-        .maybeSingle()
-      if (error) throw new Error(error.message)
-      return row
-    }, { attempts: 2, baseMs: 350, label: 'Notification insert failed' })
-  } catch (err) {
-    console.warn('[notify] insert failed', err instanceof Error ? err.message : err)
-    return
+  // Messages: allow a new OS bump per send, but still one unread in-app row
+  const key = eventKey({ userId, actorId, type, postId, message })
+  if (type !== 'message') {
+    if (fannedThisSession.has(key)) return
+    fannedThisSession.add(key)
   }
 
-  if (!data?.id) return
+  try {
+    if (type === 'message') {
+      const coalesced = await coalesceUnreadMessage({ userId, actorId, message })
+      if (coalesced) {
+        await fanOut({
+          userId,
+          notifId: coalesced.id,
+          type,
+          actorId,
+          message,
+          path,
+          title,
+          postId,
+        })
+        return
+      }
+    }
 
-  const deepLink = path || defaultPath(type, actorId, postId)
-  const notifTitle = title || defaultTitle(type)
-  const pushTag =
-    type === 'ai_match'
-      ? 'pi-ai-match'
-      : type === 'ai_opportunity'
-        ? 'pi-ai-opp'
-        : `pi-notif-${data.id}`
+    // Collapse any rows already written by a DB trigger (or a raced client insert)
+    const existing = await collapseRecentDuplicates({ userId, actorId, type, postId, message })
+    if (existing) {
+      await fanOut({
+        userId,
+        notifId: existing.id,
+        type,
+        actorId,
+        message,
+        path,
+        title,
+        postId,
+      })
+      return
+    }
 
-  // Fan-out is best-effort — in-app row already saved
-  await Promise.allSettled([
-    sendPushToUser({
+    // Do not retry inserts — a successful insert with a failed response would create doubles
+    const { data, error } = await supabase
+      .from('notifications')
+      .insert({
+        user_id: userId,
+        actor_id: actorId,
+        type,
+        post_id: postId,
+        message,
+      })
+      .select('id')
+      .maybeSingle()
+
+    if (error) {
+      const raced = await collapseRecentDuplicates({ userId, actorId, type, postId, message })
+      if (raced) {
+        await fanOut({
+          userId,
+          notifId: raced.id,
+          type,
+          actorId,
+          message,
+          path,
+          title,
+          postId,
+        })
+        return
+      }
+      console.warn('[notify] insert failed', error.message)
+      return
+    }
+
+    if (!data?.id) return
+
+    // Final pass in case trigger wrote a twin in the same tick
+    const kept = await collapseRecentDuplicates({ userId, actorId, type, postId, message })
+    await fanOut({
       userId,
-      title: notifTitle,
-      body: message,
-      path: deepLink,
-      tag: pushTag,
-    }),
-    sendEmailToUser({
-      userId,
-      title: notifTitle,
-      body: message,
-      path: deepLink,
-    }),
-  ])
+      notifId: kept?.id || data.id,
+      type,
+      actorId,
+      message,
+      path,
+      title,
+      postId,
+    })
+  } catch (err) {
+    console.warn('[notify] failed', err instanceof Error ? err.message : err)
+  }
 }
 
 export async function notifyPostAuthorOfLike(
@@ -188,9 +361,7 @@ export async function notifyOpportunityOwnerOfInterest(input: {
   const verb = input.status === 'applied' ? 'applied to' : 'is interested in'
   const path = input.slug
     ? `/o/${encodeURIComponent(input.slug)}`
-    : input.opportunityId
-      ? `/opportunities`
-      : '/opportunities'
+    : '/opportunities'
   await createNotification({
     userId: input.ownerId,
     actorId: input.actorId,

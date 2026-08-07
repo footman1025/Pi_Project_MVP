@@ -31,27 +31,14 @@ create policy "Users can delete own follows"
   on public.follows for delete
   using (auth.uid() = follower_id);
 
--- Keep cached counts on profiles in sync
+-- Keep cached counts on profiles in sync (no notification insert — app owns that)
 create or replace function public.notify_on_follow()
 returns trigger
 language plpgsql
 security definer
 set search_path = public
 as $$
-declare
-  actor_name text;
 begin
-  select coalesce(full_name, username, 'Someone') into actor_name
-  from public.profiles where id = new.follower_id;
-
-  insert into public.notifications (user_id, actor_id, type, message)
-  values (
-    new.following_id,
-    new.follower_id,
-    'follow',
-    actor_name || ' started following you'
-  );
-
   update public.profiles
     set following_count = coalesce(following_count, 0) + 1
     where id = new.follower_id;

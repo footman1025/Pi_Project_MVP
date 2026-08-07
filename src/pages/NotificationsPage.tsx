@@ -94,6 +94,46 @@ function notificationActionText(n: NotifRow): string {
   }
 }
 
+/** Collapse trigger+client doubles (and message spam) for the recipient. */
+function collapseNotificationList(rows: NotifRow[]): { keep: NotifRow[]; dropIds: string[] } {
+  const keep: NotifRow[] = []
+  const dropIds: string[] = []
+  const seen = new Set<string>()
+
+  for (const n of rows) {
+    // One unread/read message row per actor; one like/comment per post+actor; one follow per actor
+    let key: string
+    if (n.type === 'message') {
+      key = `message|${n.actor_id || ''}`
+    } else if (n.type === 'like' || n.type === 'comment') {
+      key = `${n.type}|${n.actor_id || ''}|${n.post_id || ''}`
+    } else if (n.type === 'follow') {
+      key = `follow|${n.actor_id || ''}`
+    } else {
+      key = `${n.type}|${n.actor_id || ''}|${(n.message || '').slice(0, 120)}`
+    }
+
+    if (seen.has(key)) {
+      dropIds.push(n.id)
+      continue
+    }
+    seen.add(key)
+    keep.push(n)
+  }
+
+  return { keep, dropIds }
+}
+
+async function purgeDuplicateNotifications(dropIds: string[]) {
+  if (!dropIds.length) return
+  // Best-effort — needs delete policy; ignore failures
+  const { error } = await supabase.from('notifications').delete().in('id', dropIds)
+  if (error) {
+    // Fall back: mark extras read so badge isn't inflated
+    await supabase.from('notifications').update({ is_read: true }).in('id', dropIds)
+  }
+}
+
 function ToggleSwitch({
   checked,
   disabled,
@@ -171,7 +211,14 @@ export default function NotificationsPage() {
         if (error) throw new Error(error.message)
         return rows
       }, { attempts: 3, baseMs: 400, label: 'Could not load notifications' })
-      setNotifications((data as NotifRow[]) || [])
+      const rows = (data as NotifRow[]) || []
+      const { keep, dropIds } = collapseNotificationList(rows)
+      setNotifications(keep)
+      if (dropIds.length) {
+        void purgeDuplicateNotifications(dropIds).then(() => {
+          window.dispatchEvent(new CustomEvent('pi:notifications-read'))
+        })
+      }
     } catch (err) {
       setListError(friendlyNetworkError(err, 'Could not load notifications'))
     } finally {
@@ -244,7 +291,13 @@ export default function NotificationsPage() {
         event: 'INSERT', schema: 'public', table: 'notifications',
         filter: `user_id=eq.${user.id}`
       }, (payload) => {
-        setNotifications(n => [payload.new as NotifRow, ...n])
+        const row = payload.new as NotifRow
+        setNotifications(n => {
+          if (n.some(x => x.id === row.id)) return n
+          const { keep, dropIds } = collapseNotificationList([row, ...n])
+          if (dropIds.length) void purgeDuplicateNotifications(dropIds)
+          return keep
+        })
       })
       .subscribe((status) => {
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {

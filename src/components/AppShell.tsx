@@ -157,8 +157,11 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
           if (row?.type === 'follow' || row?.type === 'message') {
             void unlockConnectSound().then(() => playConnectSound())
           }
-          // Skip OS toast for AI suggestions here — push already delivers them with a stable tag
-          // (avoids “same alert twice”: push + realtime local toast)
+          // Never stack OS toasts: createNotification already sends Web Push with a stable tag.
+          // Local realtime toast only when push permission is not granted.
+          const pushGranted =
+            typeof Notification !== 'undefined' && Notification.permission === 'granted'
+          if (pushGranted) return
           if (row?.type === 'ai_match' || row?.type === 'ai_opportunity') return
           showSystemAlertForRow(row)
         })

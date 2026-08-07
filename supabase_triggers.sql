@@ -1,89 +1,23 @@
 -- ============================================================
--- Pi MVP — Notification + follow-count triggers (OPTIONAL)
--- Run in Supabase SQL Editor after the base schema.
---
--- If you apply these triggers, remove client-side notification
--- calls in FeedPage / MessagingPage / ProfilePage to avoid
--- duplicate notifications. Client-side helpers work without this.
+-- Pi MVP — follow / post count triggers
+-- Notifications are created by the app (src/lib/notifications.ts)
+-- so they can dedupe + send push/email once. Do NOT insert
+-- notifications from triggers (causes doubles).
+-- Prefer: supabase_notifications_no_doubles.sql if old notify
+-- triggers are already installed.
 -- ============================================================
 
--- Prefer security-definer so RLS does not block trigger inserts
-create or replace function public.create_notification(
-  p_user_id uuid,
-  p_actor_id uuid,
-  p_type text,
-  p_post_id uuid,
-  p_message text
-) returns void language plpgsql security definer set search_path = public as $$
-begin
-  if p_user_id is null or p_actor_id is null or p_user_id = p_actor_id then
-    return;
-  end if;
-  insert into public.notifications (user_id, actor_id, type, post_id, message)
-  values (p_user_id, p_actor_id, p_type, p_post_id, p_message);
-end;
-$$;
-
--- Likes → notify post author
-create or replace function public.notify_on_like()
-returns trigger language plpgsql security definer set search_path = public as $$
-declare
-  author uuid;
-  actor_name text;
-begin
-  select author_id into author from public.posts where id = new.post_id;
-  select coalesce(full_name, username, 'Someone') into actor_name from public.profiles where id = new.user_id;
-  perform public.create_notification(author, new.user_id, 'like', new.post_id, actor_name || ' liked your post');
-  return new;
-end;
-$$;
+-- Likes / comments / messages: no notification triggers
 drop trigger if exists on_like_notify on public.likes;
-create trigger on_like_notify after insert on public.likes
-  for each row execute procedure public.notify_on_like();
-
--- Comments → notify post author
-create or replace function public.notify_on_comment()
-returns trigger language plpgsql security definer set search_path = public as $$
-declare
-  author uuid;
-  actor_name text;
-begin
-  select author_id into author from public.posts where id = new.post_id;
-  select coalesce(full_name, username, 'Someone') into actor_name from public.profiles where id = new.author_id;
-  perform public.create_notification(author, new.author_id, 'comment', new.post_id, actor_name || ' commented on your post');
-  return new;
-end;
-$$;
 drop trigger if exists on_comment_notify on public.comments;
-create trigger on_comment_notify after insert on public.comments
-  for each row execute procedure public.notify_on_comment();
-
--- Messages → notify receiver
-create or replace function public.notify_on_message()
-returns trigger language plpgsql security definer set search_path = public as $$
-declare
-  actor_name text;
-begin
-  select coalesce(full_name, username, 'Someone') into actor_name from public.profiles where id = new.sender_id;
-  perform public.create_notification(new.receiver_id, new.sender_id, 'message', null, actor_name || ' sent you a message');
-  return new;
-end;
-$$;
 drop trigger if exists on_message_notify on public.messages;
-create trigger on_message_notify after insert on public.messages
-  for each row execute procedure public.notify_on_message();
 
--- Follows → notify + update counts
+-- Follows → update counts only (client sends the follow notification)
 create or replace function public.notify_on_follow()
 returns trigger language plpgsql security definer set search_path = public as $$
-declare
-  actor_name text;
 begin
-  select coalesce(full_name, username, 'Someone') into actor_name from public.profiles where id = new.follower_id;
-  perform public.create_notification(new.following_id, new.follower_id, 'follow', null, actor_name || ' started following you');
-
-  update public.profiles set following_count = following_count + 1 where id = new.follower_id;
-  update public.profiles set followers_count = followers_count + 1 where id = new.following_id;
+  update public.profiles set following_count = coalesce(following_count, 0) + 1 where id = new.follower_id;
+  update public.profiles set followers_count = coalesce(followers_count, 0) + 1 where id = new.following_id;
   return new;
 end;
 $$;
