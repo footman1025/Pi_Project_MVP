@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Activity, ArrowLeft, Bell, Bot, Flame, Loader2, MessageSquareHeart,
-  RefreshCw, Sparkles, Target, TrendingUp, Users, Zap,
+  Activity, ArrowLeft, Bell, Bot, Briefcase, Copy, ExternalLink, Flame, Loader2,
+  MessageSquareHeart, RefreshCw, Sparkles, Target, TrendingUp, Users, Zap,
 } from 'lucide-react'
 import StatusBadge from '../components/StatusBadge'
 import { fetchTractionSnapshot, TractionSnapshot } from '../lib/traction'
+import { fetchNicheCatalog, type NicheCatalogItem } from '../lib/nicheCatalog'
 import { track } from '../lib/analytics'
 
 function fmtPct(n: number | null) {
@@ -68,19 +69,34 @@ export default function TractionPage() {
   const [days, setDays] = useState(7)
   const [loading, setLoading] = useState(true)
   const [snap, setSnap] = useState<TractionSnapshot | null>(null)
+  const [niche, setNiche] = useState<NicheCatalogItem[]>([])
+  const [copied, setCopied] = useState(false)
 
   const load = async (windowDays = days) => {
     setLoading(true)
-    const data = await fetchTractionSnapshot(windowDays)
+    const [data, catalog] = await Promise.all([
+      fetchTractionSnapshot(windowDays),
+      fetchNicheCatalog(),
+    ])
     setSnap(data)
+    setNiche(catalog)
     setLoading(false)
-    track('traction_view', { window_days: windowDays, ready: data.tableReady })
+    track('traction_view', { window_days: windowDays, ready: data.tableReady, niche: catalog.length })
   }
 
   useEffect(() => {
     void load(days)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [days])
+
+  const copyNicheLinks = async () => {
+    if (!niche.length) return
+    const text = niche.map(n => `${n.title}\n${n.url}`).join('\n\n')
+    await navigator.clipboard?.writeText(text)
+    setCopied(true)
+    track('niche_links_copied', { count: niche.length })
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   const yesPct = snap?.feedback.wouldUseAgainPct ?? 0
 
@@ -167,6 +183,89 @@ export default function TractionPage() {
 
         {snap && (
           <div className={`space-y-5 ${loading ? 'opacity-60 pointer-events-none' : ''}`}>
+            {/* Opportunity Hub 0→1 proof */}
+            <section
+              className="rounded-2xl border border-amber-500/25 p-5 sm:p-6"
+              style={{ background: 'linear-gradient(160deg, rgba(40,28,12,0.92), rgba(10,14,22,0.98))' }}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <div
+                      className="w-9 h-9 rounded-xl flex items-center justify-center"
+                      style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}
+                    >
+                      <Briefcase size={16} className="text-white" />
+                    </div>
+                    <h2 className="text-white font-bold text-base">Opportunity Hub · 0→1 proof</h2>
+                    <StatusBadge kind="live" label="Solo founders niche" />
+                  </div>
+                  <p className="text-slate-400 text-xs leading-relaxed max-w-xl">
+                    Watch create → public view → apply → chat → Featured. Share the public links below into one community.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => void copyNicheLinks()}
+                    disabled={!niche.length}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-amber-950 disabled:opacity-40"
+                    style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)' }}
+                  >
+                    <Copy size={12} /> {copied ? 'Copied' : 'Copy all links'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/opportunities')}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-200 border border-white/15 hover:bg-white/5"
+                  >
+                    Open Hub <ExternalLink size={12} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
+                <MiniStat value={String(snap.opportunities.created)} label="Created" color="#f59e0b" />
+                <MiniStat value={String(snap.opportunities.publicViews)} label="Public views" color="#38bdf8" />
+                <MiniStat value={String(snap.opportunities.interestMarked)} label="Interest" color="#2dd4bf" />
+                <MiniStat value={String(snap.opportunities.applied)} label="Applied" color="#34d399" />
+                <MiniStat value={String(snap.opportunities.conversationsStarted)} label="Chats" color="#a78bfa" />
+                <MiniStat
+                  value={String(snap.opportunities.featuredPaid + snap.opportunities.featuredIntent)}
+                  label="Featured"
+                  color="#fbbf24"
+                />
+              </div>
+
+              {niche.length > 0 ? (
+                <ul className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                  {niche.map(n => (
+                    <li
+                      key={n.id}
+                      className="flex flex-wrap items-center gap-2 text-xs border border-white/5 rounded-xl px-3 py-2 bg-black/25"
+                    >
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-200/80 shrink-0">
+                        {n.category}
+                      </span>
+                      <span className="text-white font-semibold flex-1 min-w-0 truncate">{n.title}</span>
+                      <a
+                        href={n.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-teal-300 font-semibold hover:underline inline-flex items-center gap-1 shrink-0"
+                      >
+                        /o/{n.slug} <ExternalLink size={11} />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-slate-500 text-xs">
+                  Niche catalog empty — run <code className="text-teal-300">npm run seed:opportunities</code> locally.
+                </p>
+              )}
+            </section>
+
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <MetricCard
                 label="Activation"

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Briefcase, Sparkles, Clock4, ChevronDown, ChevronUp, Loader2, Heart, Zap,
   Send, X, Inbox, Plus, ExternalLink, MessageCircle, BarChart3, Users, MapPin,
-  ArrowRight, Star,
+  ArrowRight, Star, Copy,
 } from 'lucide-react'
 import MockIcon from '../components/MockIcon'
 import StatusBadge from '../components/StatusBadge'
@@ -35,6 +35,7 @@ import {
   confirmFeaturedCheckout,
   isFeaturedActive,
 } from '../lib/opportunityFeatured'
+import { fetchNicheCatalog, type NicheCatalogItem } from '../lib/nicheCatalog'
 import { track } from '../lib/analytics'
 import { playConnectSound } from '../lib/connectSound'
 
@@ -113,6 +114,8 @@ export default function OpportunityPage() {
   const [postApply, setPostApply] = useState<ScoredOpp | null>(null)
   const [postApplyNote, setPostApplyNote] = useState('')
   const [featureFor, setFeatureFor] = useState<OpportunityItem | null>(null)
+  const [niche, setNiche] = useState<NicheCatalogItem[]>([])
+  const [nicheCopied, setNicheCopied] = useState(false)
 
   const reloadCatalog = useCallback(async () => {
     setLoading(true)
@@ -155,11 +158,26 @@ export default function OpportunityPage() {
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      const m = await fetchOpportunityHubMetrics(30)
-      if (!cancelled) setHubMetrics(m)
+      const [m, catalog] = await Promise.all([
+        fetchOpportunityHubMetrics(30),
+        fetchNicheCatalog(),
+      ])
+      if (!cancelled) {
+        setHubMetrics(m)
+        setNiche(catalog)
+      }
     })()
     return () => { cancelled = true }
   }, [interestMap, items.length])
+
+  const copyNicheLinks = async () => {
+    if (!niche.length) return
+    const text = niche.map(n => `${n.title}\n${n.url}`).join('\n\n')
+    await navigator.clipboard?.writeText(text)
+    setNicheCopied(true)
+    track('niche_links_copied', { count: niche.length, surface: 'opportunities' })
+    setTimeout(() => setNicheCopied(false), 2000)
+  }
 
   useEffect(() => {
     if (!user) {
@@ -493,6 +511,51 @@ export default function OpportunityPage() {
                   <p className="relative text-[11px] text-slate-500 mt-1.5 font-medium">{label}</p>
                 </div>
               ))}
+            </motion.div>
+          )}
+
+          {niche.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="rounded-2xl border border-amber-500/20 px-4 py-3.5"
+              style={{ background: 'linear-gradient(160deg, rgba(40,28,12,0.55), rgba(10,14,22,0.85))' }}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+                <div>
+                  <p className="text-amber-100/90 text-xs font-bold">Solo founders niche · share these</p>
+                  <p className="text-slate-500 text-[11px] mt-0.5">
+                    0→1 proof: public links → apply → chat → Featured. Watch Traction.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void copyNicheLinks()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold text-amber-950"
+                  style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)' }}
+                >
+                  <Copy size={11} /> {nicheCopied ? 'Copied' : 'Copy all links'}
+                </button>
+              </div>
+              <ul className="grid sm:grid-cols-2 gap-1.5">
+                {niche.map(n => (
+                  <li key={n.id}>
+                    <a
+                      href={n.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-2 text-[11px] rounded-xl border border-white/5 bg-black/20 px-2.5 py-2 hover:border-amber-500/30 transition-colors"
+                    >
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-amber-200/70 shrink-0">
+                        {n.category}
+                      </span>
+                      <span className="text-slate-200 font-medium truncate flex-1">{n.title}</span>
+                      <ExternalLink size={10} className="text-teal-400 shrink-0" />
+                    </a>
+                  </li>
+                ))}
+              </ul>
             </motion.div>
           )}
         </motion.header>
