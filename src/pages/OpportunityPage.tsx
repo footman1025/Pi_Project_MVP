@@ -10,6 +10,7 @@ import MockIcon from '../components/MockIcon'
 import StatusBadge from '../components/StatusBadge'
 import CreateOpportunityModal from '../components/CreateOpportunityModal'
 import FeatureOpportunityModal from '../components/FeatureOpportunityModal'
+import ConfirmModal from '../components/ConfirmModal'
 import { useAuth } from '../contexts/AuthContext'
 import { opportunityReasonForUser, scoreOpportunityForUser } from '../lib/matching'
 import {
@@ -119,6 +120,7 @@ export default function OpportunityPage() {
   const [search, setSearch] = useState('')
   const [locationFilter, setLocationFilter] = useState<'All' | 'Remote' | 'On-site'>('All')
   const [editItem, setEditItem] = useState<OpportunityItem | null>(null)
+  const [deleteFor, setDeleteFor] = useState<OpportunityItem | null>(null)
 
   const reloadCatalog = useCallback(async () => {
     setLoading(true)
@@ -218,12 +220,14 @@ export default function OpportunityPage() {
     setCreateOpen(true)
   }
 
-  const confirmDelete = async (o: OpportunityItem) => {
+  const requestDelete = (o: OpportunityItem) => {
     if (!user || o.ownerId !== user.id) return
-    const ok = window.confirm(
-      `Delete “${o.title}”? This unpublishes the listing (removes it from the Hub and public page). You can’t undo this from the app.`,
-    )
-    if (!ok) return
+    setDeleteFor(o)
+  }
+
+  const performDelete = async () => {
+    if (!user || !deleteFor || deleteFor.ownerId !== user.id) return
+    const o = deleteFor
     setBusyId(o.id)
     const res = await deactivateOpportunity(o.id, user.id)
     setBusyId(null)
@@ -231,6 +235,7 @@ export default function OpportunityPage() {
       setError(res.error)
       return
     }
+    setDeleteFor(null)
     setItems(prev => prev.filter(p => p.id !== o.id))
     setSuccess('Listing unpublished. It’s no longer public or discoverable.')
   }
@@ -1013,7 +1018,7 @@ export default function OpportunityPage() {
                           <button
                             type="button"
                             disabled={busy}
-                            onClick={() => void confirmDelete(o)}
+                            onClick={() => requestDelete(o)}
                             className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-rose-200 border border-rose-500/30 hover:bg-rose-500/10 disabled:opacity-50"
                           >
                             <Trash2 size={12} /> Delete
@@ -1264,6 +1269,18 @@ export default function OpportunityPage() {
           }}
         />
       )}
+
+      <ConfirmModal
+        open={!!deleteFor}
+        tone="danger"
+        title={deleteFor ? `Delete “${deleteFor.title}”?` : 'Delete listing?'}
+        message="This unpublishes the listing — it leaves the Hub and public page. You can’t undo this from the app."
+        confirmLabel="Delete listing"
+        cancelLabel="Keep listing"
+        busy={!!deleteFor && busyId === deleteFor.id}
+        onClose={() => { if (!busyId) setDeleteFor(null) }}
+        onConfirm={() => void performDelete()}
+      />
     </div>
   )
 }
