@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Briefcase, Loader2, X } from 'lucide-react'
 import StatusBadge from './StatusBadge'
 import {
   CREATE_CATEGORIES,
   createOpportunity,
+  formatSkills,
+  updateOpportunity,
   type CreateCategory,
   type OpportunityItem,
 } from '../lib/opportunities'
@@ -12,11 +14,22 @@ import {
 type Props = {
   open: boolean
   ownerId: string
+  /** When set, modal edits this listing instead of creating. */
+  editItem?: OpportunityItem | null
   onClose: () => void
   onCreated: (item: OpportunityItem, source: 'supabase') => void
+  onUpdated?: (item: OpportunityItem) => void
 }
 
-export default function CreateOpportunityModal({ open, ownerId, onClose, onCreated }: Props) {
+export default function CreateOpportunityModal({
+  open,
+  ownerId,
+  editItem = null,
+  onClose,
+  onCreated,
+  onUpdated,
+}: Props) {
+  const editing = !!editItem
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState<CreateCategory>('Job')
   const [subtitle, setSubtitle] = useState('')
@@ -24,15 +37,55 @@ export default function CreateOpportunityModal({ open, ownerId, onClose, onCreat
   const [prize, setPrize] = useState('')
   const [deadline, setDeadline] = useState('')
   const [location, setLocation] = useState('')
+  const [skills, setSkills] = useState('')
+  const [remote, setRemote] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
+  useEffect(() => {
+    if (!open) return
+    if (editItem) {
+      setTitle(editItem.title || '')
+      setCategory(
+        (CREATE_CATEGORIES as readonly string[]).includes(editItem.category)
+          ? (editItem.category as CreateCategory)
+          : 'Job',
+      )
+      setSubtitle(editItem.subtitle || '')
+      setDescription(editItem.description || '')
+      setPrize(editItem.prize || '')
+      setDeadline(editItem.deadline || '')
+      setLocation(editItem.location || '')
+      setSkills(formatSkills(editItem.skills))
+      setRemote(/\bremote\b/i.test(editItem.location || ''))
+    } else {
+      setTitle('')
+      setCategory('Job')
+      setSubtitle('')
+      setDescription('')
+      setPrize('')
+      setDeadline('')
+      setLocation('')
+      setSkills('')
+      setRemote(false)
+    }
+    setError('')
+  }, [open, editItem])
+
   if (!open || typeof document === 'undefined') return null
+
+  const resolvedLocation = () => {
+    const loc = location.trim()
+    if (remote && !/\bremote\b/i.test(loc)) {
+      return loc ? `Remote · ${loc}` : 'Remote'
+    }
+    return loc
+  }
 
   const submit = async () => {
     setBusy(true)
     setError('')
-    const res = await createOpportunity({
+    const payload = {
       ownerId,
       title,
       category,
@@ -40,8 +93,23 @@ export default function CreateOpportunityModal({ open, ownerId, onClose, onCreat
       description,
       prize,
       deadline,
-      location,
-    })
+      location: resolvedLocation(),
+      skills,
+    }
+
+    if (editing && editItem) {
+      const res = await updateOpportunity({ id: editItem.id, ...payload })
+      setBusy(false)
+      if (!res.ok) {
+        setError(res.error)
+        return
+      }
+      onUpdated?.(res.item)
+      onClose()
+      return
+    }
+
+    const res = await createOpportunity(payload)
     setBusy(false)
     if (!res.ok) {
       setError(res.error)
@@ -51,13 +119,15 @@ export default function CreateOpportunityModal({ open, ownerId, onClose, onCreat
     onClose()
   }
 
+  const canSubmit = title.trim().length >= 4 && !busy
+
   return createPortal(
     <div
       className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm p-0 sm:p-4"
       style={{ paddingBottom: 'max(0px, env(safe-area-inset-bottom, 0px))' }}
       role="dialog"
       aria-modal
-      aria-label="Create opportunity"
+      aria-label={editing ? 'Edit opportunity' : 'Create opportunity'}
       onClick={() => { if (!busy) onClose() }}
     >
       <div
@@ -79,11 +149,15 @@ export default function CreateOpportunityModal({ open, ownerId, onClose, onCreat
             </div>
             <div className="min-w-0 pt-0.5">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-white font-bold text-[15px]">Create opportunity</h3>
-                <StatusBadge kind="live" label="Publishes Live" />
+                <h3 className="text-white font-bold text-[15px]">
+                  {editing ? 'Edit opportunity' : 'Create opportunity'}
+                </h3>
+                <StatusBadge kind="live" label={editing ? 'Live update' : 'Publishes Live'} />
               </div>
               <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                Publishes a public indexed page instantly. Jobs, services, partnerships, co-founders — first validation layer.
+                {editing
+                  ? 'Changes go live on your public page immediately. Delete is separate (unpublishes the listing).'
+                  : 'Publishes a public indexed page. After Apply, the poster is notified and you can Connect in Messages.'}
               </p>
             </div>
           </div>
@@ -100,7 +174,9 @@ export default function CreateOpportunityModal({ open, ownerId, onClose, onCreat
 
         <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-4 space-y-3">
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 mb-1.5 block">Title</label>
+            <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 mb-1.5 block">
+              Title <span className="text-amber-400/80">required</span>
+            </label>
             <input
               value={title}
               onChange={e => setTitle(e.target.value)}
@@ -110,7 +186,9 @@ export default function CreateOpportunityModal({ open, ownerId, onClose, onCreat
           </div>
 
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 mb-1.5 block">Category</label>
+            <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 mb-1.5 block">
+              Category <span className="text-amber-400/80">required</span>
+            </label>
             <div className="flex flex-wrap gap-1.5">
               {CREATE_CATEGORIES.map(c => (
                 <button
@@ -154,10 +232,23 @@ export default function CreateOpportunityModal({ open, ownerId, onClose, onCreat
             />
           </div>
 
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 mb-1.5 block">
+              Skills
+            </label>
+            <input
+              value={skills}
+              onChange={e => setSkills(e.target.value)}
+              placeholder="React, TypeScript, B2B SaaS"
+              className="w-full bg-black/35 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/40"
+            />
+            <p className="text-[10px] text-slate-600 mt-1">Comma-separated — used for Twin fit ranking.</p>
+          </div>
+
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 mb-1.5 block">
-                Comp / prize
+                Compensation
               </label>
               <input
                 value={prize}
@@ -180,13 +271,26 @@ export default function CreateOpportunityModal({ open, ownerId, onClose, onCreat
           </div>
 
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 mb-1.5 block">
-              Location
-            </label>
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">
+                Location
+              </label>
+              <button
+                type="button"
+                onClick={() => setRemote(r => !r)}
+                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg border ${
+                  remote
+                    ? 'border-teal-500/40 bg-teal-500/15 text-teal-200'
+                    : 'border-white/10 text-slate-500'
+                }`}
+              >
+                Remote {remote ? 'on' : 'off'}
+              </button>
+            </div>
             <input
               value={location}
               onChange={e => setLocation(e.target.value)}
-              placeholder="Remote · City · Hybrid"
+              placeholder={remote ? 'City optional · Remote is marked' : 'City · Hybrid · Country'}
               className="w-full bg-black/35 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/40"
             />
           </div>
@@ -205,13 +309,13 @@ export default function CreateOpportunityModal({ open, ownerId, onClose, onCreat
           </button>
           <button
             type="button"
-            disabled={busy || title.trim().length < 4}
+            disabled={!canSubmit}
             onClick={() => void submit()}
             className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-40"
             style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}
           >
             {busy ? <Loader2 size={14} className="animate-spin" /> : <Briefcase size={13} />}
-            Publish opportunity
+            {editing ? 'Save changes' : 'Publish opportunity'}
           </button>
         </div>
       </div>

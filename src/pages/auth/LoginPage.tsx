@@ -1,13 +1,19 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { Eye, EyeOff, ArrowRight } from 'lucide-react'
 import { isValidEmail } from '../../lib/validation'
 import { track } from '../../lib/analytics'
 import PiLogo from '../../components/PiLogo'
 
+function safeNextPath(raw: string | null): string | null {
+  if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return null
+  return raw
+}
+
 export default function LoginPage() {
   const navigate = useNavigate()
+  const [params] = useSearchParams()
   const { signIn } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -30,7 +36,7 @@ export default function LoginPage() {
       return
     }
     track('login_success')
-    navigate('/dashboard')
+    navigate(safeNextPath(params.get('next')) || '/dashboard')
   }
 
   return (

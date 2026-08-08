@@ -29,6 +29,8 @@ export type TractionSnapshot = {
       conversationsStarted: number
       featuredPaid: number
       featuredIntent: number
+      outcomes: number
+      repeatUsers: number
     }
   communities: {
     joins: number
@@ -97,6 +99,8 @@ export async function fetchTractionSnapshot(windowDays = 7): Promise<TractionSna
       conversationsStarted: 0,
       featuredPaid: 0,
       featuredIntent: 0,
+      outcomes: 0,
+      repeatUsers: 0,
     },
     communities: { joins: 0, posts: 0 },
     growth: {
@@ -192,23 +196,35 @@ export async function fetchTractionSnapshot(windowDays = 7): Promise<TractionSna
       matchExpands: count('match_expand'),
       introsStarted: count('match_message') + count('match_connect'),
     },
-    opportunities: {
-      pageViews: count('opportunity_view') + pathViews('/opportunities'),
-      expands: count('opportunity_expand'),
-      interestMarked: count('opportunity_interest'),
-      created: count('opportunity_create'),
-      applied: events.filter(
-        e =>
-          e.event === 'opportunity_interest' &&
-          (e.props as { status?: string } | null)?.status === 'applied',
-      ).length,
-      publicViews: count('opportunity_public_view'),
-      conversationsStarted:
-        count('opportunity_conversation_start') + count('opportunity_conversation_intent'),
-      featuredPaid: count('opportunity_featured_paid'),
-      featuredIntent:
-        count('opportunity_featured_intent') + count('opportunity_featured_checkout'),
-    },
+    opportunities: (() => {
+      const hubEvents = events.filter(e =>
+        e.event.startsWith('opportunity_') || (e.path || '').startsWith('/opportunities') || (e.path || '').startsWith('/o/'),
+      )
+      const byUser = new Map<string, number>()
+      for (const e of hubEvents) {
+        if (!e.user_id) continue
+        byUser.set(e.user_id, (byUser.get(e.user_id) || 0) + 1)
+      }
+      return {
+        pageViews: count('opportunity_view') + pathViews('/opportunities'),
+        expands: count('opportunity_expand'),
+        interestMarked: count('opportunity_interest'),
+        created: count('opportunity_create'),
+        applied: events.filter(
+          e =>
+            e.event === 'opportunity_interest' &&
+            (e.props as { status?: string } | null)?.status === 'applied',
+        ).length,
+        publicViews: count('opportunity_public_view'),
+        conversationsStarted:
+          count('opportunity_conversation_start') + count('opportunity_conversation_intent'),
+        featuredPaid: count('opportunity_featured_paid'),
+        featuredIntent:
+          count('opportunity_featured_intent') + count('opportunity_featured_checkout'),
+        outcomes: count('opportunity_outcome') + count('opportunity_delete'),
+        repeatUsers: [...byUser.values()].filter(n => n >= 2).length,
+      }
+    })(),
     communities: {
       joins: count('community_join'),
       posts: count('community_post'),

@@ -33,6 +33,7 @@ export default function OpportunityPublicPage() {
   const [msg, setMsg] = useState('')
   const [isLive, setIsLive] = useState(false)
   const [featureOpen, setFeatureOpen] = useState(false)
+  const [applied, setApplied] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -46,7 +47,6 @@ export default function OpportunityPublicPage() {
         setNotFound(true)
         setItem(null)
       } else {
-        // Canonical clean URL — drop legacy random suffix (e.g. -167ud)
         const canonical = opportunityPublicPath(res.item)
         const current = `/o/${encodeURIComponent(key)}`
         if (res.item.slug && canonical !== current && canonical !== `/o/${key}`) {
@@ -85,7 +85,7 @@ export default function OpportunityPublicPage() {
   const goApply = async () => {
     if (!item) return
     if (!session || !user) {
-      navigate('/signup')
+      navigate(`/signup?next=${encodeURIComponent(opportunityPublicPath(item))}`)
       return
     }
     setBusy(true)
@@ -104,14 +104,19 @@ export default function OpportunityPublicPage() {
       setMsg(res.error)
       return
     }
-    setMsg(res.source === 'supabase' ? 'Apply intent saved — message the poster to connect.' : 'Saved on this device.')
+    setApplied(true)
+    setMsg(
+      res.source === 'supabase'
+        ? 'Applied — the owner was notified. Next: Connect in Messages.'
+        : 'Saved on this device.',
+    )
     void import('../lib/engagement').then(m => m.recordEngagementAction('opportunity_interest'))
   }
 
-  const goMessage = () => {
+  const goConnect = () => {
     if (!item?.ownerId) return
     if (!session) {
-      navigate('/signup')
+      navigate(`/signup?next=${encodeURIComponent(opportunityPublicPath(item))}`)
       return
     }
     if (user?.id === item.ownerId) return
@@ -121,10 +126,12 @@ export default function OpportunityPublicPage() {
         ownerId: item.ownerId,
         title: item.title,
         opportunityId: item.id,
-        status: 'interested',
+        status: applied ? 'applied' : 'interested',
       }),
     )
   }
+
+  const isOwner = !!(user && item?.ownerId && user.id === item.ownerId)
 
   return (
     <div className="min-h-screen" style={{ background: '#080d1a' }}>
@@ -152,8 +159,8 @@ export default function OpportunityPublicPage() {
           <div className="text-center py-20">
             <h1 className="text-2xl font-extrabold text-white mb-2">Opportunity not found</h1>
             <p className="text-slate-500 text-sm mb-6">This listing may be inactive or the link is wrong.</p>
-            <Link to="/signup" className="text-teal-300 font-semibold text-sm hover:underline">
-              Join Pi →
+            <Link to="/opportunities" className="text-teal-300 font-semibold text-sm hover:underline">
+              Browse Opportunity Hub →
             </Link>
           </div>
         ) : (
@@ -166,10 +173,9 @@ export default function OpportunityPublicPage() {
                 <div className="flex flex-wrap gap-1.5 mb-2">
                   <StatusBadge kind="live" label={item.category} />
                   {item.source === 'member' && <StatusBadge kind="live" label="Member posted" />}
-                  {isFeaturedActive(item) && (
-                    <StatusBadge kind="live" label="Featured" />
-                  )}
-                  {!isFeaturedActive(item) && item.ownerId && user?.id === item.ownerId && (
+                  {isOwner && <StatusBadge kind="live" label="Your listing" />}
+                  {isFeaturedActive(item) && <StatusBadge kind="live" label="Featured" />}
+                  {!isFeaturedActive(item) && isOwner && (
                     <StatusBadge kind="partial" label="Feature available" />
                   )}
                 </div>
@@ -182,7 +188,7 @@ export default function OpportunityPublicPage() {
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-3 text-xs text-slate-400 mb-6">
+            <div className="flex flex-wrap gap-3 text-xs text-slate-400 mb-4">
               {item.prize && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 bg-white/[0.03]">
                   <Briefcase size={12} className="text-amber-300" /> {item.prize}
@@ -200,6 +206,19 @@ export default function OpportunityPublicPage() {
               )}
             </div>
 
+            {!!item.skills?.length && (
+              <div className="flex flex-wrap gap-1.5 mb-6">
+                {item.skills.map(sk => (
+                  <span
+                    key={sk}
+                    className="text-[11px] font-medium text-slate-300 px-2.5 py-1 rounded-lg border border-white/10 bg-white/[0.03]"
+                  >
+                    {sk}
+                  </span>
+                ))}
+              </div>
+            )}
+
             {(item.description || item.aiReason) && (
               <section
                 className="rounded-2xl border border-white/[0.07] p-5 mb-6"
@@ -212,6 +231,12 @@ export default function OpportunityPublicPage() {
               </section>
             )}
 
+            <p className="text-slate-500 text-xs mb-4 leading-relaxed">
+              <span className="text-amber-200/90 font-semibold">Apply</span> notifies the owner.
+              {' '}<span className="text-teal-300 font-semibold">Connect</span> opens Messages with them.
+              No payment for apply or connect.
+            </p>
+
             {msg && (
               <p className="mb-4 text-sm text-teal-300 border border-teal-500/25 bg-teal-500/10 rounded-xl px-3 py-2">
                 {msg}
@@ -219,17 +244,19 @@ export default function OpportunityPublicPage() {
             )}
 
             <div className="flex flex-col sm:flex-row gap-2 mb-8">
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void goApply()}
-                className="flex-1 py-3 rounded-xl text-sm font-bold text-white inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
-                style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}
-              >
-                {busy ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
-                {session ? 'Apply interest' : 'Sign up to apply'}
-              </button>
-              {item.ownerId && user?.id === item.ownerId && !isFeaturedActive(item) && (
+              {!isOwner && (
+                <button
+                  type="button"
+                  disabled={busy || applied}
+                  onClick={() => void goApply()}
+                  className="flex-1 py-3 rounded-xl text-sm font-bold text-white inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}
+                >
+                  {busy ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+                  {!session ? 'Sign up to apply' : applied ? 'Applied' : 'Apply'}
+                </button>
+              )}
+              {isOwner && !isFeaturedActive(item) && (
                 <button
                   type="button"
                   onClick={() => setFeatureOpen(true)}
@@ -239,13 +266,13 @@ export default function OpportunityPublicPage() {
                   <Star size={15} fill="currentColor" /> Feature listing
                 </button>
               )}
-              {item.ownerId && user?.id !== item.ownerId && (
+              {item.ownerId && !isOwner && (
                 <button
                   type="button"
-                  onClick={goMessage}
+                  onClick={goConnect}
                   className="flex-1 py-3 rounded-xl text-sm font-semibold text-slate-200 border border-white/15 hover:bg-white/5 inline-flex items-center justify-center gap-1.5"
                 >
-                  <MessageCircle size={15} /> Message poster
+                  <MessageCircle size={15} /> Connect
                 </button>
               )}
               <button
@@ -269,9 +296,8 @@ export default function OpportunityPublicPage() {
             )}
 
             <p className="text-slate-600 text-xs leading-relaxed">
-              Pi Opportunity Hub — discover and create opportunities. Interest / apply is free.
-              Featured priority placement is optional (€9 / 7 days when Stripe is configured).
-              Built with the No Surprise Standard.
+              Pi Opportunity Hub — Live listings only when synced from the database (badge above).
+              Featured priority placement is optional (€9 / 7 days when Stripe is configured) — willingness-to-pay test, not a complex billing system.
             </p>
           </>
         )}

@@ -224,17 +224,19 @@ export default function TractionPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 mb-4">
                 <MiniStat value={String(snap.opportunities.created)} label="Created" color="#f59e0b" />
-                <MiniStat value={String(snap.opportunities.publicViews)} label="Public views" color="#38bdf8" />
-                <MiniStat value={String(snap.opportunities.interestMarked)} label="Interest" color="#2dd4bf" />
+                <MiniStat value={String(snap.opportunities.publicViews)} label="Views" color="#38bdf8" />
                 <MiniStat value={String(snap.opportunities.applied)} label="Applied" color="#34d399" />
                 <MiniStat value={String(snap.opportunities.conversationsStarted)} label="Chats" color="#a78bfa" />
+                <MiniStat value={String(snap.opportunities.outcomes)} label="Outcomes" color="#f472b6" />
+                <MiniStat value={String(snap.opportunities.repeatUsers)} label="Repeat users" color="#2dd4bf" />
                 <MiniStat
                   value={String(snap.opportunities.featuredPaid + snap.opportunities.featuredIntent)}
                   label="Featured"
                   color="#fbbf24"
                 />
+                <MiniStat value={String(snap.opportunities.interestMarked)} label="Interest" color="#94a3b8" />
               </div>
 
               {niche.length > 0 ? (
@@ -291,7 +293,7 @@ export default function TractionPage() {
               <MetricCard
                 label="Opp. Hub loop"
                 value={String(snap.opportunities.applied)}
-                sub={`${snap.opportunities.created} created · ${snap.opportunities.interestMarked} interest · ${snap.opportunities.publicViews} public · ${snap.opportunities.conversationsStarted} chats · ${snap.opportunities.featuredPaid} paid featured · ${snap.opportunities.featuredIntent} featured intent`}
+                sub={`${snap.opportunities.created} created · ${snap.opportunities.publicViews} views · ${snap.opportunities.applied} applied · ${snap.opportunities.conversationsStarted} chats · ${snap.opportunities.outcomes} outcomes · ${snap.opportunities.repeatUsers} repeat · ${snap.opportunities.featuredPaid + snap.opportunities.featuredIntent} featured`}
                 accent="#fbbf24"
                 Icon={Target}
               />

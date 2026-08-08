@@ -60,10 +60,28 @@ export type OpportunityHubMetrics = {
   publicViews: number
   conversationsStarted: number
   featuredCheckout: number
+  outcomes: number
+  /** Distinct users with 2+ hub events in the window */
+  repeatUsers: number
   windowDays: number
   tableReady: boolean
   error?: string
 }
+
+const HUB_EVENTS = [
+  'opportunity_view',
+  'opportunity_create',
+  'opportunity_interest',
+  'opportunity_public_view',
+  'opportunity_conversation_start',
+  'opportunity_conversation_intent',
+  'opportunity_featured_checkout',
+  'opportunity_featured_intent',
+  'opportunity_featured_paid',
+  'opportunity_outcome',
+  'opportunity_delete',
+  'opportunity_update',
+] as const
 
 /** Aggregate Opportunity Hub validation metrics from product_events. */
 export async function fetchOpportunityHubMetrics(windowDays = 30): Promise<OpportunityHubMetrics> {
@@ -75,6 +93,8 @@ export async function fetchOpportunityHubMetrics(windowDays = 30): Promise<Oppor
     publicViews: 0,
     conversationsStarted: 0,
     featuredCheckout: 0,
+    outcomes: 0,
+    repeatUsers: 0,
     windowDays,
     tableReady: false,
   }
@@ -82,18 +102,9 @@ export async function fetchOpportunityHubMetrics(windowDays = 30): Promise<Oppor
   try {
     const { data, error } = await supabase
       .from('product_events')
-      .select('event, props')
+      .select('event, props, user_id')
       .gte('created_at', since)
-      .in('event', [
-        'opportunity_create',
-        'opportunity_interest',
-        'opportunity_public_view',
-        'opportunity_conversation_start',
-        'opportunity_conversation_intent',
-        'opportunity_featured_checkout',
-        'opportunity_featured_intent',
-        'opportunity_featured_paid',
-      ])
+      .in('event', [...HUB_EVENTS])
       .limit(5000)
 
     if (error) {
@@ -113,6 +124,14 @@ export async function fetchOpportunityHubMetrics(windowDays = 30): Promise<Oppor
       return props.status === 'applied'
     }).length
 
+    const byUser = new Map<string, number>()
+    for (const r of rows) {
+      const uid = r.user_id as string | null
+      if (!uid) continue
+      byUser.set(uid, (byUser.get(uid) || 0) + 1)
+    }
+    const repeatUsers = [...byUser.values()].filter(n => n >= 2).length
+
     return {
       created: count('opportunity_create'),
       interestMarked: interestRows.length,
@@ -124,6 +143,8 @@ export async function fetchOpportunityHubMetrics(windowDays = 30): Promise<Oppor
         count('opportunity_featured_checkout') +
         count('opportunity_featured_intent') +
         count('opportunity_featured_paid'),
+      outcomes: count('opportunity_outcome') + count('opportunity_delete'),
+      repeatUsers,
       windowDays,
       tableReady: true,
     }

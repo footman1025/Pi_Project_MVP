@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { Eye, EyeOff, Sparkles, ArrowRight } from 'lucide-react'
 import { isValidEmail, validatePassword } from '../../lib/validation'
@@ -9,6 +9,7 @@ import PiLogo from '../../components/PiLogo'
 
 export default function SignUpPage() {
   const navigate = useNavigate()
+  const [params] = useSearchParams()
   const { signUp } = useAuth()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -17,6 +18,13 @@ export default function SignUpPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+
+  const nextPath = (() => {
+    const raw = params.get('next')
+    if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return null
+    return raw
+  })()
+  const loginHref = nextPath ? `/login?next=${encodeURIComponent(nextPath)}` : '/login'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -65,7 +73,7 @@ export default function SignUpPage() {
                 We sent a confirmation link to <span className="text-white font-semibold">{email}</span>.
                 Click it to activate your Pi account.
               </p>
-              <button onClick={() => navigate('/login')}
+              <button onClick={() => navigate(loginHref)}
                 className="w-full py-3.5 rounded-xl font-bold text-white transition-all hover:scale-[1.02]"
                 style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}>
                 Go to Login
@@ -134,7 +142,7 @@ export default function SignUpPage() {
 
               <p className="text-center text-slate-500 text-sm mt-6">
                 Already have an account?{' '}
-                <Link to="/login" className="text-pi-400 hover:text-pi-300 font-semibold transition-colors">Sign in</Link>
+                <Link to={loginHref} className="text-pi-400 hover:text-pi-300 font-semibold transition-colors">Sign in</Link>
               </p>
             </>
           )}

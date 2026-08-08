@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Briefcase, Sparkles, Clock4, ChevronDown, ChevronUp, Loader2, Heart, Zap,
   Send, X, Inbox, Plus, ExternalLink, MessageCircle, BarChart3, Users, MapPin,
-  ArrowRight, Star, Copy,
+  ArrowRight, Star, Copy, Search, Pencil, Trash2,
 } from 'lucide-react'
 import MockIcon from '../components/MockIcon'
 import StatusBadge from '../components/StatusBadge'
@@ -13,8 +13,12 @@ import FeatureOpportunityModal from '../components/FeatureOpportunityModal'
 import { useAuth } from '../contexts/AuthContext'
 import { opportunityReasonForUser, scoreOpportunityForUser } from '../lib/matching'
 import {
+  deactivateOpportunity,
   fetchOpportunities,
+  HUB_FILTER_CATEGORIES,
+  isRemoteLocation,
   opportunityPublicPath,
+  trackOpportunityOutcome,
   type OpportunityItem,
 } from '../lib/opportunities'
 import {
@@ -39,12 +43,8 @@ import { fetchNicheCatalog, type NicheCatalogItem } from '../lib/nicheCatalog'
 import { track } from '../lib/analytics'
 import { playConnectSound } from '../lib/connectSound'
 
-const categories = [
-  'All', 'Job', 'Service', 'Partnership', 'Co-founder', 'Talent', 'Project',
-  'Competition', 'Funding', 'Community', 'Accelerator',
-]
-
 const LOOP_STEPS = ['Create', 'Discover', 'Apply', 'Connect', 'Outcome'] as const
+const CREATE_CORE = ['Job', 'Service', 'Co-founder', 'Partnership', 'Project'] as const
 
 function matchColor(pct: number) {
   if (pct >= 70) return '#34d399'
@@ -116,6 +116,9 @@ export default function OpportunityPage() {
   const [featureFor, setFeatureFor] = useState<OpportunityItem | null>(null)
   const [niche, setNiche] = useState<NicheCatalogItem[]>([])
   const [nicheCopied, setNicheCopied] = useState(false)
+  const [search, setSearch] = useState('')
+  const [locationFilter, setLocationFilter] = useState<'All' | 'Remote' | 'On-site'>('All')
+  const [editItem, setEditItem] = useState<OpportunityItem | null>(null)
 
   const reloadCatalog = useCallback(async () => {
     setLoading(true)
@@ -205,7 +208,31 @@ export default function OpportunityPage() {
       navigate('/login')
       return
     }
+    setEditItem(null)
     setCreateOpen(true)
+  }
+
+  const openEdit = (o: OpportunityItem) => {
+    if (!user || o.ownerId !== user.id) return
+    setEditItem(o)
+    setCreateOpen(true)
+  }
+
+  const confirmDelete = async (o: OpportunityItem) => {
+    if (!user || o.ownerId !== user.id) return
+    const ok = window.confirm(
+      `Delete “${o.title}”? This unpublishes the listing (removes it from the Hub and public page). You can’t undo this from the app.`,
+    )
+    if (!ok) return
+    setBusyId(o.id)
+    const res = await deactivateOpportunity(o.id, user.id)
+    setBusyId(null)
+    if (!res.ok) {
+      setError(res.error)
+      return
+    }
+    setItems(prev => prev.filter(p => p.id !== o.id))
+    setSuccess('Listing unpublished. It’s no longer public or discoverable.')
   }
 
   const messagePoster = (o: OpportunityItem, status?: InterestStatus | null, note?: string) => {
@@ -226,7 +253,30 @@ export default function OpportunityPage() {
     )
   }
 
-  const filtered = active === 'All' ? items : items.filter(o => o.category === active)
+  const filterCategories = useMemo(() => {
+    const present = new Set(items.map(o => o.category))
+    return HUB_FILTER_CATEGORIES.filter(c => c === 'All' || present.has(c) || (CREATE_CORE as readonly string[]).includes(c))
+  }, [items])
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return items.filter(o => {
+      if (active !== 'All' && o.category !== active) return false
+      if (locationFilter === 'Remote' && !isRemoteLocation(o.location)) return false
+      if (locationFilter === 'On-site' && (isRemoteLocation(o.location) || !o.location)) return false
+      if (!q) return true
+      const hay = [
+        o.title,
+        o.subtitle,
+        o.description,
+        o.location,
+        o.category,
+        o.prize,
+        ...(o.skills || []),
+      ].join(' ').toLowerCase()
+      return hay.includes(q)
+    })
+  }, [items, active, locationFilter, search])
 
   const withReasons = useMemo(() =>
     filtered
@@ -480,15 +530,17 @@ export default function OpportunityPage() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2"
+              className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-2"
             >
               {[
                 ['Created', hubMetrics.created, '#f59e0b'],
-                ['Interest', hubMetrics.interestMarked, '#2dd4bf'],
+                ['Views', hubMetrics.publicViews, '#38bdf8'],
                 ['Applied', hubMetrics.applied, '#34d399'],
-                ['Public views', hubMetrics.publicViews, '#38bdf8'],
-                ['Conversations', hubMetrics.conversationsStarted, '#a78bfa'],
+                ['Chats', hubMetrics.conversationsStarted, '#a78bfa'],
+                ['Outcomes', hubMetrics.outcomes, '#f472b6'],
+                ['Repeat', hubMetrics.repeatUsers, '#2dd4bf'],
                 ['Featured', hubMetrics.featuredCheckout, '#fbbf24'],
+                ['Interest', hubMetrics.interestMarked, '#94a3b8'],
               ].map(([label, value, accent]) => (
                 <div
                   key={String(label)}
@@ -586,7 +638,7 @@ export default function OpportunityPage() {
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white"
                   style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
                 >
-                  <MessageCircle size={12} /> Message poster
+                  <MessageCircle size={12} /> Connect in Messages
                 </button>
               )}
             </motion.div>
@@ -609,7 +661,9 @@ export default function OpportunityPage() {
                 <div className="flex items-center justify-between gap-2 mb-4">
                   <div>
                     <p className="text-white text-sm font-bold">Applications inbox</p>
-                    <p className="text-slate-500 text-xs mt-0.5">People who applied to your listings</p>
+                    <p className="text-slate-500 text-xs mt-0.5">
+                      Reply opens Messages. Mark outcome when you connect, hire, or pass.
+                    </p>
                   </div>
                   <button type="button" onClick={() => setShowInbox(false)} className="p-2 rounded-xl text-slate-500 hover:text-white hover:bg-white/5">
                     <X size={14} />
@@ -650,7 +704,21 @@ export default function OpportunityPage() {
                           }}
                           className="inline-flex items-center gap-1 text-teal-300 font-semibold px-2 py-1 rounded-lg hover:bg-teal-500/10"
                         >
-                          <MessageCircle size={12} /> Reply
+                          <MessageCircle size={12} /> Connect
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            trackOpportunityOutcome({
+                              opportunityId: row.opportunity_id,
+                              applicantId: row.user_id,
+                              outcome: 'connected',
+                            })
+                            setSuccess(`Outcome saved: connected with ${row.applicant_name}.`)
+                          }}
+                          className="inline-flex items-center gap-1 text-amber-200 font-semibold px-2 py-1 rounded-lg hover:bg-amber-500/10"
+                        >
+                          Mark connected
                         </button>
                       </li>
                     ))}
@@ -736,8 +804,33 @@ export default function OpportunityPage() {
               </p>
             )}
           </div>
+          <div className="relative mb-2.5">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search title, skills, location…"
+              className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-black/30 border border-white/10 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-teal-500/40"
+            />
+          </div>
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none mb-2">
+            {(['All', 'Remote', 'On-site'] as const).map(loc => (
+              <button
+                key={loc}
+                type="button"
+                onClick={() => setLocationFilter(loc)}
+                className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-colors ${
+                  locationFilter === loc
+                    ? 'border-teal-500/40 bg-teal-500/15 text-teal-100'
+                    : 'border-white/10 text-slate-400 hover:text-white'
+                }`}
+              >
+                {loc === 'All' ? 'Any location' : loc}
+              </button>
+            ))}
+          </div>
           <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
-            {categories.map(c => (
+            {filterCategories.map(c => (
               <button
                 key={c}
                 type="button"
@@ -782,7 +875,11 @@ export default function OpportunityPage() {
               <Briefcase size={22} className="text-amber-300" />
             </div>
             <p className="text-white font-bold text-lg mb-1">No opportunities here</p>
-            <p className="text-slate-500 text-sm mb-5">Try another category — or be the first to publish.</p>
+            <p className="text-slate-500 text-sm mb-5">
+              {search || locationFilter !== 'All' || active !== 'All'
+                ? 'Try clearing search or filters — or publish a new listing.'
+                : 'Be the first to publish in this niche.'}
+            </p>
             <button
               type="button"
               onClick={openCreate}
@@ -879,6 +976,19 @@ export default function OpportunityPage() {
                       <span className="text-[10px] font-semibold text-slate-300 bg-white/5 border border-white/10 px-2 py-1 rounded-lg">
                         {o.category}
                       </span>
+                      {isOwner && (
+                        <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-lg border border-white/15 text-slate-300 bg-white/[0.04]">
+                          Yours
+                        </span>
+                      )}
+                      {o.skills?.slice(0, 3).map(sk => (
+                        <span
+                          key={sk}
+                          className="text-[10px] text-slate-400 bg-white/[0.03] border border-white/10 px-2 py-1 rounded-lg"
+                        >
+                          {sk}
+                        </span>
+                      ))}
                       {status && (
                         <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-lg border ${
                           status === 'applied'
@@ -891,80 +1001,112 @@ export default function OpportunityPage() {
                     </div>
 
                     <div className="flex flex-col gap-2">
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openApply(o)}
-                          disabled={busy || status === 'applied'}
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-55 transition-transform hover:scale-[1.01] active:scale-[0.99]"
-                          style={
-                            status === 'applied'
-                              ? { background: 'rgba(245,158,11,0.18)', color: '#fde68a', border: '1px solid rgba(245,158,11,0.3)' }
-                              : { background: 'linear-gradient(135deg, #f59e0b, #d97706)' }
-                          }
-                        >
-                          {busy ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-                          {status === 'applied' ? 'Applied' : 'Apply'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => markInterest(o)}
-                          disabled={busy || status === 'interested' || status === 'applied'}
-                          className={`inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold border transition-colors disabled:opacity-55 ${
-                            status === 'interested' || status === 'applied'
-                              ? 'bg-emerald-500/12 border-emerald-500/30 text-emerald-300'
-                              : 'text-slate-200 border-white/10 bg-white/[0.03] hover:border-teal-500/30 hover:text-teal-200'
-                          }`}
-                        >
-                          <Heart size={13} fill={status ? 'currentColor' : 'none'} />
-                          {status === 'interested' || status === 'applied' ? 'Saved' : 'Interest'}
-                        </button>
-                      </div>
-                      <div className="flex gap-2">
-                        {isOwner && !featured && (
+                      {isOwner ? (
+                        <div className="flex gap-2 flex-wrap">
                           <button
                             type="button"
-                            onClick={() => setFeatureFor(o)}
-                            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-amber-950"
-                            style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)' }}
+                            onClick={() => openEdit(o)}
+                            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold text-white border border-white/15 hover:bg-white/5"
                           >
-                            <Star size={12} fill="currentColor" /> Feature
+                            <Pencil size={12} /> Edit
                           </button>
-                        )}
-                        {o.ownerId && o.ownerId !== user?.id && (
                           <button
                             type="button"
-                            onClick={() => messagePoster(o, status, interestMap[o.id]?.note || undefined)}
-                            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-200 border border-white/10 hover:border-teal-500/35 hover:text-teal-200 hover:bg-teal-500/5"
+                            disabled={busy}
+                            onClick={() => void confirmDelete(o)}
+                            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-rose-200 border border-rose-500/30 hover:bg-rose-500/10 disabled:opacity-50"
                           >
-                            <MessageCircle size={12} /> Message
+                            <Trash2 size={12} /> Delete
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => navigate(opportunityPublicPath(o))}
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 border border-white/10 hover:border-white/20 hover:bg-white/[0.03]"
-                        >
-                          <ExternalLink size={12} /> Public
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const next = open ? null : o.id
-                            if (next) track('opportunity_expand', { id: o.id, match: pct })
-                            setExpandedId(next)
-                          }}
-                          className={`inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${
-                            open
-                              ? 'text-teal-200 border-teal-500/35 bg-teal-500/10'
-                              : 'text-slate-300 border-white/10 hover:border-white/20'
-                          }`}
-                        >
-                          <Sparkles size={12} />
-                          Why
-                          {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                        </button>
-                      </div>
+                          {!featured && (
+                            <button
+                              type="button"
+                              onClick={() => setFeatureFor(o)}
+                              className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold text-amber-950"
+                              style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)' }}
+                            >
+                              <Star size={12} fill="currentColor" /> Feature
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => navigate(opportunityPublicPath(o))}
+                            className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-300 border border-white/10"
+                          >
+                            <ExternalLink size={12} /> Public
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openApply(o)}
+                              disabled={busy || status === 'applied'}
+                              title="Saves your application and notifies the owner. Next: Connect in Messages."
+                              className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-55 transition-transform hover:scale-[1.01] active:scale-[0.99]"
+                              style={
+                                status === 'applied'
+                                  ? { background: 'rgba(245,158,11,0.18)', color: '#fde68a', border: '1px solid rgba(245,158,11,0.3)' }
+                                  : { background: 'linear-gradient(135deg, #f59e0b, #d97706)' }
+                              }
+                            >
+                              {busy ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                              {status === 'applied' ? 'Applied' : 'Apply'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => markInterest(o)}
+                              disabled={busy || status === 'interested' || status === 'applied'}
+                              title="Soft save — owner is notified. Not an application."
+                              className={`inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold border transition-colors disabled:opacity-55 ${
+                                status === 'interested' || status === 'applied'
+                                  ? 'bg-emerald-500/12 border-emerald-500/30 text-emerald-300'
+                                  : 'text-slate-200 border-white/10 bg-white/[0.03] hover:border-teal-500/30 hover:text-teal-200'
+                              }`}
+                            >
+                              <Heart size={13} fill={status ? 'currentColor' : 'none'} />
+                              {status === 'interested' || status === 'applied' ? 'Saved' : 'Interest'}
+                            </button>
+                          </div>
+                          <div className="flex gap-2">
+                            {o.ownerId && (
+                              <button
+                                type="button"
+                                onClick={() => messagePoster(o, status, interestMap[o.id]?.note || undefined)}
+                                title="Opens Messages with the listing owner — this is Connect."
+                                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-200 border border-white/10 hover:border-teal-500/35 hover:text-teal-200 hover:bg-teal-500/5"
+                              >
+                                <MessageCircle size={12} /> Connect
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => navigate(opportunityPublicPath(o))}
+                              className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 border border-white/10 hover:border-white/20 hover:bg-white/[0.03]"
+                            >
+                              <ExternalLink size={12} /> Public
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const next = open ? null : o.id
+                                if (next) track('opportunity_expand', { id: o.id, match: pct })
+                                setExpandedId(next)
+                              }}
+                              className={`inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${
+                                open
+                                  ? 'text-teal-200 border-teal-500/35 bg-teal-500/10'
+                                  : 'text-slate-300 border-white/10 hover:border-white/20'
+                              }`}
+                            >
+                              <Sparkles size={12} />
+                              Why
+                              {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -1036,11 +1178,12 @@ export default function OpportunityPage() {
               <div className="flex items-start justify-between gap-2 mb-4">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-400/90 mb-1">
-                    Apply interest · free
+                    Apply · free
                   </p>
                   <h2 className="text-white font-bold text-lg leading-snug">{applyFor.title}</h2>
-                  <p className="text-slate-500 text-xs mt-1.5">
-                    {applyFor.personalizedMatch}% Twin fit · records intent, not payment
+                  <p className="text-slate-500 text-xs mt-1.5 leading-relaxed">
+                    {applyFor.personalizedMatch}% Twin fit. Submit notifies the owner.
+                    Next step is <span className="text-teal-300 font-semibold">Connect</span> in Messages — no payment.
                   </p>
                 </div>
                 <button
@@ -1099,14 +1242,25 @@ export default function OpportunityPage() {
         <CreateOpportunityModal
           open
           ownerId={user.id}
-          onClose={() => setCreateOpen(false)}
+          editItem={editItem}
+          onClose={() => {
+            setCreateOpen(false)
+            setEditItem(null)
+          }}
           onCreated={item => {
             setItems(prev => [item, ...prev.filter(p => p.id !== item.id)])
             setError('')
-            setSuccess('Published live — public page is ready to share.')
+            setSuccess('Published live — public page is ready to share. Share the link; Apply notifies you.')
             setIsLive(true)
             void reloadCatalog()
             navigate(opportunityPublicPath(item))
+          }}
+          onUpdated={item => {
+            setItems(prev => prev.map(p => (p.id === item.id ? item : p)))
+            setError('')
+            setSuccess('Listing updated — public page reflects your changes.')
+            setEditItem(null)
+            void reloadCatalog()
           }}
         />
       )}

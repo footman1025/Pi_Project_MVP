@@ -252,13 +252,30 @@ export function opportunityReasonForUser(
  */
 export function scoreOpportunityForUser(
   me: Profile | null | undefined,
-  opp: { title: string; subtitle?: string; category?: string; aiReason?: string; match?: number },
+  opp: {
+    title: string
+    subtitle?: string
+    category?: string
+    aiReason?: string
+    match?: number
+    skills?: string[]
+    description?: string
+    location?: string
+  },
 ): number {
   const base = typeof opp.match === 'number' ? opp.match : 55
   if (!me) return Math.min(92, Math.max(28, base - 8))
 
   let score = 36
-  const hay = norm([opp.title, opp.subtitle, opp.category, opp.aiReason].filter(Boolean).join(' '))
+  const hay = norm([
+    opp.title,
+    opp.subtitle,
+    opp.category,
+    opp.aiReason,
+    opp.description,
+    opp.location,
+    ...(opp.skills || []),
+  ].filter(Boolean).join(' '))
 
   const role = norm(me.role || '')
   if (role && hay.includes(role.split(' ')[0] || '')) score += 10
@@ -271,6 +288,9 @@ export function scoreOpportunityForUser(
   }
   for (const s of tagList(me.skills).slice(0, 6)) {
     if (s.length >= 3 && hay.includes(s)) score += 4
+  }
+  for (const hit of softOverlap(me.skills, opp.skills).slice(0, 5)) {
+    if (hit) score += 6
   }
 
   if (/founder|entrepreneur|startup/.test(role) && /fund|accelerator|co-founder|startup/.test(hay)) score += 8
