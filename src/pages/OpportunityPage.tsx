@@ -56,35 +56,20 @@ function matchColor(pct: number) {
   return '#fbbf24'
 }
 
-function MatchRing({ pct }: { pct: number }) {
+function MatchPill({ pct }: { pct: number }) {
   const accent = matchColor(pct)
-  const r = 16
-  const c = 2 * Math.PI * r
-  const offset = c - (Math.min(100, Math.max(0, pct)) / 100) * c
   return (
-    <div className="relative w-12 h-12 shrink-0" title={`${pct}% Twin fit`}>
-      <svg viewBox="0 0 40 40" className="w-12 h-12 -rotate-90">
-        <circle cx="20" cy="20" r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="3" />
-        <circle
-          cx="20"
-          cy="20"
-          r={r}
-          fill="none"
-          stroke={accent}
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeDasharray={c}
-          strokeDashoffset={offset}
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-[11px] font-black tabular-nums leading-none" style={{ color: accent }}>
-          {pct}
-        </span>
-        <span className="text-[8px] font-bold uppercase tracking-wider text-slate-500 leading-none mt-0.5">
-          fit
-        </span>
-      </div>
+    <div
+      className="shrink-0 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 border"
+      style={{
+        color: accent,
+        borderColor: `${accent}40`,
+        background: `${accent}12`,
+      }}
+      title={`${pct}% Twin fit`}
+    >
+      <span className="text-[13px] font-bold tabular-nums leading-none">{pct}</span>
+      <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400">fit</span>
     </div>
   )
 }
@@ -973,12 +958,12 @@ export default function OpportunityPage() {
           <div className="grid md:grid-cols-2 gap-4">
             {withReasons.map((o, i) => {
               const pct = o.personalizedMatch
-              const accent = matchColor(pct)
               const status = statusOf(o.id)
               const open = expandedId === o.id
               const busy = busyId === o.id
               const featured = isFeaturedActive(o)
               const isOwner = !!(user && o.ownerId && o.ownerId === user.id)
+              const outcome = outcomeOf(o.id)
 
               return (
                 <motion.article
@@ -987,156 +972,177 @@ export default function OpportunityPage() {
                   initial={{ opacity: 0, y: 14 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.35, delay: Math.min(i * 0.04, 0.24) }}
-                  className={`group relative overflow-hidden rounded-3xl border transition-all duration-300 ${
+                  className={`group relative overflow-hidden rounded-2xl border transition-all duration-300 ${
                     featured
-                      ? 'border-amber-500/40'
+                      ? 'border-amber-400/35 shadow-[0_0_0_1px_rgba(251,191,36,0.08)]'
                       : open
-                        ? 'border-teal-500/35'
-                        : 'border-white/[0.07] hover:border-white/15 hover:-translate-y-0.5'
+                        ? 'border-teal-500/30'
+                        : 'border-white/[0.08] hover:border-white/16 hover:-translate-y-0.5'
                   }`}
                   style={{
                     background: featured
-                      ? 'linear-gradient(165deg, rgba(40,28,12,0.96) 0%, rgba(8,12,20,0.98) 100%)'
-                      : 'linear-gradient(165deg, rgba(18,28,40,0.96) 0%, rgba(8,12,20,0.98) 100%)',
+                      ? 'linear-gradient(160deg, rgba(36,26,14,0.98) 0%, rgba(10,12,18,0.99) 55%)'
+                      : 'linear-gradient(160deg, rgba(16,22,34,0.98) 0%, rgba(8,10,16,0.99) 55%)',
                   }}
                 >
                   {featured && (
-                    <div className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider text-amber-950"
-                      style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)' }}
-                    >
-                      <Star size={10} fill="currentColor" /> Featured
-                    </div>
+                    <div
+                      className="absolute left-0 inset-y-0 w-[3px]"
+                      style={{ background: 'linear-gradient(180deg, #fbbf24, #d97706)' }}
+                      aria-hidden
+                    />
                   )}
-                  <div
-                    className="pointer-events-none absolute inset-x-0 top-0 h-px"
-                    style={{ background: `linear-gradient(90deg, transparent, ${accent}88, transparent)` }}
-                  />
-                  <div
-                    className="pointer-events-none absolute -top-16 -right-12 w-40 h-40 rounded-full opacity-20 blur-3xl transition-opacity group-hover:opacity-35"
-                    style={{ background: accent }}
-                  />
 
-                  <div className="relative p-5">
-                    <div className="flex items-start gap-3.5 mb-4">
+                  <div className="relative p-5 sm:p-6">
+                    {/* Header */}
+                    <div className="flex items-start gap-3.5">
                       <div
-                        className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${o.iconColor} flex items-center justify-center shrink-0 ring-1 ring-white/10`}
+                        className={`w-11 h-11 rounded-xl bg-gradient-to-br ${o.iconColor} flex items-center justify-center shrink-0`}
                       >
-                        <MockIcon name={o.iconName} size={20} />
+                        <MockIcon name={o.iconName} size={18} />
                       </div>
-                      <div className="flex-1 min-w-0 pt-0.5">
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <h3 className="text-white font-bold text-[15px] sm:text-base leading-snug tracking-tight">
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                              {featured && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.12em] text-amber-300">
+                                  <Star size={10} fill="currentColor" /> Featured
+                                </span>
+                              )}
+                              {isOwner && (
+                                <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">
+                                  Yours
+                                </span>
+                              )}
+                            </div>
+                            <h3 className="text-white font-semibold text-[15px] sm:text-[16px] leading-snug tracking-tight">
                               {o.title}
                             </h3>
-                            <p className="text-slate-400 text-xs leading-relaxed mt-1.5 line-clamp-2">
+                            <p className="text-slate-400 text-[13px] leading-relaxed mt-1 line-clamp-2">
                               {o.subtitle}
                             </p>
                           </div>
-                          <MatchRing pct={pct} />
+                          <MatchPill pct={pct} />
                         </div>
+
+                        {(status || outcome) && (
+                          <div className="flex items-center gap-2 flex-wrap mt-2.5">
+                            {status && (
+                              <span
+                                className={`inline-flex items-center text-[10px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 rounded-md ${
+                                  status === 'applied'
+                                    ? 'text-amber-200 bg-amber-500/15'
+                                    : 'text-emerald-300 bg-emerald-500/15'
+                                }`}
+                              >
+                                {status}
+                              </span>
+                            )}
+                            {outcome && (
+                              <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 rounded-md text-teal-200 bg-teal-500/15">
+                                {outcomeLabel(outcome)}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 flex-wrap mb-4">
-                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-100/90 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded-lg">
-                        <Briefcase size={10} />
-                        {o.prize || 'Open'}
-                      </span>
-                      <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 bg-white/[0.03] border border-white/10 px-2 py-1 rounded-lg">
-                        <Clock4 size={10} />
-                        {o.deadline}
-                      </span>
-                      {o.location && (
-                        <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 bg-white/[0.03] border border-white/10 px-2 py-1 rounded-lg">
-                          <MapPin size={10} />
-                          {o.location}
-                        </span>
-                      )}
-                      <span className="text-[10px] font-semibold text-slate-300 bg-white/5 border border-white/10 px-2 py-1 rounded-lg">
+                    {/* Meta — one quiet row */}
+                    <div className="mt-4 flex items-center gap-x-3 gap-y-1.5 flex-wrap text-[12px] text-slate-400">
+                      <span className="inline-flex items-center gap-1.5 text-slate-300 font-medium">
+                        <Briefcase size={12} className="text-slate-500" />
                         {o.category}
                       </span>
-                      {isOwner && (
-                        <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-lg border border-white/15 text-slate-300 bg-white/[0.04]">
-                          Yours
-                        </span>
+                      <span className="text-white/15" aria-hidden>·</span>
+                      <span className="inline-flex items-center gap-1.5 font-medium text-amber-100/85">
+                        {o.prize || 'Open'}
+                      </span>
+                      {o.location && (
+                        <>
+                          <span className="text-white/15" aria-hidden>·</span>
+                          <span className="inline-flex items-center gap-1.5">
+                            <MapPin size={12} className="text-slate-500" />
+                            {o.location}
+                          </span>
+                        </>
                       )}
-                      {o.skills?.slice(0, 3).map(sk => (
-                        <span
-                          key={sk}
-                          className="text-[10px] text-slate-400 bg-white/[0.03] border border-white/10 px-2 py-1 rounded-lg"
-                        >
-                          {sk}
-                        </span>
-                      ))}
-                      {status && (
-                        <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-lg border ${
-                          status === 'applied'
-                            ? 'text-amber-200 border-amber-500/30 bg-amber-500/10'
-                            : 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10'
-                        }`}>
-                          {status}
-                        </span>
-                      )}
-                      {outcomeOf(o.id) && (
-                        <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-lg border border-teal-500/30 bg-teal-500/10 text-teal-200">
-                          {outcomeLabel(outcomeOf(o.id))}
-                        </span>
-                      )}
+                      <span className="text-white/15" aria-hidden>·</span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <Clock4 size={12} className="text-slate-500" />
+                        {o.deadline}
+                      </span>
                     </div>
 
-                    <div className="flex flex-col gap-2">
+                    {!!o.skills?.length && (
+                      <div className="mt-3 flex items-center gap-1.5 flex-wrap">
+                        {o.skills.slice(0, 3).map(sk => (
+                          <span
+                            key={sk}
+                            className="text-[11px] text-slate-400 px-2 py-0.5 rounded-md bg-white/[0.04]"
+                          >
+                            {sk}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div className="mt-5 pt-4 border-t border-white/[0.06]">
                       {isOwner ? (
-                        <div className="flex gap-2 flex-wrap">
+                        <div className="flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() => openEdit(o)}
-                            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold text-white border border-white/15 hover:bg-white/5"
+                            className="flex-1 inline-flex items-center justify-center gap-1.5 h-10 rounded-xl text-xs font-semibold text-white bg-white/[0.06] hover:bg-white/[0.1] transition-colors"
                           >
-                            <Pencil size={12} /> Edit
-                          </button>
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() => requestDelete(o)}
-                            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-rose-200 border border-rose-500/30 hover:bg-rose-500/10 disabled:opacity-50"
-                          >
-                            <Trash2 size={12} /> Delete
+                            <Pencil size={13} /> Edit
                           </button>
                           {!featured && (
                             <button
                               type="button"
                               onClick={() => setFeatureFor(o)}
-                              className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold text-amber-950"
+                              className="flex-1 inline-flex items-center justify-center gap-1.5 h-10 rounded-xl text-xs font-bold text-amber-950"
                               style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)' }}
                             >
-                              <Star size={12} fill="currentColor" /> Feature
+                              <Star size={13} fill="currentColor" /> Feature
                             </button>
                           )}
                           <button
                             type="button"
                             onClick={() => navigate(opportunityPublicPath(o))}
-                            className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-300 border border-white/10"
+                            className="inline-flex items-center justify-center h-10 w-10 rounded-xl text-slate-300 bg-white/[0.04] hover:bg-white/[0.08] transition-colors"
+                            title="Public page"
                           >
-                            <ExternalLink size={12} /> Public
+                            <ExternalLink size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => requestDelete(o)}
+                            className="inline-flex items-center justify-center h-10 w-10 rounded-xl text-rose-300/90 bg-rose-500/10 hover:bg-rose-500/15 disabled:opacity-50 transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       ) : (
                         <>
-                          <div className="flex gap-2">
+                          <div className="flex items-center gap-2">
                             <button
                               type="button"
                               onClick={() => openApply(o)}
                               disabled={busy || status === 'applied'}
                               title="Saves your application and notifies the owner. Next: Connect in Messages."
-                              className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-55 transition-transform hover:scale-[1.01] active:scale-[0.99]"
+                              className="flex-1 inline-flex items-center justify-center gap-2 h-11 rounded-xl text-[13px] font-semibold text-white disabled:opacity-60 transition-all active:scale-[0.99]"
                               style={
                                 status === 'applied'
-                                  ? { background: 'rgba(245,158,11,0.18)', color: '#fde68a', border: '1px solid rgba(245,158,11,0.3)' }
+                                  ? { background: 'rgba(245,158,11,0.14)', color: '#fde68a', border: '1px solid rgba(245,158,11,0.28)' }
                                   : { background: 'linear-gradient(135deg, #f59e0b, #d97706)' }
                               }
                             >
-                              {busy ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                              {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
                               {status === 'applied' ? 'Applied' : 'Apply'}
                             </button>
                             <button
@@ -1144,34 +1150,42 @@ export default function OpportunityPage() {
                               onClick={() => markInterest(o)}
                               disabled={busy || status === 'interested' || status === 'applied'}
                               title="Soft save — owner is notified. Not an application."
-                              className={`inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold border transition-colors disabled:opacity-55 ${
+                              className={`inline-flex items-center justify-center gap-1.5 h-11 px-4 rounded-xl text-[13px] font-medium border transition-colors disabled:opacity-60 ${
                                 status === 'interested' || status === 'applied'
-                                  ? 'bg-emerald-500/12 border-emerald-500/30 text-emerald-300'
-                                  : 'text-slate-200 border-white/10 bg-white/[0.03] hover:border-teal-500/30 hover:text-teal-200'
+                                  ? 'bg-emerald-500/12 border-emerald-500/25 text-emerald-300'
+                                  : 'text-slate-200 border-white/10 bg-transparent hover:border-white/20 hover:bg-white/[0.04]'
                               }`}
                             >
-                              <Heart size={13} fill={status ? 'currentColor' : 'none'} />
-                              {status === 'interested' || status === 'applied' ? 'Saved' : 'Interest'}
+                              <Heart size={14} fill={status ? 'currentColor' : 'none'} />
+                              <span className="hidden sm:inline">
+                                {status === 'interested' || status === 'applied' ? 'Saved' : 'Save'}
+                              </span>
                             </button>
                           </div>
-                          <div className="flex gap-2">
-                            {o.ownerId && (
+
+                          <div className="mt-3 flex items-center justify-between gap-2 text-[12px]">
+                            <div className="flex items-center gap-1 min-w-0">
+                              {o.ownerId && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => messagePoster(o, status, interestMap[o.id]?.note || undefined)}
+                                    title="Opens Messages with the listing owner — this is Connect."
+                                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg font-medium text-slate-300 hover:text-teal-200 hover:bg-teal-500/10 transition-colors"
+                                  >
+                                    <MessageCircle size={13} /> Connect
+                                  </button>
+                                  <span className="text-white/15 px-0.5" aria-hidden>·</span>
+                                </>
+                              )}
                               <button
                                 type="button"
-                                onClick={() => messagePoster(o, status, interestMap[o.id]?.note || undefined)}
-                                title="Opens Messages with the listing owner — this is Connect."
-                                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-200 border border-white/10 hover:border-teal-500/35 hover:text-teal-200 hover:bg-teal-500/5"
+                                onClick={() => navigate(opportunityPublicPath(o))}
+                                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] transition-colors"
                               >
-                                <MessageCircle size={12} /> Connect
+                                <ExternalLink size={13} /> Public
                               </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => navigate(opportunityPublicPath(o))}
-                              className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 border border-white/10 hover:border-white/20 hover:bg-white/[0.03]"
-                            >
-                              <ExternalLink size={12} /> Public
-                            </button>
+                            </div>
                             <button
                               type="button"
                               onClick={() => {
@@ -1179,13 +1193,13 @@ export default function OpportunityPage() {
                                 if (next) track('opportunity_expand', { id: o.id, match: pct })
                                 setExpandedId(next)
                               }}
-                              className={`inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${
+                              className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg font-medium transition-colors ${
                                 open
-                                  ? 'text-teal-200 border-teal-500/35 bg-teal-500/10'
-                                  : 'text-slate-300 border-white/10 hover:border-white/20'
+                                  ? 'text-teal-300 bg-teal-500/10'
+                                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
                               }`}
                             >
-                              <Sparkles size={12} />
+                              <Sparkles size={13} />
                               Why
                               {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                             </button>
@@ -1203,18 +1217,27 @@ export default function OpportunityPage() {
                         exit={{ opacity: 0, height: 0 }}
                         className="overflow-hidden"
                       >
-                        <div className="px-5 pb-5">
-                          <div
-                            className="rounded-2xl border border-teal-500/20 p-4"
-                            style={{ background: 'rgba(20,184,166,0.08)' }}
-                          >
+                        <div className="px-5 sm:px-6 pb-5 sm:pb-6">
+                          <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-4">
                             <div className="flex items-center gap-2 mb-2">
                               <Zap size={12} className="text-teal-400" />
-                              <p className="text-teal-300 text-[10px] font-bold uppercase tracking-[0.14em]">
+                              <p className="text-teal-300/90 text-[10px] font-bold uppercase tracking-[0.14em]">
                                 Twin fit reason
                               </p>
                             </div>
                             <p className="text-slate-300 text-sm leading-relaxed">{o.personalizedReason}</p>
+                            {!!o.skills?.length && o.skills.length > 3 && (
+                              <div className="mt-3 flex items-center gap-1.5 flex-wrap">
+                                {o.skills.slice(3).map(sk => (
+                                  <span
+                                    key={sk}
+                                    className="text-[11px] text-slate-400 px-2 py-0.5 rounded-md bg-white/[0.04]"
+                                  >
+                                    {sk}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                             <button
                               type="button"
                               onClick={() => navigate('/twin')}
