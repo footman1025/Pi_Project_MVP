@@ -371,3 +371,31 @@ export async function notifyOpportunityOwnerOfInterest(input: {
     title: input.status === 'applied' ? 'New apply on Pi' : 'New interest on Pi',
   })
 }
+
+/** Notify applicant when the owner sets a loop outcome. */
+export async function notifyApplicantOfOutcome(input: {
+  applicantId: string
+  ownerId: string
+  ownerName: string
+  opportunityTitle: string
+  outcome: 'connected' | 'hired' | 'passed' | 'closed'
+  slug?: string | null
+}) {
+  if (!input.applicantId || input.applicantId === input.ownerId) return
+  const label =
+    input.outcome === 'connected' ? 'marked you as connected on'
+      : input.outcome === 'hired' ? 'marked an outcome (hired / selected) on'
+        : input.outcome === 'passed' ? 'passed on your application for'
+          : 'closed'
+  const path = input.slug
+    ? `/o/${encodeURIComponent(input.slug)}`
+    : '/opportunities'
+  await createNotification({
+    userId: input.applicantId,
+    actorId: input.ownerId,
+    type: 'ai_opportunity',
+    message: `${input.ownerName} ${label} “${input.opportunityTitle.slice(0, 80)}”`,
+    path,
+    title: 'Opportunity update on Pi',
+  })
+}

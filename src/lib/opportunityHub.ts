@@ -70,6 +70,7 @@ export type OpportunityHubMetrics = {
 
 const HUB_EVENTS = [
   'opportunity_view',
+  'opportunity_discover',
   'opportunity_create',
   'opportunity_interest',
   'opportunity_public_view',
@@ -81,6 +82,7 @@ const HUB_EVENTS = [
   'opportunity_outcome',
   'opportunity_delete',
   'opportunity_update',
+  'opportunity_apply_resumed',
 ] as const
 
 /** Aggregate Opportunity Hub validation metrics from product_events. */
@@ -162,10 +164,12 @@ export type OwnerInterestRow = {
   opportunity_id: string
   opportunity_title?: string | null
   status: string
+  outcome?: 'connected' | 'hired' | 'passed' | 'closed' | null
   note?: string | null
   match_score?: number | null
   created_at: string
   applicant_name?: string | null
+  slug?: string | null
 }
 
 /** Interests / applies on opportunities the current user owns. */
@@ -177,7 +181,7 @@ export async function fetchOwnerOpportunityInbox(ownerId: string): Promise<{
   try {
     const { data: owned, error: ownedErr } = await supabase
       .from('opportunities')
-      .select('id, title')
+      .select('id, title, slug')
       .eq('owner_id', ownerId)
       .eq('is_active', true)
 
@@ -195,6 +199,7 @@ export async function fetchOwnerOpportunityInbox(ownerId: string): Promise<{
     if (!ids.length) return { items: [], source: 'empty' }
 
     const titleById = new Map((owned || []).map(o => [String(o.id), o.title as string]))
+    const slugById = new Map((owned || []).map(o => [String(o.id), (o.slug as string) || null]))
 
     const { data: interests, error } = await supabase
       .from('opportunity_interest')
@@ -235,6 +240,7 @@ export async function fetchOwnerOpportunityInbox(ownerId: string): Promise<{
         ...r,
         opportunity_title: r.opportunity_title || titleById.get(r.opportunity_id) || r.opportunity_id,
         applicant_name: names.get(r.user_id) || 'Member',
+        slug: slugById.get(r.opportunity_id) || null,
       })),
       source: 'supabase',
     }

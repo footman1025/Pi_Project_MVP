@@ -1,9 +1,15 @@
 import { supabase } from './supabase'
 import { track } from './analytics'
 import { friendlyNetworkError, isOnline, withRetry } from './messagingReliability'
-import { notifyOpportunityOwnerOfInterest } from './notifications'
+import {
+  notifyApplicantOfOutcome,
+  notifyOpportunityOwnerOfInterest,
+} from './notifications'
 
 export type InterestStatus = 'interested' | 'applied' | 'withdrawn'
+
+/** Owner-set end of the Hub loop — visible to the applicant. */
+export type OpportunityOutcome = 'connected' | 'hired' | 'passed' | 'closed'
 
 export type OpportunityInterest = {
   id?: string
@@ -11,6 +17,7 @@ export type OpportunityInterest = {
   opportunity_id: string
   opportunity_title?: string | null
   status: InterestStatus
+  outcome?: OpportunityOutcome | null
   note?: string | null
   match_score?: number | null
   created_at: string
@@ -34,12 +41,20 @@ function writeLocal(row: OpportunityInterest) {
     const idx = all.findIndex(
       r => r.user_id === row.user_id && r.opportunity_id === row.opportunity_id,
     )
-    if (idx >= 0) all[idx] = row
+    if (idx >= 0) all[idx] = { ...all[idx], ...row }
     else all.unshift(row)
     localStorage.setItem(LOCAL_KEY, JSON.stringify(all.slice(0, 200)))
   } catch {
     /* ignore */
   }
+}
+
+export function outcomeLabel(outcome?: OpportunityOutcome | null): string {
+  if (!outcome) return ''
+  if (outcome === 'connected') return 'Connected'
+  if (outcome === 'hired') return 'Selected'
+  if (outcome === 'passed') return 'Passed'
+  return 'Closed'
 }
 
 export async function fetchMyOpportunityInterests(userId: string): Promise<{
@@ -96,7 +111,6 @@ export async function upsertOpportunityInterest(input: {
   writeLocal(row)
 
   try {
-    // Only notify owner when status actually changes (avoid re-apply / re-interest doubles)
     let previousStatus: InterestStatus | null = null
     try {
       const { data: prev } = await supabase
@@ -163,6 +177,82 @@ export async function upsertOpportunityInterest(input: {
       return { ok: true, source: 'local' }
     }
     return { ok: false, error: friendlyNetworkError(err, 'Could not save interest') }
+  }
+}
+
+/**
+ * Owner sets loop outcome on an applicant row.
+ * Applicant can see it in Mine; gets notified; Traction counts opportunity_outcome.
+ */
+export async function setOpportunityOutcome(input: {
+  ownerId: string
+  ownerName: string
+  applicantId: string
+  opportunityId: string
+  opportunityTitle: string
+  outcome: OpportunityOutcome
+  slug?: string | null
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!input.ownerId || !input.applicantId || !input.opportunityId) {
+    return { ok: false, error: 'Missing owner or applicant.' }
+  }
+  if (input.ownerId === input.applicantId) {
+    return { ok: false, error: 'Cannot set outcome on your own application.' }
+  }
+  if (!isOnline()) {
+    return { ok: false, error: 'You’re offline. Reconnect, then try again.' }
+  }
+
+  const now = new Date().toISOString()
+
+  try {
+    const { data, error } = await supabase
+      .from('opportunity_interest')
+      .update({ outcome: input.outcome, updated_at: now })
+      .eq('user_id', input.applicantId)
+      .eq('opportunity_id', input.opportunityId)
+      .select('id, outcome')
+      .maybeSingle()
+
+    if (error) {
+      if (/outcome|column|schema cache/i.test(error.message)) {
+        return {
+          ok: false,
+          error: 'Outcome column missing — run supabase_opportunity_outcome.sql in Supabase.',
+        }
+      }
+      if (/policy|permission|row-level security|rls/i.test(error.message)) {
+        return {
+          ok: false,
+          error: 'Could not save outcome (permissions). Run supabase_opportunity_outcome.sql.',
+        }
+      }
+      return { ok: false, error: friendlyNetworkError(error, error.message) }
+    }
+
+    if (!data) {
+      return { ok: false, error: 'No application found for this person on this listing.' }
+    }
+
+    track('opportunity_outcome', {
+      id: input.opportunityId,
+      applicant_id: input.applicantId,
+      outcome: input.outcome,
+      source: 'owner_inbox',
+    })
+
+    void notifyApplicantOfOutcome({
+      applicantId: input.applicantId,
+      ownerId: input.ownerId,
+      ownerName: input.ownerName || 'The poster',
+      opportunityTitle: input.opportunityTitle,
+      outcome: input.outcome,
+      slug: input.slug,
+    })
+
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: friendlyNetworkError(err, 'Could not save outcome') }
   }
 }
 

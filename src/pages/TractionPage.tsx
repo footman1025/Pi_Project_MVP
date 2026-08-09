@@ -201,7 +201,7 @@ export default function TractionPage() {
                     <StatusBadge kind="live" label="Solo founders niche" />
                   </div>
                   <p className="text-slate-400 text-xs leading-relaxed max-w-xl">
-                    Watch create → public view → apply → chat → Featured. Share the public links below into one community.
+                    P0 loop: Discover → View → Apply → Connect → Outcome. Share links; watch where it breaks.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2 shrink-0">

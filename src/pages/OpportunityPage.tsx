@@ -19,16 +19,19 @@ import {
   HUB_FILTER_CATEGORIES,
   isRemoteLocation,
   opportunityPublicPath,
-  trackOpportunityOutcome,
   type OpportunityItem,
 } from '../lib/opportunities'
 import {
   fetchMyOpportunityInterests,
+  outcomeLabel,
+  setOpportunityOutcome,
   upsertOpportunityInterest,
   withdrawOpportunityInterest,
   type InterestStatus,
   type OpportunityInterest,
+  type OpportunityOutcome,
 } from '../lib/opportunityInterest'
+import { authNextHref, saveHubResume } from '../lib/hubResume'
 import {
   fetchOpportunityHubMetrics,
   fetchOwnerOpportunityInbox,
@@ -152,6 +155,7 @@ export default function OpportunityPage() {
       setIsLive(res.isLive)
       setLoading(false)
       track('opportunity_view', { count: res.items.length, live: res.isLive })
+      track('opportunity_discover', { count: res.items.length, live: res.isLive, surface: 'hub' })
     })()
     return () => { cancelled = true }
   }, [])
@@ -207,7 +211,7 @@ export default function OpportunityPage() {
 
   const openCreate = () => {
     if (!user) {
-      navigate('/login')
+      navigate(authNextHref('/opportunities', 'login'))
       return
     }
     setEditItem(null)
@@ -242,7 +246,15 @@ export default function OpportunityPage() {
 
   const messagePoster = (o: OpportunityItem, status?: InterestStatus | null, note?: string) => {
     if (!user) {
-      navigate('/login')
+      saveHubResume({
+        path: opportunityPublicPath(o),
+        action: 'connect',
+        opportunityId: o.id,
+        title: o.title,
+        ownerId: o.ownerId,
+        slug: o.slug,
+      })
+      navigate(authNextHref(opportunityPublicPath(o), 'login'))
       return
     }
     if (!o.ownerId || o.ownerId === user.id) return
@@ -255,6 +267,35 @@ export default function OpportunityPage() {
         note,
         status: status || 'interested',
       }),
+    )
+  }
+
+  const markOutcome = async (row: OwnerInterestRow, outcome: OpportunityOutcome) => {
+    if (!user) return
+    setBusyId(`${row.opportunity_id}:${row.user_id}`)
+    const res = await setOpportunityOutcome({
+      ownerId: user.id,
+      ownerName: profile?.full_name || user.email?.split('@')[0] || 'The poster',
+      applicantId: row.user_id,
+      opportunityId: row.opportunity_id,
+      opportunityTitle: row.opportunity_title || 'your opportunity',
+      outcome,
+      slug: row.slug,
+    })
+    setBusyId(null)
+    if (!res.ok) {
+      setError(res.error)
+      return
+    }
+    setInbox(prev =>
+      prev.map(r =>
+        r.user_id === row.user_id && r.opportunity_id === row.opportunity_id
+          ? { ...r, outcome }
+          : r,
+      ),
+    )
+    setSuccess(
+      `Outcome saved: ${outcomeLabel(outcome)} with ${row.applicant_name}. They can see this under Mine.`,
     )
   }
 
@@ -385,7 +426,15 @@ export default function OpportunityPage() {
 
   const openApply = (o: ScoredOpp) => {
     if (!user) {
-      navigate('/login')
+      saveHubResume({
+        path: opportunityPublicPath(o),
+        action: 'apply',
+        opportunityId: o.id,
+        title: o.title,
+        ownerId: o.ownerId,
+        slug: o.slug,
+      })
+      navigate(authNextHref(opportunityPublicPath(o), 'login'))
       return
     }
     setApplyNote(interestMap[o.id]?.note || '')
@@ -405,6 +454,7 @@ export default function OpportunityPage() {
   }
 
   const statusOf = (id: string): InterestStatus | null => interestMap[id]?.status || null
+  const outcomeOf = (id: string) => interestMap[id]?.outcome || null
 
   return (
     <div className="min-h-full relative overflow-hidden">
@@ -711,20 +761,38 @@ export default function OpportunityPage() {
                         >
                           <MessageCircle size={12} /> Connect
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            trackOpportunityOutcome({
-                              opportunityId: row.opportunity_id,
-                              applicantId: row.user_id,
-                              outcome: 'connected',
-                            })
-                            setSuccess(`Outcome saved: connected with ${row.applicant_name}.`)
-                          }}
-                          className="inline-flex items-center gap-1 text-amber-200 font-semibold px-2 py-1 rounded-lg hover:bg-amber-500/10"
-                        >
-                          Mark connected
-                        </button>
+                        {row.outcome ? (
+                          <span className="px-2 py-0.5 rounded-lg border border-teal-500/30 bg-teal-500/10 text-teal-200 font-bold uppercase tracking-wider text-[10px]">
+                            {outcomeLabel(row.outcome as OpportunityOutcome)}
+                          </span>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              disabled={busyId === `${row.opportunity_id}:${row.user_id}`}
+                              onClick={() => void markOutcome(row, 'connected')}
+                              className="inline-flex items-center gap-1 text-amber-200 font-semibold px-2 py-1 rounded-lg hover:bg-amber-500/10 disabled:opacity-40"
+                            >
+                              Connected
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busyId === `${row.opportunity_id}:${row.user_id}`}
+                              onClick={() => void markOutcome(row, 'hired')}
+                              className="inline-flex items-center gap-1 text-emerald-200 font-semibold px-2 py-1 rounded-lg hover:bg-emerald-500/10 disabled:opacity-40"
+                            >
+                              Selected
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busyId === `${row.opportunity_id}:${row.user_id}`}
+                              onClick={() => void markOutcome(row, 'passed')}
+                              className="inline-flex items-center gap-1 text-slate-400 font-semibold px-2 py-1 rounded-lg hover:bg-white/5 disabled:opacity-40"
+                            >
+                              Passed
+                            </button>
+                          </>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -749,8 +817,10 @@ export default function OpportunityPage() {
               >
                 <div className="flex items-center justify-between gap-2 mb-4">
                   <div>
-                    <p className="text-white text-sm font-bold">Your interests</p>
-                    <p className="text-slate-500 text-xs mt-0.5">Saved apply intents on this account</p>
+                    <p className="text-white text-sm font-bold">Your applications</p>
+                    <p className="text-slate-500 text-xs mt-0.5">
+                      Status of interest / apply — and outcomes the poster sets
+                    </p>
                   </div>
                   <button type="button" onClick={() => setShowMine(false)} className="p-2 rounded-xl text-slate-500 hover:text-white hover:bg-white/5">
                     <X size={14} />
@@ -775,6 +845,11 @@ export default function OpportunityPage() {
                         }`}>
                           {row.status}
                         </span>
+                        {row.outcome && (
+                          <span className="px-2 py-0.5 rounded-lg border border-teal-500/30 bg-teal-500/10 text-teal-200 font-bold uppercase tracking-wider text-[10px]">
+                            {outcomeLabel(row.outcome)}
+                          </span>
+                        )}
                         {typeof row.match_score === 'number' && (
                           <span className="text-slate-500">{row.match_score}% fit</span>
                         )}
@@ -1001,6 +1076,11 @@ export default function OpportunityPage() {
                             : 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10'
                         }`}>
                           {status}
+                        </span>
+                      )}
+                      {outcomeOf(o.id) && (
+                        <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-lg border border-teal-500/30 bg-teal-500/10 text-teal-200">
+                          {outcomeLabel(outcomeOf(o.id))}
                         </span>
                       )}
                     </div>

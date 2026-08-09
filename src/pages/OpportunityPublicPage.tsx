@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft, Briefcase, Clock4, ExternalLink, Loader2, MapPin, MessageCircle, Share2, Send, Star,
@@ -14,12 +14,22 @@ import {
   type OpportunityItem,
 } from '../lib/opportunities'
 import { opportunityMessagePath } from '../lib/opportunityHub'
-import { upsertOpportunityInterest } from '../lib/opportunityInterest'
+import {
+  fetchMyOpportunityInterests,
+  outcomeLabel,
+  upsertOpportunityInterest,
+} from '../lib/opportunityInterest'
 import { isFeaturedActive } from '../lib/opportunityFeatured'
 import FeatureOpportunityModal from '../components/FeatureOpportunityModal'
 import { applyOpportunitySeo } from '../lib/seo'
 import { track } from '../lib/analytics'
 import { playConnectSound } from '../lib/connectSound'
+import {
+  authNextHref,
+  clearHubResume,
+  consumeHubResumeFor,
+  saveHubResume,
+} from '../lib/hubResume'
 
 export default function OpportunityPublicPage() {
   const { slugOrId = '' } = useParams<{ slugOrId: string }>()
@@ -34,6 +44,8 @@ export default function OpportunityPublicPage() {
   const [isLive, setIsLive] = useState(false)
   const [featureOpen, setFeatureOpen] = useState(false)
   const [applied, setApplied] = useState(false)
+  const [outcome, setOutcome] = useState<string | null>(null)
+  const resumeTried = useRef(false)
 
   useEffect(() => {
     let cancelled = false
@@ -58,11 +70,66 @@ export default function OpportunityPublicPage() {
         setIsLive(res.isLive)
         applyOpportunitySeo(res.item)
         track('opportunity_public_view', { id: res.item.id, live: res.isLive, slug: res.item.slug || null })
+        track('opportunity_discover', { id: res.item.id, surface: 'public' })
       }
       setLoading(false)
     })()
     return () => { cancelled = true }
   }, [slugOrId, navigate])
+
+  // Load applicant status + resume Apply after auth return
+  useEffect(() => {
+    if (!user || !item) return
+    let cancelled = false
+    ;(async () => {
+      const mine = await fetchMyOpportunityInterests(user.id)
+      if (cancelled) return
+      const row = mine.items.find(r => r.opportunity_id === item.id)
+      if (row?.status === 'applied' || row?.status === 'interested') {
+        if (row.status === 'applied') setApplied(true)
+        setOutcome(row.outcome || null)
+      }
+
+      if (resumeTried.current) return
+      resumeTried.current = true
+      const resume =
+        consumeHubResumeFor(item.id)
+        || (item.slug ? consumeHubResumeFor(item.slug) : null)
+      if (!resume) return
+      if (resume.action === 'apply' && user.id !== item.ownerId) {
+        setBusy(true)
+        const res = await upsertOpportunityInterest({
+          userId: user.id,
+          opportunityId: item.id,
+          title: item.title,
+          status: 'applied',
+          ownerId: item.ownerId,
+          slug: item.slug,
+          actorName: profile?.full_name || user.email?.split('@')[0] || 'Someone',
+        })
+        setBusy(false)
+        if (res.ok) {
+          setApplied(true)
+          setMsg('Applied — welcome back. The owner was notified. Next: Connect.')
+          track('opportunity_apply_resumed', { id: item.id })
+        } else {
+          setMsg(res.error)
+        }
+      } else if (resume.action === 'connect' && item.ownerId && user.id !== item.ownerId) {
+        clearHubResume()
+        void playConnectSound()
+        navigate(
+          opportunityMessagePath({
+            ownerId: item.ownerId,
+            title: item.title,
+            opportunityId: item.id,
+            status: 'applied',
+          }),
+        )
+      }
+    })()
+    return () => { cancelled = true }
+  }, [user, item, profile, navigate])
 
   const share = async () => {
     if (!item) return
@@ -85,7 +152,15 @@ export default function OpportunityPublicPage() {
   const goApply = async () => {
     if (!item) return
     if (!session || !user) {
-      navigate(`/signup?next=${encodeURIComponent(opportunityPublicPath(item))}`)
+      saveHubResume({
+        path: opportunityPublicPath(item),
+        action: 'apply',
+        opportunityId: item.id,
+        title: item.title,
+        ownerId: item.ownerId,
+        slug: item.slug,
+      })
+      navigate(authNextHref(opportunityPublicPath(item), 'signup'))
       return
     }
     setBusy(true)
@@ -116,7 +191,15 @@ export default function OpportunityPublicPage() {
   const goConnect = () => {
     if (!item?.ownerId) return
     if (!session) {
-      navigate(`/signup?next=${encodeURIComponent(opportunityPublicPath(item))}`)
+      saveHubResume({
+        path: opportunityPublicPath(item),
+        action: 'connect',
+        opportunityId: item.id,
+        title: item.title,
+        ownerId: item.ownerId,
+        slug: item.slug,
+      })
+      navigate(authNextHref(opportunityPublicPath(item), 'signup'))
       return
     }
     if (user?.id === item.ownerId) return
@@ -174,6 +257,10 @@ export default function OpportunityPublicPage() {
                   <StatusBadge kind="live" label={item.category} />
                   {item.source === 'member' && <StatusBadge kind="live" label="Member posted" />}
                   {isOwner && <StatusBadge kind="live" label="Your listing" />}
+                  {applied && <StatusBadge kind="live" label="Applied" />}
+                  {outcome && (
+                    <StatusBadge kind="live" label={outcomeLabel(outcome as 'connected')} />
+                  )}
                   {isFeaturedActive(item) && <StatusBadge kind="live" label="Featured" />}
                   {!isFeaturedActive(item) && isOwner && (
                     <StatusBadge kind="partial" label="Feature available" />
@@ -233,8 +320,8 @@ export default function OpportunityPublicPage() {
 
             <p className="text-slate-500 text-xs mb-4 leading-relaxed">
               <span className="text-amber-200/90 font-semibold">Apply</span> notifies the owner.
-              {' '}<span className="text-teal-300 font-semibold">Connect</span> opens Messages with them.
-              No payment for apply or connect.
+              {' '}<span className="text-teal-300 font-semibold">Connect</span> opens Messages.
+              The owner can then mark an <span className="text-white/80 font-semibold">outcome</span> you can see under Mine.
             </p>
 
             {msg && (
@@ -296,8 +383,8 @@ export default function OpportunityPublicPage() {
             )}
 
             <p className="text-slate-600 text-xs leading-relaxed">
-              Pi Opportunity Hub — Live listings only when synced from the database (badge above).
-              Featured priority placement is optional (€9 / 7 days when Stripe is configured) — willingness-to-pay test, not a complex billing system.
+              Loop: Discover → View → Apply → Connect → Outcome. Live when synced from the database.
+              Featured (€9 / 7 days) is optional willingness-to-pay — not required to use the Hub.
             </p>
           </>
         )}
