@@ -11,6 +11,7 @@ import StatusBadge from '../components/StatusBadge'
 import CreateOpportunityModal from '../components/CreateOpportunityModal'
 import FeatureOpportunityModal from '../components/FeatureOpportunityModal'
 import ConfirmModal from '../components/ConfirmModal'
+import OpportunityOutcomeFeedback from '../components/OpportunityOutcomeFeedback'
 import { useAuth } from '../contexts/AuthContext'
 import { opportunityReasonForUser, scoreOpportunityForUser } from '../lib/matching'
 import {
@@ -716,67 +717,77 @@ export default function OpportunityPage() {
                     {inbox.map(row => (
                       <li
                         key={`${row.opportunity_id}-${row.user_id}`}
-                        className="flex flex-wrap items-center gap-2 text-xs border border-white/5 rounded-2xl px-3.5 py-2.5 bg-black/25"
+                        className="text-xs border border-white/5 rounded-2xl px-3.5 py-2.5 bg-black/25"
                       >
-                        <span className="text-white font-semibold">{row.applicant_name}</span>
-                        <span className="text-slate-500 truncate flex-1">{row.opportunity_title}</span>
-                        <span className={`px-2 py-0.5 rounded-lg border font-bold uppercase tracking-wider text-[10px] ${
-                          row.status === 'applied'
-                            ? 'text-amber-200 border-amber-500/30 bg-amber-500/10'
-                            : 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10'
-                        }`}>
-                          {row.status}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            void playConnectSound()
-                            navigate(
-                              opportunityMessagePath({
-                                ownerId: row.user_id,
-                                title: row.opportunity_title || 'your opportunity',
-                                opportunityId: row.opportunity_id,
-                                note: row.note,
-                                status: row.status,
-                                as: 'owner',
-                              }),
-                            )
-                          }}
-                          className="inline-flex items-center gap-1 text-teal-300 font-semibold px-2 py-1 rounded-lg hover:bg-teal-500/10"
-                        >
-                          <MessageCircle size={12} /> Connect
-                        </button>
-                        {row.outcome ? (
-                          <span className="px-2 py-0.5 rounded-lg border border-teal-500/30 bg-teal-500/10 text-teal-200 font-bold uppercase tracking-wider text-[10px]">
-                            {outcomeLabel(row.outcome as OpportunityOutcome)}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-white font-semibold">{row.applicant_name}</span>
+                          <span className="text-slate-500 truncate flex-1">{row.opportunity_title}</span>
+                          <span className={`px-2 py-0.5 rounded-lg border font-bold uppercase tracking-wider text-[10px] ${
+                            row.status === 'applied'
+                              ? 'text-amber-200 border-amber-500/30 bg-amber-500/10'
+                              : 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10'
+                          }`}>
+                            {row.status}
                           </span>
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              disabled={busyId === `${row.opportunity_id}:${row.user_id}`}
-                              onClick={() => void markOutcome(row, 'connected')}
-                              className="inline-flex items-center gap-1 text-amber-200 font-semibold px-2 py-1 rounded-lg hover:bg-amber-500/10 disabled:opacity-40"
-                            >
-                              Connected
-                            </button>
-                            <button
-                              type="button"
-                              disabled={busyId === `${row.opportunity_id}:${row.user_id}`}
-                              onClick={() => void markOutcome(row, 'hired')}
-                              className="inline-flex items-center gap-1 text-emerald-200 font-semibold px-2 py-1 rounded-lg hover:bg-emerald-500/10 disabled:opacity-40"
-                            >
-                              Selected
-                            </button>
-                            <button
-                              type="button"
-                              disabled={busyId === `${row.opportunity_id}:${row.user_id}`}
-                              onClick={() => void markOutcome(row, 'passed')}
-                              className="inline-flex items-center gap-1 text-slate-400 font-semibold px-2 py-1 rounded-lg hover:bg-white/5 disabled:opacity-40"
-                            >
-                              Passed
-                            </button>
-                          </>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void playConnectSound()
+                              navigate(
+                                opportunityMessagePath({
+                                  ownerId: row.user_id,
+                                  title: row.opportunity_title || 'your opportunity',
+                                  opportunityId: row.opportunity_id,
+                                  note: row.note,
+                                  status: row.status,
+                                  as: 'owner',
+                                }),
+                              )
+                            }}
+                            className="inline-flex items-center gap-1 text-teal-300 font-semibold px-2 py-1 rounded-lg hover:bg-teal-500/10"
+                          >
+                            <MessageCircle size={12} /> Connect
+                          </button>
+                          {row.outcome ? (
+                            <span className="px-2 py-0.5 rounded-lg border border-teal-500/30 bg-teal-500/10 text-teal-200 font-bold uppercase tracking-wider text-[10px]">
+                              {outcomeLabel(row.outcome as OpportunityOutcome)}
+                            </span>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                disabled={busyId === `${row.opportunity_id}:${row.user_id}`}
+                                onClick={() => void markOutcome(row, 'connected')}
+                                className="inline-flex items-center gap-1 text-amber-200 font-semibold px-2 py-1 rounded-lg hover:bg-amber-500/10 disabled:opacity-40"
+                              >
+                                Connected
+                              </button>
+                              <button
+                                type="button"
+                                disabled={busyId === `${row.opportunity_id}:${row.user_id}`}
+                                onClick={() => void markOutcome(row, 'hired')}
+                                className="inline-flex items-center gap-1 text-emerald-200 font-semibold px-2 py-1 rounded-lg hover:bg-emerald-500/10 disabled:opacity-40"
+                              >
+                                Selected
+                              </button>
+                              <button
+                                type="button"
+                                disabled={busyId === `${row.opportunity_id}:${row.user_id}`}
+                                onClick={() => void markOutcome(row, 'passed')}
+                                className="inline-flex items-center gap-1 text-slate-400 font-semibold px-2 py-1 rounded-lg hover:bg-white/5 disabled:opacity-40"
+                              >
+                                Passed
+                              </button>
+                            </>
+                          )}
+                        </div>
+                        {row.outcome && (
+                          <OpportunityOutcomeFeedback
+                            opportunityId={`${row.opportunity_id}:${row.user_id}`}
+                            opportunityTitle={row.opportunity_title}
+                            role="owner"
+                            outcomeLabel={outcomeLabel(row.outcome as OpportunityOutcome)}
+                          />
                         )}
                       </li>
                     ))}
@@ -818,34 +829,44 @@ export default function OpportunityPage() {
                     {myList.map(row => (
                       <li
                         key={row.opportunity_id}
-                        className="flex flex-wrap items-center gap-2 text-xs border border-white/5 rounded-2xl px-3.5 py-2.5 bg-black/25"
+                        className="text-xs border border-white/5 rounded-2xl px-3.5 py-2.5 bg-black/25"
                       >
-                        <span className="text-white font-semibold flex-1 min-w-0 truncate">
-                          {row.opportunity_title || row.opportunity_id}
-                        </span>
-                        <span className={`px-2 py-0.5 rounded-lg border font-bold uppercase tracking-wider text-[10px] ${
-                          row.status === 'applied'
-                            ? 'text-amber-200 border-amber-500/30 bg-amber-500/10'
-                            : 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10'
-                        }`}>
-                          {row.status}
-                        </span>
-                        {row.outcome && (
-                          <span className="px-2 py-0.5 rounded-lg border border-teal-500/30 bg-teal-500/10 text-teal-200 font-bold uppercase tracking-wider text-[10px]">
-                            {outcomeLabel(row.outcome)}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-white font-semibold flex-1 min-w-0 truncate">
+                            {row.opportunity_title || row.opportunity_id}
                           </span>
+                          <span className={`px-2 py-0.5 rounded-lg border font-bold uppercase tracking-wider text-[10px] ${
+                            row.status === 'applied'
+                              ? 'text-amber-200 border-amber-500/30 bg-amber-500/10'
+                              : 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10'
+                          }`}>
+                            {row.status}
+                          </span>
+                          {row.outcome && (
+                            <span className="px-2 py-0.5 rounded-lg border border-teal-500/30 bg-teal-500/10 text-teal-200 font-bold uppercase tracking-wider text-[10px]">
+                              {outcomeLabel(row.outcome)}
+                            </span>
+                          )}
+                          {typeof row.match_score === 'number' && (
+                            <span className="text-slate-500">{row.match_score}% fit</span>
+                          )}
+                          <button
+                            type="button"
+                            disabled={busyId === row.opportunity_id}
+                            onClick={() => void withdraw(row.opportunity_id)}
+                            className="text-slate-400 hover:text-rose-300 font-semibold"
+                          >
+                            Withdraw
+                          </button>
+                        </div>
+                        {row.outcome && (
+                          <OpportunityOutcomeFeedback
+                            opportunityId={row.opportunity_id}
+                            opportunityTitle={row.opportunity_title}
+                            role="applicant"
+                            outcomeLabel={outcomeLabel(row.outcome)}
+                          />
                         )}
-                        {typeof row.match_score === 'number' && (
-                          <span className="text-slate-500">{row.match_score}% fit</span>
-                        )}
-                        <button
-                          type="button"
-                          disabled={busyId === row.opportunity_id}
-                          onClick={() => void withdraw(row.opportunity_id)}
-                          className="text-slate-400 hover:text-rose-300 font-semibold"
-                        >
-                          Withdraw
-                        </button>
                       </li>
                     ))}
                   </ul>

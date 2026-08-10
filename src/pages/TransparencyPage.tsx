@@ -16,7 +16,7 @@ const rows: Row[] = [
   { area: 'Market expansion (Phase 3)', kind: 'live', detail: '/grow hub; invite links (/invite/:code) with signup attribution; /partners types → Meet Pi AI; /discuss strategic prep + Investors handoff; events invite_share, signup_attributed, partner_interest_click, discuss_request' },
   { area: 'Production readiness (Phase 1)', kind: 'live', detail: 'SPA rewrite excludes robots/sitemap/static assets; security headers (nosniff, referrer, frame); PWA manifest + SW; investor surfaces public' },
   { area: 'Contact & Partnership (Meet Pi AI)', kind: 'live', detail: '/connect — AI greets first, guides intent, Speak with a Human saves to /handoffs + emails visitor confirmation and HANDOFF_NOTIFY_EMAIL (Resend); team inbox at /handoffs' },
-  { area: 'Traction metrics & validation', kind: 'live', detail: 'product_events + product_feedback; Traction page (activation, retention, intros, opp interest, would-use-again); in-app feedback widget' },
+  { area: 'Traction metrics & validation', kind: 'live', detail: 'P1 Hub funnel (Discover→Outcome conversions, cohorts, outcome quality, time-to-outcome, post-outcome feedback, biggest drop-off) + activation/retention; product_events + product_feedback' },
   { area: 'Auth & profiles', kind: 'live', detail: 'Supabase auth, onboarding save, public profiles, follow graph' },
   { area: 'Feed & communities', kind: 'live', detail: 'Posts, likes, comments, images; join communities and post' },
   { area: 'Pi Social streams (v101)', kind: 'partial', detail: 'Opportunity Feed streams + posts.stream column (supabase_posts_stream.sql); Twin “why”; reputation breakdown; opportunity actions; share + report' },

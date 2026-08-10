@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Activity, ArrowLeft, Bell, Bot, Briefcase, Copy, ExternalLink, Flame, Loader2,
-  MessageSquareHeart, RefreshCw, Sparkles, Target, TrendingUp, Users, Zap,
+  Activity, AlertTriangle, ArrowLeft, ArrowRight, Bell, Bot, Briefcase, Clock,
+  Copy, ExternalLink, Flame, Loader2, MessageSquareHeart, RefreshCw, Sparkles,
+  Target, TrendingUp, Users, Zap,
 } from 'lucide-react'
 import StatusBadge from '../components/StatusBadge'
 import { fetchTractionSnapshot, TractionSnapshot } from '../lib/traction'
@@ -130,7 +131,7 @@ export default function TractionPage() {
               <StatusBadge kind="partial" label="Team-visible" />
             </div>
             <p className="text-slate-400 text-sm max-w-xl leading-relaxed">
-              Numbers we can defend with investors — activation, retention, intros, opportunities, and validation.
+              P1 traction engine — measure Discover → Outcome, find the bottleneck, decide from evidence.
             </p>
           </div>
 
@@ -183,12 +184,12 @@ export default function TractionPage() {
 
         {snap && (
           <div className={`space-y-5 ${loading ? 'opacity-60 pointer-events-none' : ''}`}>
-            {/* Opportunity Hub 0→1 proof */}
+            {/* P1 — Hub traction engine */}
             <section
               className="rounded-2xl border border-amber-500/25 p-5 sm:p-6"
               style={{ background: 'linear-gradient(160deg, rgba(40,28,12,0.92), rgba(10,14,22,0.98))' }}
             >
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
                 <div>
                   <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                     <div
@@ -197,11 +198,11 @@ export default function TractionPage() {
                     >
                       <Briefcase size={16} className="text-white" />
                     </div>
-                    <h2 className="text-white font-bold text-base">Opportunity Hub · 0→1 proof</h2>
-                    <StatusBadge kind="live" label="Solo founders niche" />
+                    <h2 className="text-white font-bold text-base">P1 · Hub traction engine</h2>
+                    <StatusBadge kind="live" label="Funnel live" />
                   </div>
                   <p className="text-slate-400 text-xs leading-relaxed max-w-xl">
-                    P0 loop: Discover → View → Apply → Connect → Outcome. Share links; watch where it breaks.
+                    Discover → View → Apply → Connect → Outcome. Conversions, cohorts, outcome quality, and the biggest drop-off.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2 shrink-0">
@@ -224,23 +225,129 @@ export default function TractionPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 mb-4">
-                <MiniStat value={String(snap.opportunities.created)} label="Created" color="#f59e0b" />
-                <MiniStat value={String(snap.opportunities.publicViews)} label="Views" color="#38bdf8" />
-                <MiniStat value={String(snap.opportunities.applied)} label="Applied" color="#34d399" />
-                <MiniStat value={String(snap.opportunities.conversationsStarted)} label="Chats" color="#a78bfa" />
-                <MiniStat value={String(snap.opportunities.outcomes)} label="Outcomes" color="#f472b6" />
-                <MiniStat value={String(snap.opportunities.repeatUsers)} label="Repeat users" color="#2dd4bf" />
-                <MiniStat
-                  value={String(snap.opportunities.featuredPaid + snap.opportunities.featuredIntent)}
-                  label="Featured"
-                  color="#fbbf24"
-                />
-                <MiniStat value={String(snap.opportunities.interestMarked)} label="Interest" color="#94a3b8" />
+              {/* Funnel stages */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-3">
+                {snap.hubFunnel.stages.map((stage, i) => (
+                  <div
+                    key={stage.id}
+                    className="relative rounded-xl border border-white/[0.07] bg-black/30 px-3 py-3"
+                    title={stage.definition}
+                  >
+                    <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 mb-1">
+                      {stage.label}
+                    </p>
+                    <p className="text-2xl font-black text-white tabular-nums">{stage.count}</p>
+                    {i > 0 && (
+                      <p className="mt-1 text-[11px] font-semibold text-teal-300/90">
+                        {fmtPct(stage.conversionFromPrevPct)} from prev
+                      </p>
+                    )}
+                    {i === 0 && (
+                      <p className="mt-1 text-[11px] text-slate-500">Top of funnel</p>
+                    )}
+                  </div>
+                ))}
               </div>
 
+              <div className="flex flex-wrap items-center gap-3 mb-4 text-xs">
+                <span className="inline-flex items-center gap-1.5 text-slate-300">
+                  <Target size={13} className="text-amber-300" />
+                  Discover → Outcome:{' '}
+                  <span className="font-bold text-white">{fmtPct(snap.hubFunnel.overallDiscoverToOutcomePct)}</span>
+                </span>
+                <span className="text-white/15">·</span>
+                <span className="text-slate-500">
+                  Created {snap.opportunities.created} · Interest {snap.opportunities.interestMarked}
+                </span>
+              </div>
+
+              {snap.hubFunnel.biggestDropOff && (
+                <div className="mb-4 rounded-xl border border-rose-500/25 bg-rose-500/[0.08] px-3.5 py-3 flex gap-2.5">
+                  <AlertTriangle size={16} className="text-rose-300 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-rose-100 text-xs font-bold mb-0.5">
+                      Biggest drop-off: {snap.hubFunnel.biggestDropOff.fromLabel}
+                      <ArrowRight size={11} className="inline mx-1" />
+                      {snap.hubFunnel.biggestDropOff.toLabel}
+                    </p>
+                    <p className="text-slate-300 text-xs leading-relaxed">
+                      {snap.hubFunnel.biggestDropOff.insight}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid sm:grid-cols-3 gap-2 mb-4">
+                <div className="rounded-xl border border-white/[0.06] bg-black/25 px-3 py-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 mb-2">Cohorts</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <MiniStat value={String(snap.hubFunnel.cohorts.firstTimeUsers)} label="First-time" color="#94a3b8" />
+                    <MiniStat value={String(snap.hubFunnel.cohorts.returningUsers)} label="Returning" color="#2dd4bf" />
+                  </div>
+                  <p className="mt-2 text-[11px] text-slate-500">
+                    Return rate {fmtPct(snap.hubFunnel.cohorts.returningUserRatePct)} · Applies{' '}
+                    {snap.hubFunnel.cohorts.firstTimeApplied} first / {snap.hubFunnel.cohorts.returningApplied} returning
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-white/[0.06] bg-black/25 px-3 py-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 mb-2">Outcome quality</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <MiniStat value={String(snap.hubFunnel.outcomeQuality.completed)} label="Completed" color="#34d399" />
+                    <MiniStat value={String(snap.hubFunnel.outcomeQuality.pending)} label="Pending" color="#fbbf24" />
+                    <MiniStat value={String(snap.hubFunnel.outcomeQuality.declined)} label="Declined" color="#fb7185" />
+                    <MiniStat value={String(snap.hubFunnel.outcomeQuality.closed)} label="Closed" color="#94a3b8" />
+                  </div>
+                  <p className="mt-2 text-[11px] text-slate-500 inline-flex items-center gap-1">
+                    <Clock size={11} />
+                    Time to outcome · median{' '}
+                    {snap.hubFunnel.outcomeQuality.medianHoursToOutcome == null
+                      ? '—'
+                      : `${snap.hubFunnel.outcomeQuality.medianHoursToOutcome}h`}
+                    {' · avg '}
+                    {snap.hubFunnel.outcomeQuality.avgHoursToOutcome == null
+                      ? '—'
+                      : `${snap.hubFunnel.outcomeQuality.avgHoursToOutcome}h`}
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-white/[0.06] bg-black/25 px-3 py-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 mb-2">Post-outcome feedback</p>
+                  <p className="text-2xl font-black text-pink-300 tabular-nums mb-1">
+                    {fmtPct(snap.hubFunnel.outcomeFeedback.usefulPct)}
+                  </p>
+                  <p className="text-[11px] text-slate-500 mb-2">
+                    {snap.hubFunnel.outcomeFeedback.yes} yes · {snap.hubFunnel.outcomeFeedback.maybe} maybe ·{' '}
+                    {snap.hubFunnel.outcomeFeedback.no} no
+                    <span className="text-slate-600"> · {snap.hubFunnel.outcomeFeedback.total} responses</span>
+                  </p>
+                  {snap.hubFunnel.outcomeFeedback.recentNotes[0] ? (
+                    <p className="text-[11px] text-slate-400 leading-relaxed line-clamp-2">
+                      “{snap.hubFunnel.outcomeFeedback.recentNotes[0]}”
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-slate-600">
+                      Prompt appears in Hub Mine / Inbox after an outcome.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <details className="mb-4 rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2">
+                <summary className="cursor-pointer text-[11px] font-semibold text-slate-400 hover:text-slate-200">
+                  Event definitions (how each stage is counted)
+                </summary>
+                <ul className="mt-2 space-y-1.5 pb-1">
+                  {snap.hubFunnel.stages.map(s => (
+                    <li key={s.id} className="text-[11px] text-slate-400 leading-relaxed">
+                      <span className="text-slate-200 font-semibold">{s.label}:</span> {s.definition}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+
               {niche.length > 0 ? (
-                <ul className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                <ul className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
                   {niche.map(n => (
                     <li
                       key={n.id}
@@ -291,9 +398,9 @@ export default function TractionPage() {
                 Icon={Sparkles}
               />
               <MetricCard
-                label="Opp. Hub loop"
-                value={String(snap.opportunities.applied)}
-                sub={`${snap.opportunities.created} created · ${snap.opportunities.publicViews} views · ${snap.opportunities.applied} applied · ${snap.opportunities.conversationsStarted} chats · ${snap.opportunities.outcomes} outcomes · ${snap.opportunities.repeatUsers} repeat · ${snap.opportunities.featuredPaid + snap.opportunities.featuredIntent} featured`}
+                label="Discover → Outcome"
+                value={fmtPct(snap.hubFunnel.overallDiscoverToOutcomePct)}
+                sub={`${snap.opportunities.discover} discover · ${snap.opportunities.publicViews} view · ${snap.opportunities.applied} apply · ${snap.opportunities.conversationsStarted} connect · ${snap.opportunities.outcomes} outcome · drop-off ${snap.hubFunnel.biggestDropOff ? `${snap.hubFunnel.biggestDropOff.fromLabel}→${snap.hubFunnel.biggestDropOff.toLabel}` : '—'}`}
                 accent="#fbbf24"
                 Icon={Target}
               />
@@ -414,8 +521,8 @@ export default function TractionPage() {
             >
               <TrendingUp size={16} className="text-teal-400 shrink-0" />
               <p className="text-sm text-slate-300 flex-1 leading-relaxed">
-                <span className="text-teal-300 font-semibold">How to use:</span>{' '}
-                Review weekly with Cristian. Improve the weakest loop first.
+                <span className="text-teal-300 font-semibold">P1 rule:</span>{' '}
+                Ship → Dogfood → Measure → Learn → Decide. Fix the biggest drop-off before P2.
               </p>
               <button
                 type="button"

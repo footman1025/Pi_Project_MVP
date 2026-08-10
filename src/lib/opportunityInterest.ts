@@ -18,10 +18,21 @@ export type OpportunityInterest = {
   opportunity_title?: string | null
   status: InterestStatus
   outcome?: OpportunityOutcome | null
+  outcome_at?: string | null
   note?: string | null
   match_score?: number | null
   created_at: string
   updated_at?: string | null
+}
+
+/** P1 quality buckets for Traction (maps owner outcomes). */
+export function outcomeQualityBucket(
+  outcome?: OpportunityOutcome | null,
+): 'completed' | 'declined' | 'closed' | 'pending' {
+  if (!outcome) return 'pending'
+  if (outcome === 'hired' || outcome === 'connected') return 'completed'
+  if (outcome === 'passed') return 'declined'
+  return 'closed'
 }
 
 const LOCAL_KEY = 'pi_opportunity_interest_v1'
@@ -206,13 +217,45 @@ export async function setOpportunityOutcome(input: {
   const now = new Date().toISOString()
 
   try {
-    const { data, error } = await supabase
-      .from('opportunity_interest')
-      .update({ outcome: input.outcome, updated_at: now })
-      .eq('user_id', input.applicantId)
-      .eq('opportunity_id', input.opportunityId)
-      .select('id, outcome')
-      .maybeSingle()
+    let appliedAt: string | null = null
+    try {
+      const { data: prev } = await supabase
+        .from('opportunity_interest')
+        .select('created_at, updated_at, status')
+        .eq('user_id', input.applicantId)
+        .eq('opportunity_id', input.opportunityId)
+        .maybeSingle()
+      appliedAt = (prev?.created_at as string | undefined) || null
+    } catch {
+      /* ignore */
+    }
+
+    let data: { id: string; outcome: string | null; outcome_at?: string | null } | null = null
+    let error: { message: string } | null = null
+
+    {
+      const res = await supabase
+        .from('opportunity_interest')
+        .update({ outcome: input.outcome, outcome_at: now, updated_at: now })
+        .eq('user_id', input.applicantId)
+        .eq('opportunity_id', input.opportunityId)
+        .select('id, outcome, outcome_at')
+        .maybeSingle()
+      data = res.data as typeof data
+      error = res.error
+      // Older DBs without outcome_at — retry without that column
+      if (error && /outcome_at|column|schema cache/i.test(error.message)) {
+        const retry = await supabase
+          .from('opportunity_interest')
+          .update({ outcome: input.outcome, updated_at: now })
+          .eq('user_id', input.applicantId)
+          .eq('opportunity_id', input.opportunityId)
+          .select('id, outcome')
+          .maybeSingle()
+        data = retry.data as typeof data
+        error = retry.error
+      }
+    }
 
     if (error) {
       if (/outcome|column|schema cache/i.test(error.message)) {
@@ -234,10 +277,17 @@ export async function setOpportunityOutcome(input: {
       return { ok: false, error: 'No application found for this person on this listing.' }
     }
 
+    const hoursToOutcome =
+      appliedAt != null
+        ? Math.max(0, Math.round((Date.parse(now) - Date.parse(appliedAt)) / 3600000))
+        : null
+
     track('opportunity_outcome', {
       id: input.opportunityId,
       applicant_id: input.applicantId,
       outcome: input.outcome,
+      quality: outcomeQualityBucket(input.outcome),
+      hours_to_outcome: hoursToOutcome,
       source: 'owner_inbox',
     })
 

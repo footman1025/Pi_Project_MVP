@@ -139,13 +139,14 @@ export async function fetchOpportunityHubMetrics(windowDays = 30): Promise<Oppor
       interestMarked: interestRows.length,
       applied,
       publicViews: count('opportunity_public_view'),
-      conversationsStarted:
-        count('opportunity_conversation_start') + count('opportunity_conversation_intent'),
+      // P1: Connect = real chat start (intent is click-only)
+      conversationsStarted: count('opportunity_conversation_start'),
       featuredCheckout:
         count('opportunity_featured_checkout') +
         count('opportunity_featured_intent') +
         count('opportunity_featured_paid'),
-      outcomes: count('opportunity_outcome') + count('opportunity_delete'),
+      // P1: outcomes exclude listing deletes
+      outcomes: count('opportunity_outcome'),
       repeatUsers,
       windowDays,
       tableReady: true,
