@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react'
 import { Session, User } from '@supabase/supabase-js'
 import { supabase, Profile } from '../lib/supabase'
 import { friendlyNetworkError, isOnline, withRetry } from '../lib/messagingReliability'
@@ -29,6 +29,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [profileError, setProfileError] = useState<string | null>(null)
+  /** Bumps on every real auth update so a slow getSession cannot wipe a newer login. */
+  const authEpoch = useRef(0)
 
   const fetchProfile = async (userId: string): Promise<string | null> => {
     try {
@@ -59,45 +61,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return error ? { error } : {}
   }
 
+  const applySession = (next: Session | null, source: string) => {
+    authEpoch.current += 1
+    setSession(next)
+    setUser(next?.user ?? null)
+    if (next?.user) {
+      // Never clear session if profile fails
+      void fetchProfile(next.user.id)
+    } else {
+      setProfile(null)
+      setProfileError(null)
+    }
+    if (import.meta.env.DEV) {
+      console.debug('[auth]', source, next?.user?.id ? 'signed-in' : 'signed-out')
+    }
+  }
+
   useEffect(() => {
     let mounted = true
 
-    const boot = async () => {
-      try {
-        const { data: { session: next }, error } = await supabase.auth.getSession()
-        if (!mounted) return
-        if (error) console.warn('[auth] getSession', error.message)
-        setSession(next)
-        setUser(next?.user ?? null)
-        if (next?.user) await fetchProfile(next.user.id)
-        else setProfile(null)
-      } catch (err) {
-        if (!mounted) return
-        console.warn('[auth] session boot failed', friendlyNetworkError(err, 'Session load failed'))
-        setSession(null)
-        setUser(null)
-        setProfile(null)
-      } finally {
-        if (mounted) setLoading(false)
-      }
-    }
+    // Source of truth: auth state changes (SIGNED_IN / SIGNED_OUT / TOKEN_REFRESHED / INITIAL_SESSION)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, next) => {
+      if (!mounted) return
+      // Only clear UI session on explicit sign-out / no session from auth — never from profile errors
+      applySession(next, event)
+      setLoading(false)
+    })
 
-    void boot()
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, next) => {
-      setSession(next)
-      setUser(next?.user ?? null)
-      if (next?.user) void fetchProfile(next.user.id)
-      else {
-        setProfile(null)
-        setProfileError(null)
-      }
+    // Fallback for older clients that don't emit INITIAL_SESSION quickly.
+    // Must not overwrite a login that already happened while this was in flight.
+    const bootEpoch = authEpoch.current
+    void supabase.auth.getSession().then(({ data: { session: next }, error }) => {
+      if (!mounted) return
+      if (error) console.warn('[auth] getSession', error.message)
+      // If onAuthStateChange already advanced epoch (e.g. SIGNED_IN), ignore this stale result
+      if (authEpoch.current !== bootEpoch) return
+      applySession(next, 'getSession')
+      setLoading(false)
+    }).catch(err => {
+      if (!mounted) return
+      console.warn('[auth] session boot failed', friendlyNetworkError(err, 'Session load failed'))
+      // Do NOT force logout here — leave whatever onAuthStateChange already set
+      if (authEpoch.current === bootEpoch) setLoading(false)
     })
 
     return () => {
       mounted = false
       subscription.unsubscribe()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -106,6 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     window.addEventListener('online', onOnline)
     return () => window.removeEventListener('online', onOnline)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
 
   const signUp = async (email: string, password: string, fullName: string) => {
@@ -132,10 +145,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: new Error('You’re offline. Reconnect, then try again.') }
     }
     try {
-      await withRetry(async () => {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) throw error
-      }, { attempts: 2, baseMs: 400, label: 'Sign in failed' })
+      // Single attempt — retrying password login can race refresh tokens / sessions
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) throw error
       return { error: null }
     } catch (err) {
       return { error: toError(err, 'Sign in failed') }
