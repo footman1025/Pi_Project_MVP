@@ -11,7 +11,7 @@
     "seed:opportunities": "node scripts/seed-niche-opportunities.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.109.0",
+    "@supabase/supabase-js": "^2.112.3",
     "framer-motion": "^11.0.0",
     "lucide-react": "^0.344.0",
     "react": "^18.2.0",
