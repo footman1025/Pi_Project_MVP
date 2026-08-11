@@ -3,8 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = 'https://enozvyhkjbqsgcjonxlr.supabase.co'
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVub3p2eWhramJxc2djam9ueGxyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2NjI4NDQsImV4cCI6MjEwMDIzODg0NH0.0S3ZMyPUVzRyRFDseAJNf1QT2ZygyItXLh3mVqR7D7o'
 
-/** Stable storage key — avoids multi-client collisions wiping the session. */
-export const SUPABASE_AUTH_STORAGE_KEY = 'sb-enozvyhkjbqsgcjonxlr-auth-token'
+export const SUPABASE_AUTH_STORAGE_KEY = `sb-enozvyhkjbqsgcjonxlr-auth-token`
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
@@ -12,7 +11,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     detectSessionInUrl: true,
     storageKey: SUPABASE_AUTH_STORAGE_KEY,
-    flowType: 'pkce',
   },
 })
 

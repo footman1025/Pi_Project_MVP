@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { getAuthUserId } from './authBridge'
 
 type Props = Record<string, string | number | boolean | null | undefined>
 
@@ -57,8 +58,9 @@ export function track(event: string, props?: Props) {
 
 async function persistEvent(event: string, props?: Props, path?: string) {
   try {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.user) return
+    // Use bridge — do NOT call getSession() here (triggers refresh storms / 429 → logout)
+    const userId = getAuthUserId()
+    if (!userId) return
 
     const cleanProps: Record<string, string | number | boolean | null> = {}
     if (props) {
@@ -69,7 +71,7 @@ async function persistEvent(event: string, props?: Props, path?: string) {
     }
 
     await supabase.from('product_events').insert({
-      user_id: session.user.id,
+      user_id: userId,
       session_id: sessionId(),
       event,
       props: cleanProps,

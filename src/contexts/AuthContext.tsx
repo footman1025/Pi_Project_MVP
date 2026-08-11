@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react'
 import { Session, User } from '@supabase/supabase-js'
-import { SUPABASE_AUTH_STORAGE_KEY, supabase, Profile } from '../lib/supabase'
+import { supabase, Profile } from '../lib/supabase'
+import { setAuthBridge } from '../lib/authBridge'
 import { friendlyNetworkError, isOnline, withRetry } from '../lib/messagingReliability'
 
 interface AuthContextType {
@@ -23,20 +24,11 @@ function toError(err: unknown, fallback: string): Error {
   return new Error(friendlyNetworkError(err, fallback))
 }
 
-/** Clear corrupt auth storage without calling the network. */
-function clearLocalAuthStorage() {
-  try {
-    localStorage.removeItem(SUPABASE_AUTH_STORAGE_KEY)
-    // Legacy / alternate keys sometimes left by older clients
-    for (let i = localStorage.length - 1; i >= 0; i--) {
-      const key = localStorage.key(i)
-      if (key && key.startsWith('sb-') && key.includes('auth-token')) {
-        localStorage.removeItem(key)
-      }
-    }
-  } catch {
-    /* ignore */
-  }
+function sessionStillValid(s: Session | null | undefined): s is Session {
+  if (!s?.access_token || !s.refresh_token) return false
+  if (!s.expires_at) return true
+  // still valid for at least 30s
+  return s.expires_at * 1000 > Date.now() + 30_000
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -45,9 +37,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [profileError, setProfileError] = useState<string | null>(null)
-  const authEpoch = useRef(0)
-  const lastSignedInAt = useRef(0)
+
   const sessionRef = useRef<Session | null>(null)
+  const lastSignedInAt = useRef(0)
+  const restoringRef = useRef(false)
+  const intentionalSignOut = useRef(false)
 
   const fetchProfile = async (userId: string): Promise<string | null> => {
     try {
@@ -59,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .maybeSingle()
         if (error) throw new Error(error.message)
         return row
-      }, { attempts: 3, baseMs: 400, label: 'Could not load profile' })
+      }, { attempts: 2, baseMs: 400, label: 'Could not load profile' })
 
       setProfileError(null)
       if (data) setProfile(data)
@@ -79,13 +73,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const applySession = (next: Session | null, source: string) => {
-    authEpoch.current += 1
     sessionRef.current = next
     setSession(next)
     setUser(next?.user ?? null)
+    setAuthBridge({
+      userId: next?.user?.id ?? null,
+      accessToken: next?.access_token ?? null,
+    })
     if (next?.user) {
-      // Defer DB calls — never call Supabase from inside onAuthStateChange synchronously
       const uid = next.user.id
+      // Never call Supabase from inside onAuthStateChange synchronously
       window.setTimeout(() => {
         void fetchProfile(uid)
       }, 0)
@@ -93,70 +90,71 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(null)
       setProfileError(null)
     }
-    if (import.meta.env.DEV) {
-      console.debug('[auth]', source, next?.user?.id ? 'signed-in' : 'signed-out')
-    }
+    console.info('[auth]', source, next?.user?.id ? 'in' : 'out')
   }
 
   useEffect(() => {
     let mounted = true
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, next) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, next) => {
       if (!mounted) return
 
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        if (event === 'SIGNED_IN') lastSignedInAt.current = Date.now()
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        if (event === 'SIGNED_IN') {
+          lastSignedInAt.current = Date.now()
+          intentionalSignOut.current = false
+        }
         if (next) applySession(next, event)
         setLoading(false)
         return
       }
 
+      if (event === 'INITIAL_SESSION') {
+        if (next) applySession(next, event)
+        else applySession(null, event)
+        setLoading(false)
+        return
+      }
+
       if (event === 'SIGNED_OUT') {
-        // Guard against spurious SIGNED_OUT right after a successful password login
-        // (known refresh-token race in supabase-js / multi-tab).
-        const msSinceSignIn = Date.now() - lastSignedInAt.current
-        if (msSinceSignIn >= 0 && msSinceSignIn < 4000 && sessionRef.current?.user) {
-          console.warn('[auth] Ignoring SIGNED_OUT shortly after SIGNED_IN — recovering session')
-          void supabase.auth.getSession().then(({ data }) => {
-            if (!mounted) return
-            if (data.session) applySession(data.session, 'recover-after-spurious-signout')
-          })
+        if (intentionalSignOut.current) {
+          applySession(null, event)
           setLoading(false)
           return
         }
+
+        // Spurious SIGNED_OUT after login / refresh race / 429:
+        // React-only ignore is not enough — storage was cleared. Restore into the client.
+        const held = sessionRef.current
+        const recentLogin = Date.now() - lastSignedInAt.current < 60_000
+        if (!restoringRef.current && recentLogin && sessionStillValid(held)) {
+          restoringRef.current = true
+          console.warn('[auth] Unexpected SIGNED_OUT — restoring session into Supabase client')
+          try {
+            const { data, error } = await supabase.auth.setSession({
+              access_token: held.access_token,
+              refresh_token: held.refresh_token,
+            })
+            if (!error && data.session) {
+              applySession(data.session, 'restored')
+              setLoading(false)
+              restoringRef.current = false
+              return
+            }
+            console.warn('[auth] restore failed', error?.message)
+          } catch (err) {
+            console.warn('[auth] restore threw', err)
+          }
+          restoringRef.current = false
+        }
+
         applySession(null, event)
         setLoading(false)
         return
       }
 
-      if (event === 'INITIAL_SESSION') {
-        applySession(next, event)
-        setLoading(false)
-        return
-      }
-
-      // Other events: only apply a non-null session; never wipe on ambiguous null
       if (next) applySession(next, event)
       setLoading(false)
-    })
-
-    const bootEpoch = authEpoch.current
-    void supabase.auth.getSession().then(({ data: { session: next }, error }) => {
-      if (!mounted) return
-      if (error) {
-        console.warn('[auth] getSession', error.message)
-        // Corrupt / reused refresh token — wipe local only so next login is clean
-        if (/refresh token|session/i.test(error.message)) {
-          clearLocalAuthStorage()
-        }
-      }
-      if (authEpoch.current !== bootEpoch) return
-      if (next) applySession(next, 'getSession')
-      setLoading(false)
-    }).catch(err => {
-      if (!mounted) return
-      console.warn('[auth] session boot failed', friendlyNetworkError(err, 'Session load failed'))
-      if (authEpoch.current === bootEpoch) setLoading(false)
     })
 
     return () => {
@@ -180,14 +178,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: new Error('You’re offline. Reconnect, then try again.') }
     }
     try {
-      await withRetry(async () => {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { data: { full_name: fullName } },
-        })
-        if (error) throw error
-      }, { attempts: 2, baseMs: 400, label: 'Sign up failed' })
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { full_name: fullName } },
+      })
+      if (error) throw error
       return { error: null }
     } catch (err) {
       return { error: toError(err, 'Sign up failed') }
@@ -199,15 +195,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: new Error('You’re offline. Reconnect, then try again.') }
     }
     try {
-      // Drop stale local session first so a dead refresh token can’t race the new login
-      try {
-        await supabase.auth.signOut({ scope: 'local' })
-      } catch {
-        clearLocalAuthStorage()
-      }
-
+      intentionalSignOut.current = false
+      // Do NOT wipe localStorage before login — that desyncs the client and causes SIGNED_OUT seconds later.
       const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) throw error
+      if (error) {
+        const msg = error.message || ''
+        if (/rate limit|too many requests|429/i.test(msg)) {
+          return {
+            error: new Error(
+              'Auth rate limit (429). Wait 10 minutes, use one tab only, then try a single login.',
+            ),
+          }
+        }
+        throw error
+      }
 
       if (data.session) {
         lastSignedInAt.current = Date.now()
@@ -215,23 +216,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return { error: null }
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (/rate limit|too many requests|429/i.test(msg)) {
+        return {
+          error: new Error(
+            'Auth rate limit (429). Wait 10 minutes, use one tab only, then try a single login.',
+          ),
+        }
+      }
       return { error: toError(err, 'Sign in failed') }
     }
   }
 
   const signOut = async () => {
+    intentionalSignOut.current = true
     try {
       const { error } = await supabase.auth.signOut()
-      if (error) {
-        // Still clear local UI/session if network signOut fails
-        clearLocalAuthStorage()
-        applySession(null, 'signOut-local')
-        return { error: toError(error, 'Sign out failed') }
-      }
       applySession(null, 'signOut')
+      if (error) return { error: toError(error, 'Sign out failed') }
       return { error: null }
     } catch (err) {
-      clearLocalAuthStorage()
       applySession(null, 'signOut-catch')
       return { error: toError(err, 'Sign out failed') }
     }
@@ -242,12 +246,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: new Error('You’re offline. Reconnect, then try again.') }
     }
     try {
-      await withRetry(async () => {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/reset-password`,
-        })
-        if (error) throw error
-      }, { attempts: 2, baseMs: 400, label: 'Reset email failed' })
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      })
+      if (error) throw error
       return { error: null }
     } catch (err) {
       return { error: toError(err, 'Could not send reset email') }

@@ -47,7 +47,7 @@ import TrustSafetyPage from './pages/TrustSafetyPage'
 import ModerationPage from './pages/ModerationPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { session, loading } = useAuth()
+  const { session, user, loading } = useAuth()
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#080d1a' }}>
@@ -55,7 +55,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       </div>
     )
   }
-  if (!session) return <Navigate to="/login" replace />
+  // Prefer user OR session — brief restore windows can keep user while session rehydrates
+  if (!session && !user) return <Navigate to="/login" replace />
   return <>{children}</>
 }
 
