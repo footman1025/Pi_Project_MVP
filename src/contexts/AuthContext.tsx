@@ -25,9 +25,10 @@ function toError(err: unknown, fallback: string): Error {
 }
 
 /**
- * CRITICAL: onAuthStateChange callback must be synchronous.
- * Awaiting supabase.auth.* inside it holds the auth lock → every query hangs
- * ("Loading…") and then the session dies → automatic logout.
+ * Console proved the failure mode:
+ *   SIGNED_IN → TOKEN_REFRESHED × dozens → 429 refresh_token → SIGNED_OUT
+ * Fix: disable client autoRefreshToken; refresh once on a timer with a mutex;
+ * never re-render the whole app on every TOKEN_REFRESHED.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
@@ -38,6 +39,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const intentionalSignOut = useRef(false)
   const profileFetchFor = useRef<string | null>(null)
+  const sessionRef = useRef<Session | null>(null)
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const refreshing = useRef(false)
 
   const fetchProfile = async (userId: string): Promise<string | null> => {
     try {
@@ -64,38 +68,120 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return error ? { error } : {}
   }
 
+  const clearRefreshTimer = () => {
+    if (refreshTimer.current) {
+      clearTimeout(refreshTimer.current)
+      refreshTimer.current = null
+    }
+  }
+
+  const scheduleManualRefresh = (s: Session | null) => {
+    clearRefreshTimer()
+    if (!s?.expires_at || intentionalSignOut.current) return
+
+    // Refresh ~2 minutes before expiry (JWT is 3600s). Never spam.
+    const delayMs = Math.max(30_000, s.expires_at * 1000 - Date.now() - 120_000)
+    refreshTimer.current = setTimeout(() => {
+      void runManualRefresh()
+    }, delayMs)
+  }
+
+  const runManualRefresh = async () => {
+    if (refreshing.current || intentionalSignOut.current) return
+    const current = sessionRef.current
+    if (!current?.refresh_token) return
+
+    refreshing.current = true
+    try {
+      const { data, error } = await supabase.auth.refreshSession({
+        refresh_token: current.refresh_token,
+      })
+      if (error) {
+        console.warn('[auth] manual refresh failed', error.message)
+        // On 429 keep the existing access token; retry in 5 minutes if still valid
+        const stillValid = current.expires_at && current.expires_at * 1000 > Date.now() + 60_000
+        if (/429|rate limit|too many/i.test(error.message) && stillValid) {
+          refreshTimer.current = setTimeout(() => {
+            void runManualRefresh()
+          }, 5 * 60_000)
+          return
+        }
+        // Only hard-logout if access token is actually dead
+        if (!stillValid) {
+          applySession(null, 'refresh-expired')
+        }
+        return
+      }
+      if (data.session) {
+        applySession(data.session, 'manual-refresh')
+      }
+    } catch (err) {
+      console.warn('[auth] manual refresh threw', err)
+    } finally {
+      refreshing.current = false
+    }
+  }
+
   const applySession = (next: Session | null, source: string) => {
-    setSession(next)
-    setUser(next?.user ?? null)
+    const prev = sessionRef.current
+
+    // Ignore no-op / spammy TOKEN_REFRESHED with identical token
+    if (
+      next &&
+      prev &&
+      next.access_token === prev.access_token &&
+      next.user?.id === prev.user?.id
+    ) {
+      return
+    }
+
+    sessionRef.current = next
     setAuthBridge({
       userId: next?.user?.id ?? null,
       accessToken: next?.access_token ?? null,
+    })
+
+    setSession(next)
+    // Keep stable user object reference when same id — stops page reloads on refresh
+    setUser(prevUser => {
+      if (!next?.user) return null
+      if (prevUser?.id === next.user.id) return prevUser
+      return next.user
     })
 
     if (next?.user) {
       const uid = next.user.id
       if (profileFetchFor.current !== uid) {
         profileFetchFor.current = uid
-        // Must be outside the auth callback tick
         queueMicrotask(() => {
           void fetchProfile(uid)
         })
       }
+      scheduleManualRefresh(next)
     } else {
       profileFetchFor.current = null
       setProfile(null)
       setProfileError(null)
+      clearRefreshTimer()
     }
 
-    console.info('[auth]', source, next?.user?.id ? 'in' : 'out')
+    if (source !== 'TOKEN_REFRESHED') {
+      console.info('[auth]', source, next?.user?.id ? 'in' : 'out')
+    }
   }
 
   useEffect(() => {
     let mounted = true
 
-    // SYNC callback only — never async/await supabase.auth here
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, next) => {
       if (!mounted) return
+
+      if (event === 'TOKEN_REFRESHED') {
+        // Update token quietly — do not treat as a full re-login
+        if (next) applySession(next, 'TOKEN_REFRESHED')
+        setLoading(false)
+        return
+      }
 
       if (event === 'SIGNED_OUT') {
         if (intentionalSignOut.current) {
@@ -104,9 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoading(false)
           return
         }
-        // Unexpected SIGNED_OUT (refresh 429 / invalid refresh token).
-        // Do NOT call setSession/getSession here — that deadlocks the auth lock.
-        console.warn('[auth] SIGNED_OUT from Supabase client (usually refresh token 429/invalid)')
+        console.warn('[auth] SIGNED_OUT (refresh storm/429). Wait, clear sb-* storage, one tab, login once.')
         applySession(null, 'SIGNED_OUT')
         setLoading(false)
         return
@@ -125,6 +209,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       mounted = false
       subscription.unsubscribe()
+      clearRefreshTimer()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -157,13 +242,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (/rate limit|too many requests|429/i.test(error.message || '')) {
           return {
             error: new Error(
-              'Supabase rate limit (429) on auth. Wait 15 minutes, close other Pi tabs, then log in once.',
+              'Auth rate-limited (429). Wait 15 minutes, one tab only, then sign in once.',
             ),
           }
         }
         throw error
       }
-      // Apply immediately so UI doesn't wait on the listener
       if (data.session) applySession(data.session, 'signIn')
       setLoading(false)
       return { error: null }
@@ -172,7 +256,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (/rate limit|too many requests|429/i.test(msg)) {
         return {
           error: new Error(
-            'Supabase rate limit (429) on auth. Wait 15 minutes, close other Pi tabs, then log in once.',
+            'Auth rate-limited (429). Wait 15 minutes, one tab only, then sign in once.',
           ),
         }
       }
@@ -182,6 +266,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     intentionalSignOut.current = true
+    clearRefreshTimer()
     try {
       const { error } = await supabase.auth.signOut()
       applySession(null, 'signOut')

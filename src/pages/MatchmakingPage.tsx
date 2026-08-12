@@ -37,25 +37,42 @@ export default function MatchmakingPage() {
         setLoading(false)
         return
       }
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .neq('id', user?.id || '')
-        .limit(40)
+      try {
+        const result = await Promise.race([
+          supabase
+            .from('profiles')
+            .select('*')
+            .neq('id', user?.id || '')
+            .limit(40),
+          new Promise<{ data: null; error: { message: string } }>(resolve =>
+            setTimeout(
+              () => resolve({ data: null, error: { message: 'Match query timed out' } }),
+              12000,
+            ),
+          ),
+        ])
 
-      if (cancelled) return
+        if (cancelled) return
 
-      if (data && data.length > 0) {
-        const ranked = rankMatches(profile, data).slice(0, 12)
-        setMatches(ranked)
-        setUsingLive(true)
-        track('match_view', { count: ranked.length, live: true })
-      } else {
-        setMatches([])
-        setUsingLive(false)
-        track('match_view', { count: 0, live: false })
+        const data = result.data
+        if (data && data.length > 0) {
+          const ranked = rankMatches(profile, data).slice(0, 12)
+          setMatches(ranked)
+          setUsingLive(true)
+          track('match_view', { count: ranked.length, live: true })
+        } else {
+          setMatches([])
+          setUsingLive(false)
+          track('match_view', { count: 0, live: false })
+        }
+      } catch {
+        if (!cancelled) {
+          setMatches([])
+          setUsingLive(false)
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
       }
-      setLoading(false)
     }
     load()
     return () => { cancelled = true }

@@ -5,12 +5,19 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 export const SUPABASE_AUTH_STORAGE_KEY = `sb-enozvyhkjbqsgcjonxlr-auth-token`
 
+/**
+ * autoRefreshToken MUST stay false for this project.
+ * With ECC JWT keys, supabase-js auto-refresh was firing TOKEN_REFRESHED
+ * dozens of times → 429 on /token?grant_type=refresh_token → SIGNED_OUT.
+ * AuthContext schedules a single manual refresh instead.
+ */
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
-    autoRefreshToken: true,
+    autoRefreshToken: false,
     detectSessionInUrl: true,
     storageKey: SUPABASE_AUTH_STORAGE_KEY,
+    flowType: 'implicit',
   },
 })
 
@@ -32,7 +39,6 @@ export type Profile = {
   following_count: number
   posts_count: number
   created_at: string
-  /** UGE prefs synced from /experience (jsonb) */
   uge_preferences?: Record<string, unknown> | null
 }
 
@@ -41,7 +47,7 @@ export type Experience = {
   title: string
   company: string
   start_date: string
-  end_date: string        // empty string means "Present"
+  end_date: string
   description: string
 }
 
@@ -55,7 +61,6 @@ export type Post = {
   comments_count: number
   shares_count: number
   created_at: string
-  /** Pi Social stream — knowledge | people | opportunities | communities */
   stream?: string | null
   profiles?: Profile
   liked?: boolean
