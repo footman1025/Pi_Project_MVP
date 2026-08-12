@@ -164,8 +164,8 @@ export async function sendPushToUser(opts: {
       .maybeSingle()
     if (prefs && prefs.push_enabled === false) return
 
-    const { data: sessionData } = await supabase.auth.getSession()
-    const token = sessionData.session?.access_token
+    const { getAuthAccessToken } = await import('./authBridge')
+    const token = getAuthAccessToken()
     if (!token) return
 
     await fetch('/api/push', {

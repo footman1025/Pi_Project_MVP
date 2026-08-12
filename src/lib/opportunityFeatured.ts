@@ -55,8 +55,8 @@ export async function startFeaturedCheckout(input: {
     return { ok: false, error: 'You’re offline. Reconnect, then try again.' }
   }
 
-  const { data: sessionData } = await supabase.auth.getSession()
-  const token = sessionData.session?.access_token
+  const { getAuthAccessToken } = await import('./authBridge')
+  const token = getAuthAccessToken()
   if (!token) return { ok: false, error: 'Sign in to feature your listing.' }
 
   try {
@@ -119,8 +119,8 @@ export async function confirmFeaturedCheckout(sessionId: string): Promise<
   | { ok: false; error: string }
 > {
   if (!sessionId) return { ok: false, error: 'Missing session' }
-  const { data: sessionData } = await supabase.auth.getSession()
-  const token = sessionData.session?.access_token
+  const { getAuthAccessToken } = await import('./authBridge')
+  const token = getAuthAccessToken()
   if (!token) return { ok: false, error: 'Sign in to confirm payment.' }
 
   try {

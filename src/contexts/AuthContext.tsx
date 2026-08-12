@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, ReactNode } fro
 import { Session, User } from '@supabase/supabase-js'
 import { supabase, Profile } from '../lib/supabase'
 import { setAuthBridge } from '../lib/authBridge'
-import { friendlyNetworkError, isOnline, withRetry } from '../lib/messagingReliability'
+import { friendlyNetworkError, isOnline } from '../lib/messagingReliability'
 
 interface AuthContextType {
   session: Session | null
@@ -24,13 +24,11 @@ function toError(err: unknown, fallback: string): Error {
   return new Error(friendlyNetworkError(err, fallback))
 }
 
-function sessionStillValid(s: Session | null | undefined): s is Session {
-  if (!s?.access_token || !s.refresh_token) return false
-  if (!s.expires_at) return true
-  // still valid for at least 30s
-  return s.expires_at * 1000 > Date.now() + 30_000
-}
-
+/**
+ * CRITICAL: onAuthStateChange callback must be synchronous.
+ * Awaiting supabase.auth.* inside it holds the auth lock → every query hangs
+ * ("Loading…") and then the session dies → automatic logout.
+ */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
@@ -38,25 +36,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [profileError, setProfileError] = useState<string | null>(null)
 
-  const sessionRef = useRef<Session | null>(null)
-  const lastSignedInAt = useRef(0)
-  const restoringRef = useRef(false)
   const intentionalSignOut = useRef(false)
+  const profileFetchFor = useRef<string | null>(null)
 
   const fetchProfile = async (userId: string): Promise<string | null> => {
     try {
-      const data = await withRetry(async () => {
-        const { data: row, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .maybeSingle()
-        if (error) throw new Error(error.message)
-        return row
-      }, { attempts: 2, baseMs: 400, label: 'Could not load profile' })
-
+      const { data: row, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle()
+      if (error) throw new Error(error.message)
       setProfileError(null)
-      if (data) setProfile(data)
+      if (row) setProfile(row)
       return null
     } catch (err) {
       const msg = friendlyNetworkError(err, 'Could not load profile')
@@ -73,87 +65,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const applySession = (next: Session | null, source: string) => {
-    sessionRef.current = next
     setSession(next)
     setUser(next?.user ?? null)
     setAuthBridge({
       userId: next?.user?.id ?? null,
       accessToken: next?.access_token ?? null,
     })
+
     if (next?.user) {
       const uid = next.user.id
-      // Never call Supabase from inside onAuthStateChange synchronously
-      window.setTimeout(() => {
-        void fetchProfile(uid)
-      }, 0)
+      if (profileFetchFor.current !== uid) {
+        profileFetchFor.current = uid
+        // Must be outside the auth callback tick
+        queueMicrotask(() => {
+          void fetchProfile(uid)
+        })
+      }
     } else {
+      profileFetchFor.current = null
       setProfile(null)
       setProfileError(null)
     }
+
     console.info('[auth]', source, next?.user?.id ? 'in' : 'out')
   }
 
   useEffect(() => {
     let mounted = true
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, next) => {
+    // SYNC callback only — never async/await supabase.auth here
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, next) => {
       if (!mounted) return
-
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-        if (event === 'SIGNED_IN') {
-          lastSignedInAt.current = Date.now()
-          intentionalSignOut.current = false
-        }
-        if (next) applySession(next, event)
-        setLoading(false)
-        return
-      }
-
-      if (event === 'INITIAL_SESSION') {
-        if (next) applySession(next, event)
-        else applySession(null, event)
-        setLoading(false)
-        return
-      }
 
       if (event === 'SIGNED_OUT') {
         if (intentionalSignOut.current) {
-          applySession(null, event)
+          intentionalSignOut.current = false
+          applySession(null, 'SIGNED_OUT')
           setLoading(false)
           return
         }
-
-        // Spurious SIGNED_OUT after login / refresh race / 429:
-        // React-only ignore is not enough — storage was cleared. Restore into the client.
-        const held = sessionRef.current
-        const recentLogin = Date.now() - lastSignedInAt.current < 60_000
-        if (!restoringRef.current && recentLogin && sessionStillValid(held)) {
-          restoringRef.current = true
-          console.warn('[auth] Unexpected SIGNED_OUT — restoring session into Supabase client')
-          try {
-            const { data, error } = await supabase.auth.setSession({
-              access_token: held.access_token,
-              refresh_token: held.refresh_token,
-            })
-            if (!error && data.session) {
-              applySession(data.session, 'restored')
-              setLoading(false)
-              restoringRef.current = false
-              return
-            }
-            console.warn('[auth] restore failed', error?.message)
-          } catch (err) {
-            console.warn('[auth] restore threw', err)
-          }
-          restoringRef.current = false
-        }
-
-        applySession(null, event)
+        // Unexpected SIGNED_OUT (refresh 429 / invalid refresh token).
+        // Do NOT call setSession/getSession here — that deadlocks the auth lock.
+        console.warn('[auth] SIGNED_OUT from Supabase client (usually refresh token 429/invalid)')
+        applySession(null, 'SIGNED_OUT')
         setLoading(false)
         return
       }
 
-      if (next) applySession(next, event)
+      if (next) {
+        if (event === 'SIGNED_IN') intentionalSignOut.current = false
+        applySession(next, event)
+      } else if (event === 'INITIAL_SESSION') {
+        applySession(null, event)
+      }
+
       setLoading(false)
     })
 
@@ -163,15 +128,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  useEffect(() => {
-    const onOnline = () => {
-      if (user) void fetchProfile(user.id)
-    }
-    window.addEventListener('online', onOnline)
-    return () => window.removeEventListener('online', onOnline)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id])
 
   const signUp = async (email: string, password: string, fullName: string) => {
     if (!isOnline()) {
@@ -196,31 +152,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     try {
       intentionalSignOut.current = false
-      // Do NOT wipe localStorage before login — that desyncs the client and causes SIGNED_OUT seconds later.
       const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
-        const msg = error.message || ''
-        if (/rate limit|too many requests|429/i.test(msg)) {
+        if (/rate limit|too many requests|429/i.test(error.message || '')) {
           return {
             error: new Error(
-              'Auth rate limit (429). Wait 10 minutes, use one tab only, then try a single login.',
+              'Supabase rate limit (429) on auth. Wait 15 minutes, close other Pi tabs, then log in once.',
             ),
           }
         }
         throw error
       }
-
-      if (data.session) {
-        lastSignedInAt.current = Date.now()
-        applySession(data.session, 'signIn')
-      }
+      // Apply immediately so UI doesn't wait on the listener
+      if (data.session) applySession(data.session, 'signIn')
+      setLoading(false)
       return { error: null }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       if (/rate limit|too many requests|429/i.test(msg)) {
         return {
           error: new Error(
-            'Auth rate limit (429). Wait 10 minutes, use one tab only, then try a single login.',
+            'Supabase rate limit (429) on auth. Wait 15 minutes, close other Pi tabs, then log in once.',
           ),
         }
       }

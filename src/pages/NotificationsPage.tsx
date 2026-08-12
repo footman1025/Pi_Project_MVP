@@ -202,15 +202,22 @@ export default function NotificationsPage() {
     setListError('')
     try {
       const data = await withRetry(async () => {
-        const { data: rows, error } = await supabase
+        const query = supabase
           .from('notifications')
           .select('*, profiles!notifications_actor_id_fkey(full_name, role, username)')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(50)
-        if (error) throw new Error(error.message)
-        return rows
-      }, { attempts: 3, baseMs: 400, label: 'Could not load notifications' })
+        // Hard timeout so a stuck auth lock cannot spin forever
+        const result = await Promise.race([
+          query,
+          new Promise<{ data: null; error: { message: string } }>(resolve =>
+            setTimeout(() => resolve({ data: null, error: { message: 'Notifications request timed out' } }), 12000),
+          ),
+        ])
+        if (result.error) throw new Error(result.error.message)
+        return result.data
+      }, { attempts: 2, baseMs: 400, label: 'Could not load notifications' })
       const rows = (data as NotifRow[]) || []
       const { keep, dropIds } = collapseNotificationList(rows)
       setNotifications(keep)

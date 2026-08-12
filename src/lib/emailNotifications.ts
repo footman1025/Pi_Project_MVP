@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { getAuthAccessToken } from './authBridge'
 import { friendlyNetworkError, isOnline, withRetry } from './messagingReliability'
 
 /** Deliver email alert if the recipient opted in (Resend on server). */
@@ -9,8 +10,7 @@ export async function sendEmailToUser(opts: {
   path?: string
 }) {
   try {
-    const { data: sessionData } = await supabase.auth.getSession()
-    const token = sessionData.session?.access_token
+    const token = getAuthAccessToken()
     if (!token) return
 
     const res = await fetch('/api/email', {
