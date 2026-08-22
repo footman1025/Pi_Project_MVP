@@ -14,6 +14,14 @@ function fmtPct(n: number | null) {
   return n === null ? '—' : `${n}%`
 }
 
+function fmtMinutes(n: number | null) {
+  if (n === null) return '—'
+  if (n < 60) return `${n}m`
+  const h = Math.floor(n / 60)
+  const m = n % 60
+  return m ? `${h}h ${m}m` : `${h}h`
+}
+
 function MetricCard({
   label,
   value,
@@ -131,7 +139,7 @@ export default function TractionPage() {
               <StatusBadge kind="partial" label="Team-visible" />
             </div>
             <p className="text-slate-400 text-sm max-w-xl leading-relaxed">
-              P1 traction engine — measure Discover → Outcome, find the bottleneck, decide from evidence.
+              WP001 Strong Circle Liquidity Baseline — measure the loop, name the constraint, then WP002.
             </p>
           </div>
 
@@ -184,6 +192,126 @@ export default function TractionPage() {
 
         {snap && (
           <div className={`space-y-5 ${loading ? 'opacity-60 pointer-events-none' : ''}`}>
+            {/* WP001 — Strong Circle Liquidity Baseline */}
+            <section
+              className="rounded-2xl border border-teal-500/30 p-5 sm:p-6"
+              style={{ background: 'linear-gradient(160deg, rgba(12,40,36,0.95), rgba(10,14,22,0.98))' }}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5">
+                <div>
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <div
+                      className="w-9 h-9 rounded-xl flex items-center justify-center"
+                      style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+                    >
+                      <Target size={16} className="text-white" />
+                    </div>
+                    <h2 className="text-white font-bold text-base">WP001 · Liquidity Baseline</h2>
+                    <StatusBadge kind="live" label="Measure only" />
+                  </div>
+                  <p className="text-slate-400 text-xs leading-relaxed max-w-xl">
+                    Activation → valuable action timing, intro rate, rejection reasons, and the single biggest constraint.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mb-4 rounded-xl border border-teal-500/25 bg-teal-500/[0.08] px-3.5 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-teal-300/80 mb-1">
+                  #1 measurable constraint
+                </p>
+                <p className="text-sm text-white leading-relaxed font-medium">
+                  {snap.wp001.primaryConstraint}
+                </p>
+                {snap.wp001.biggestDropLabel && (
+                  <p className="mt-1.5 text-[11px] text-slate-400">
+                    Hub drop-off focus: {snap.wp001.biggestDropLabel}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+                <MiniStat
+                  value={fmtPct(snap.wp001.activationRatePct)}
+                  label="Activation → valuable action"
+                  color="#2dd4bf"
+                />
+                <MiniStat
+                  value={fmtPct(snap.wp001.valuableIntroductionRatePct)}
+                  label="Valuable intro rate"
+                  color="#34d399"
+                />
+                <MiniStat
+                  value={fmtMinutes(snap.wp001.timeToFirstValuable.medianMinutes)}
+                  label="TTFVA median"
+                  color="#fbbf24"
+                />
+                <MiniStat
+                  value={String(snap.wp001.matchRejected)}
+                  label="Match passes"
+                  color="#fb7185"
+                />
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-2 mb-3">
+                <div className="rounded-xl border border-white/[0.06] bg-black/25 px-3 py-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 mb-2 inline-flex items-center gap-1">
+                    <Clock size={11} /> Time to first valuable action
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <MiniStat
+                      value={fmtMinutes(snap.wp001.timeToFirstValuable.medianMinutes)}
+                      label="Median"
+                      color="#fbbf24"
+                    />
+                    <MiniStat
+                      value={fmtMinutes(snap.wp001.timeToFirstValuable.p75Minutes)}
+                      label="P75"
+                      color="#f59e0b"
+                    />
+                    <MiniStat
+                      value={fmtMinutes(snap.wp001.timeToFirstValuable.p90Minutes)}
+                      label="P90"
+                      color="#d97706"
+                    />
+                  </div>
+                  <p className="mt-2 text-[11px] text-slate-500">
+                    n={snap.wp001.timeToFirstValuable.sampleSize} · activated{' '}
+                    {snap.wp001.activatedUsers} · valuable {snap.wp001.usersWithValuableAction}
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-white/[0.06] bg-black/25 px-3 py-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 mb-2">
+                    Match accept vs pass
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <MiniStat value={String(snap.wp001.matchShown)} label="Shown" color="#94a3b8" />
+                    <MiniStat value={String(snap.wp001.matchAccepted)} label="Connect/msg" color="#34d399" />
+                    <MiniStat value={String(snap.wp001.matchRejected)} label="Passed" color="#fb7185" />
+                  </div>
+                  {snap.wp001.rejectionReasons.length > 0 ? (
+                    <ul className="mt-2 space-y-1">
+                      {snap.wp001.rejectionReasons.slice(0, 5).map(r => (
+                        <li key={r.reason} className="text-[11px] text-slate-400 flex justify-between gap-2">
+                          <span className="truncate">{r.reason.replace(/_/g, ' ')}</span>
+                          <span className="font-semibold text-slate-300 tabular-nums">{r.count}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-2 text-[11px] text-slate-600">
+                      No passes yet — use Pass on /match and pick a reason.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Valuable action = apply, opportunity conversation start, or match connect/message.
+                WP002 is not chosen until this baseline has enough volume to name one constraint.
+              </p>
+            </section>
+
             {/* P1 — Hub traction engine */}
             <section
               className="rounded-2xl border border-amber-500/25 p-5 sm:p-6"
@@ -393,7 +521,7 @@ export default function TractionPage() {
               <MetricCard
                 label="Match intros"
                 value={String(snap.matching.introsStarted)}
-                sub={`${snap.matching.matchPageViews} views · ${snap.matching.matchExpands} expand`}
+                sub={`${snap.matching.matchPageViews} views · ${snap.matching.matchExpands} expand · ${snap.matching.matchRejected} pass`}
                 accent="#34d399"
                 Icon={Sparkles}
               />

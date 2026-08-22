@@ -99,3 +99,36 @@ export function trackPageView(path: string) {
 export function getAnalyticsSessionId() {
   return sessionId()
 }
+
+/** WP001 rejection reasons — lightweight, no PII. */
+export const MATCH_REJECT_REASONS = [
+  { id: 'IRRELEVANT', label: 'Irrelevant' },
+  { id: 'WRONG_SKILL', label: 'Wrong skill' },
+  { id: 'WRONG_GOAL', label: 'Wrong goal' },
+  { id: 'WRONG_TIMING', label: 'Wrong timing' },
+  { id: 'LOCATION', label: 'Location' },
+  { id: 'TRUST', label: 'Trust' },
+  { id: 'ALREADY_KNOWN', label: 'Already known' },
+  { id: 'OTHER', label: 'Other' },
+] as const
+
+export type MatchRejectReason = (typeof MATCH_REJECT_REASONS)[number]['id']
+
+/** Track a dismissed match with optional ranking metadata (WP001). */
+export function trackMatchRejected(input: {
+  target: string
+  match: number
+  reason: MatchRejectReason
+  rankingVersion?: string
+  rank?: number
+  topSignals?: string
+}) {
+  track('match_reject', {
+    target: input.target,
+    match: input.match,
+    reason: input.reason,
+    ranking_version: input.rankingVersion || 'v1-skills',
+    rank: input.rank ?? null,
+    top_signals: input.topSignals || null,
+  })
+}

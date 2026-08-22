@@ -8,8 +8,10 @@ import { playConnectSound } from '../lib/connectSound'
 import UserAvatar from '../components/UserAvatar'
 import StatusBadge from '../components/StatusBadge'
 import ProfileName from '../components/ProfileName'
-import { track } from '../lib/analytics'
+import { MATCH_REJECT_REASONS, track, trackMatchRejected, type MatchRejectReason } from '../lib/analytics'
 import { isProfileActivated } from '../lib/traction'
+
+const RANKING_VERSION = 'v1-skills'
 
 export default function MatchmakingPage() {
   const navigate = useNavigate()
@@ -20,6 +22,8 @@ export default function MatchmakingPage() {
   const [matches, setMatches] = useState<MatchResult[]>([])
   const [loading, setLoading] = useState(true)
   const [usingLive, setUsingLive] = useState(false)
+  const [rejectForId, setRejectForId] = useState<string | null>(null)
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => new Set())
   const filters = ['All', 'Co-founders', 'Investors', 'Designers', 'Engineers', 'Mentors']
 
   useEffect(() => {
@@ -59,11 +63,15 @@ export default function MatchmakingPage() {
           const ranked = rankMatches(profile, data).slice(0, 12)
           setMatches(ranked)
           setUsingLive(true)
-          track('match_view', { count: ranked.length, live: true })
+          track('match_view', {
+            count: ranked.length,
+            live: true,
+            ranking_version: RANKING_VERSION,
+          })
         } else {
           setMatches([])
           setUsingLive(false)
-          track('match_view', { count: 0, live: false })
+          track('match_view', { count: 0, live: false, ranking_version: RANKING_VERSION })
         }
       } catch {
         if (!cancelled) {
@@ -89,8 +97,25 @@ export default function MatchmakingPage() {
     return true
   }
 
-  const liveFiltered = matches.filter(m => roleFilter(m.profile.role, filter))
+  const liveFiltered = matches.filter(
+    m => !dismissedIds.has(m.profile.id) && roleFilter(m.profile.role, filter),
+  )
   const profileReady = isProfileActivated(profile)
+
+  const passMatch = (m: MatchResult, reason: MatchRejectReason, rank: number) => {
+    const p = m.profile
+    trackMatchRejected({
+      target: p.id,
+      match: m.match,
+      reason,
+      rankingVersion: RANKING_VERSION,
+      rank,
+      topSignals: m.reasons.slice(0, 3).join(' | ').slice(0, 180),
+    })
+    setDismissedIds(prev => new Set(prev).add(p.id))
+    setRejectForId(null)
+    if (expandedId === p.id) setExpandedId(null)
+  }
 
   return (
     <div className="min-h-full relative overflow-x-hidden">
@@ -275,7 +300,12 @@ export default function MatchmakingPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          track('match_connect', { target: p.id, match: m.match })
+                          track('match_connect', {
+                            target: p.id,
+                            match: m.match,
+                            ranking_version: RANKING_VERSION,
+                            rank: i + 1,
+                          })
                           void import('../lib/engagement').then(mod => mod.recordEngagementAction('match_intro'))
                           if (p.username) navigate(`/p/${p.username}`, { state: { from: '/match' } })
                           else navigate('/messages')
@@ -288,7 +318,12 @@ export default function MatchmakingPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          track('match_message', { target: p.id, match: m.match })
+                          track('match_message', {
+                            target: p.id,
+                            match: m.match,
+                            ranking_version: RANKING_VERSION,
+                            rank: i + 1,
+                          })
                           void import('../lib/engagement').then(mod => mod.recordEngagementAction('match_intro'))
                           void playConnectSound()
                           navigate(`/messages?u=${p.id}`)
@@ -299,9 +334,23 @@ export default function MatchmakingPage() {
                       </button>
                       <button
                         type="button"
+                        onClick={() => setRejectForId(rejectForId === id ? null : id)}
+                        className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium text-slate-400 border border-white/10 hover:border-rose-500/30 hover:text-rose-200"
+                      >
+                        Pass
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => {
                           const next = expandedId === id ? null : id
-                          if (next) track('match_expand', { target: p.id, match: m.match })
+                          if (next) {
+                            track('match_expand', {
+                              target: p.id,
+                              match: m.match,
+                              ranking_version: RANKING_VERSION,
+                              rank: i + 1,
+                            })
+                          }
                           setExpandedId(next)
                         }}
                         className="col-span-2 sm:ml-auto flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-teal-200 border border-teal-500/25 bg-teal-500/[0.08] hover:bg-teal-500/15"
@@ -311,6 +360,26 @@ export default function MatchmakingPage() {
                         {expandedId === id ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                       </button>
                     </div>
+
+                    {rejectForId === id && (
+                      <div className="mt-3 rounded-xl border border-rose-500/20 bg-rose-500/[0.06] px-3 py-3">
+                        <p className="text-[11px] font-semibold text-rose-100/90 mb-2">
+                          Why pass? (WP001 rejection signal)
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {MATCH_REJECT_REASONS.map(r => (
+                            <button
+                              key={r.id}
+                              type="button"
+                              onClick={() => passMatch(m, r.id, i + 1)}
+                              className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-slate-300 border border-white/10 hover:border-rose-400/40 hover:text-white bg-black/20"
+                            >
+                              {r.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {expandedId === id && (

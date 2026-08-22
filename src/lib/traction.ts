@@ -11,9 +11,35 @@ export type FunnelStage = {
   conversionFromPrevPct: number | null
 }
 
+/** WP001 — Strong Circle Liquidity Baseline (measurement only). */
+export type Wp001Baseline = {
+  /** Twin/onboarding → first meaningful opp/match action */
+  activationRatePct: number | null
+  activatedUsers: number
+  usersWithValuableAction: number
+  /** Valuable intros ÷ match shows (connect/message vs views) */
+  valuableIntroductionRatePct: number | null
+  matchShown: number
+  matchAccepted: number
+  matchRejected: number
+  /** Minutes from activation → first valuable action */
+  timeToFirstValuable: {
+    sampleSize: number
+    medianMinutes: number | null
+    p75Minutes: number | null
+    p90Minutes: number | null
+  }
+  rejectionReasons: { reason: string; count: number }[]
+  /** One-line answer for Cristian / WP002 selection */
+  primaryConstraint: string
+  biggestDropLabel: string | null
+}
+
 export type TractionSnapshot = {
   windowDays: number
   since: string
+  /** WP001 liquidity baseline — answer “where is the circle breaking?” */
+  wp001: Wp001Baseline
   activation: {
     onboardingComplete: number
     profileComplete: number
@@ -29,6 +55,7 @@ export type TractionSnapshot = {
     matchPageViews: number
     matchExpands: number
     introsStarted: number
+    matchRejected: number
   }
   opportunities: {
     pageViews: number
@@ -137,6 +164,164 @@ function median(nums: number[]): number | null {
   return sorted.length % 2 === 0
     ? Math.round((sorted[mid - 1] + sorted[mid]) / 2)
     : sorted[mid]
+}
+
+function percentile(nums: number[], p: number): number | null {
+  if (!nums.length) return null
+  const sorted = [...nums].sort((a, b) => a - b)
+  const idx = Math.min(sorted.length - 1, Math.max(0, Math.ceil((p / 100) * sorted.length) - 1))
+  return Math.round(sorted[idx])
+}
+
+const ACTIVATION_EVENTS = new Set(['onboarding_complete', 'profile_complete', 'twin_view'])
+
+function isValuableAction(e: EventRow): boolean {
+  if (e.event === 'opportunity_conversation_start') return true
+  if (e.event === 'match_connect' || e.event === 'match_message') return true
+  if (e.event === 'opportunity_interest' && propsOf(e).status === 'applied') return true
+  return false
+}
+
+/**
+ * WP001 — Time to First Valuable Action (minutes).
+ * Activation = first twin/onboarding/profile signal; valuable = apply, connect, or match intro.
+ */
+export function computeTimeToFirstValuableAction(events: EventRow[]): {
+  sampleSize: number
+  medianMinutes: number | null
+  p75Minutes: number | null
+  p90Minutes: number | null
+  activatedUsers: number
+  usersWithValuableAction: number
+} {
+  const byUser = new Map<string, EventRow[]>()
+  for (const e of events) {
+    if (!e.user_id) continue
+    if (!byUser.has(e.user_id)) byUser.set(e.user_id, [])
+    byUser.get(e.user_id)!.push(e)
+  }
+
+  const minutes: number[] = []
+  let activatedUsers = 0
+  let usersWithValuableAction = 0
+
+  for (const userEvents of byUser.values()) {
+    const sorted = [...userEvents].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    )
+    const act = sorted.find(e => ACTIVATION_EVENTS.has(e.event))
+    if (!act) continue
+    activatedUsers += 1
+    const valuable = sorted.find(
+      e =>
+        isValuableAction(e) &&
+        new Date(e.created_at).getTime() >= new Date(act.created_at).getTime(),
+    )
+    if (!valuable) continue
+    usersWithValuableAction += 1
+    const deltaMs =
+      new Date(valuable.created_at).getTime() - new Date(act.created_at).getTime()
+    minutes.push(Math.max(0, Math.round(deltaMs / 60000)))
+  }
+
+  return {
+    sampleSize: minutes.length,
+    medianMinutes: median(minutes),
+    p75Minutes: percentile(minutes, 75),
+    p90Minutes: percentile(minutes, 90),
+    activatedUsers,
+    usersWithValuableAction,
+  }
+}
+
+function emptyWp001(): Wp001Baseline {
+  return {
+    activationRatePct: null,
+    activatedUsers: 0,
+    usersWithValuableAction: 0,
+    valuableIntroductionRatePct: null,
+    matchShown: 0,
+    matchAccepted: 0,
+    matchRejected: 0,
+    timeToFirstValuable: {
+      sampleSize: 0,
+      medianMinutes: null,
+      p75Minutes: null,
+      p90Minutes: null,
+    },
+    rejectionReasons: [],
+    primaryConstraint: 'Insufficient event volume — dogfood the Strong Circle loop, then refresh.',
+    biggestDropLabel: null,
+  }
+}
+
+function buildWp001(
+  events: EventRow[],
+  hubFunnel: TractionSnapshot['hubFunnel'],
+  activeUsers: number,
+): Wp001Baseline {
+  const ttf = computeTimeToFirstValuableAction(events)
+  const matchShown = events.filter(e => e.event === 'match_view').length
+  const matchAccepted = events.filter(
+    e => e.event === 'match_connect' || e.event === 'match_message',
+  ).length
+  const rejectEvents = events.filter(e => e.event === 'match_reject')
+  const matchRejected = rejectEvents.length
+
+  const reasonCounts = new Map<string, number>()
+  for (const e of rejectEvents) {
+    const reason = String(propsOf(e).reason || 'OTHER').toUpperCase()
+    reasonCounts.set(reason, (reasonCounts.get(reason) || 0) + 1)
+  }
+  const rejectionReasons = [...reasonCounts.entries()]
+    .map(([reason, count]) => ({ reason, count }))
+    .sort((a, b) => b.count - a.count)
+
+  const activationRatePct = pct(ttf.usersWithValuableAction, ttf.activatedUsers || activeUsers)
+  const valuableIntroductionRatePct = pct(matchAccepted, matchShown)
+
+  const drop = hubFunnel.biggestDropOff
+  const biggestDropLabel = drop ? `${drop.fromLabel} → ${drop.toLabel}` : null
+
+  let primaryConstraint: string
+  if (events.length < 5 || (hubFunnel.stages[0]?.count || 0) === 0) {
+    primaryConstraint =
+      'Insufficient Strong Circle usage — need real Discover→Outcome events before naming a product constraint.'
+  } else if (drop && drop.lostCount > 0) {
+    primaryConstraint = `Largest measurable loss is ${drop.fromLabel} → ${drop.toLabel} (${drop.conversionPct ?? 0}% convert, ${drop.lostCount} lost). WP002 should target this stage only.`
+  } else if (ttf.activatedUsers > 0 && ttf.usersWithValuableAction === 0) {
+    primaryConstraint =
+      'Users activate (twin/onboarding) but never take a valuable action (apply/connect/intro).'
+  } else if (
+    valuableIntroductionRatePct !== null &&
+    valuableIntroductionRatePct < 20 &&
+    matchShown >= 3
+  ) {
+    primaryConstraint =
+      'Match quality / intro conversion is weak — many matches shown, few connect/message actions.'
+  } else {
+    primaryConstraint =
+      'Funnel is moving; confirm outcome capture and repeat cycles before expanding scope.'
+  }
+
+  return {
+    activationRatePct,
+    activatedUsers: ttf.activatedUsers,
+    usersWithValuableAction: ttf.usersWithValuableAction,
+    valuableIntroductionRatePct,
+    matchShown,
+    matchAccepted,
+    matchRejected,
+    timeToFirstValuable: {
+      sampleSize: ttf.sampleSize,
+      medianMinutes: ttf.medianMinutes,
+      p75Minutes: ttf.p75Minutes,
+      p90Minutes: ttf.p90Minutes,
+    },
+    rejectionReasons,
+    primaryConstraint,
+    biggestDropLabel,
+  }
 }
 
 function propsOf(e: EventRow): Record<string, unknown> {
@@ -330,9 +515,10 @@ export async function fetchTractionSnapshot(windowDays = 7): Promise<TractionSna
   const empty: TractionSnapshot = {
     windowDays,
     since,
+    wp001: emptyWp001(),
     activation: { onboardingComplete: 0, profileComplete: 0, twinViewed: 0, ratePct: null },
     retention: { activeUsers: 0, returningUsers: 0, ratePct: null },
-    matching: { matchPageViews: 0, matchExpands: 0, introsStarted: 0 },
+    matching: { matchPageViews: 0, matchExpands: 0, introsStarted: 0, matchRejected: 0 },
     opportunities: {
       pageViews: 0,
       expands: 0,
@@ -425,10 +611,12 @@ export async function fetchTractionSnapshot(windowDays = 7): Promise<TractionSna
   const totalFb = globalFb.length
 
   const hubFunnel = buildHubFunnel(events, feedback)
+  const wp001 = buildWp001(events, hubFunnel, activeUsers)
 
   return {
     windowDays,
     since,
+    wp001,
     activation: {
       onboardingComplete,
       profileComplete,
@@ -444,6 +632,7 @@ export async function fetchTractionSnapshot(windowDays = 7): Promise<TractionSna
       matchPageViews: count('match_view') + pathViews('/match'),
       matchExpands: count('match_expand'),
       introsStarted: count('match_message') + count('match_connect'),
+      matchRejected: count('match_reject'),
     },
     opportunities: (() => {
       const hubEvents = events.filter(e =>
