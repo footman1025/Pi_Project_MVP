@@ -22,21 +22,34 @@ export function pushSupported() {
   )
 }
 
+export function vapidConfigured() {
+  return VAPID_PUBLIC.length > 0
+}
+
+let swMessageBound = false
+
 export async function registerPiServiceWorker() {
   if (!('serviceWorker' in navigator)) return null
   try {
-    const reg = await navigator.serviceWorker.register('/sw.js?v=brand-icon-v2', { scope: '/' })
-    // Force update so new brand PNG icons apply after deploy
+    const reg = await navigator.serviceWorker.register('/sw.js?v=brand-pi-v4', { scope: '/' })
     void reg.update()
     await navigator.serviceWorker.ready
 
-    // Deep-link navigation from notification click
-    navigator.serviceWorker.addEventListener('message', (event) => {
-      const data = event.data
-      if (data?.type === 'pi:navigate' && data.path) {
-        window.dispatchEvent(new CustomEvent('pi:system-alert-click', { detail: { path: data.path } }))
-      }
-    })
+    if (!swMessageBound) {
+      swMessageBound = true
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        const data = event.data
+        if (data?.type === 'pi:navigate' && data.path) {
+          window.dispatchEvent(new CustomEvent('pi:system-alert-click', { detail: { path: data.path } }))
+        }
+        if (data?.type === 'pi:play-alert-sound') {
+          window.dispatchEvent(new CustomEvent('pi:play-alert-sound'))
+        }
+        if (data?.type === 'pi:push-received' && data.playSound) {
+          window.dispatchEvent(new CustomEvent('pi:play-alert-sound'))
+        }
+      })
+    }
 
     return reg
   } catch {
@@ -68,10 +81,17 @@ export async function enablePushNotifications(userId: string): Promise<{ ok: boo
 
   let sub = await reg.pushManager.getSubscription()
   if (!sub) {
-    sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC),
-    })
+    try {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC),
+      })
+    } catch (err) {
+      return {
+        ok: false,
+        reason: err instanceof Error ? err.message : 'subscribe-failed',
+      }
+    }
   }
 
   const json = sub.toJSON()
@@ -94,7 +114,7 @@ export async function enablePushNotifications(userId: string): Promise<{ ok: boo
         { onConflict: 'user_id,endpoint' },
       )
       if (error) throw new Error(error.message)
-    }, { attempts: 2, baseMs: 400, label: 'Could not save push subscription' })
+    }, { attempts: 3, baseMs: 400, label: 'Could not save push subscription' })
     return { ok: true }
   } catch (err) {
     return { ok: false, reason: err instanceof Error ? err.message : 'save-failed' }
@@ -107,6 +127,7 @@ export async function showLocalPush(payload: {
   body: string
   path?: string
   tag?: string
+  notifType?: string
 }) {
   if (typeof window === 'undefined' || Notification.permission !== 'granted') return
 
@@ -121,6 +142,7 @@ export async function showLocalPush(payload: {
         tag: payload.tag,
         icon: PI_NOTIF_ICON_PATH,
         badge: PI_NOTIF_BADGE_PATH,
+        notifType: payload.notifType || '',
       })
       return
     }
@@ -135,6 +157,7 @@ export async function showLocalPush(payload: {
       badge: notificationBadgeUrl(),
       tag: payload.tag,
       data: { path: payload.path },
+      silent: false,
     })
     n.onclick = () => {
       window.focus()
@@ -142,6 +165,9 @@ export async function showLocalPush(payload: {
         new CustomEvent('pi:system-alert-click', { detail: { path: payload.path || '/notifications' } }),
       )
       n.close()
+    }
+    if (payload.notifType === 'message' || payload.notifType === 'follow') {
+      window.dispatchEvent(new CustomEvent('pi:play-alert-sound'))
     }
   } catch {
     /* ignore */
@@ -155,6 +181,7 @@ export async function sendPushToUser(opts: {
   body: string
   path?: string
   tag?: string
+  type?: string
 }) {
   try {
     const { data: prefs } = await supabase
@@ -166,17 +193,34 @@ export async function sendPushToUser(opts: {
 
     const { getAuthAccessToken } = await import('./authBridge')
     const token = getAuthAccessToken()
-    if (!token) return
+    if (!token) {
+      console.warn('[pi:push] no auth token — closed-app push skipped')
+      return
+    }
 
-    await fetch('/api/push', {
+    const res = await fetch('/api/push', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(opts),
+      body: JSON.stringify({
+        userId: opts.userId,
+        title: opts.title,
+        body: opts.body,
+        path: opts.path,
+        tag: opts.tag,
+        type: opts.type || '',
+        playSound: opts.type === 'message' || opts.type === 'follow',
+      }),
+      keepalive: true,
     })
-  } catch {
-    /* non-blocking */
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      console.warn('[pi:push] delivery failed', res.status, text.slice(0, 200))
+    }
+  } catch (err) {
+    console.warn('[pi:push] request error', err)
   }
 }

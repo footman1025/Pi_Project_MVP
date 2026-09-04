@@ -124,7 +124,16 @@ export default async function handler(req, res) {
     const icon = body.icon || (origin ? `${origin}/pi-logo-192.png` : '/pi-logo-192.png')
     const badge = body.badge || (origin ? `${origin}/pi-badge-96.png` : '/pi-badge-96.png')
 
-    const payload = JSON.stringify({ title, body: notifBody, path, tag, icon, badge })
+    const payload = JSON.stringify({
+      title,
+      body: notifBody,
+      path,
+      tag,
+      icon,
+      badge,
+      type: body.type || '',
+      playSound: body.playSound === true || body.type === 'message' || body.type === 'follow',
+    })
     let sent = 0
     const stale = []
 

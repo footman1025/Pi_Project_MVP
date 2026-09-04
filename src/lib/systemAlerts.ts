@@ -120,11 +120,20 @@ export function showSystemAlertForRow(row: {
   const type = row.type || 'notification'
   const body = (row.message || '').trim() || 'You have a new update on Pi.'
   const path = pathForNotification(row)
+  const tag = (() => {
+    // Keep in sync with notificationPushTag / Web Push tags
+    if (type === 'message' && row.actor_id) return `pi-msg-${row.actor_id}`
+    if (type === 'follow' && row.actor_id) return `pi-follow-${row.actor_id}`
+    if (type === 'ai_match') return 'pi-ai-match'
+    if (type === 'ai_opportunity') return 'pi-ai-opp'
+    return row.id ? `pi-notif-${row.id}` : `pi-${type}-${row.actor_id || 'x'}`
+  })()
   const payload = {
     title: titleForType(type),
     body,
     path,
-    tag: row.id ? `pi-notif-${row.id}` : `pi-${type}-${row.actor_id || 'x'}`,
+    tag,
+    notifType: type,
   }
 
   void import('./pushNotifications').then(async ({ showLocalPush }) => {

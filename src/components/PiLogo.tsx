@@ -4,18 +4,20 @@ type Props = {
   rounded?: string
   alt?: string
   /**
-   * Dark UI surfaces: invert black SVG mark to white.
+   * Dark UI surfaces: invert black mark to white (SVG) or keep white-plate PNG as-is.
    * Light surfaces (e.g. emails, print): leave natural black mark.
    */
   onDark?: boolean
-  /** Prefer raster PNG (white plate) instead of SVG mark */
-  raster?: boolean
+  /**
+   * Prefer SVG vector mark. Default is the official raster π plate (latest brand).
+   */
+  vector?: boolean
 }
 
 /**
- * Pi brand mark — Cristian’s official assets:
- * - Logo SVG: /pi_logo.svg
+ * Pi brand mark — Cristian’s official assets (updated Sep 2026):
  * - Logo Image: /pi_logo.png
+ * - App icons: /pi-logo-192.png, /pi-logo-512.png
  */
 export default function PiLogo({
   size = 36,
@@ -23,9 +25,9 @@ export default function PiLogo({
   rounded = 'rounded-xl',
   alt = 'Pi',
   onDark = true,
-  raster = false,
+  vector = false,
 }: Props) {
-  const src = raster ? '/pi_logo.png' : '/pi_logo.svg'
+  const src = vector ? '/pi_logo.svg' : '/pi_logo.png'
 
   return (
     <img
@@ -35,8 +37,8 @@ export default function PiLogo({
       height={size}
       className={[
         rounded,
-        'object-contain shrink-0',
-        onDark && !raster ? 'invert' : '',
+        'object-contain shrink-0 bg-white',
+        onDark && vector ? 'invert' : '',
         className,
       ]
         .filter(Boolean)
@@ -44,11 +46,10 @@ export default function PiLogo({
       draggable={false}
       onError={e => {
         const el = e.currentTarget
-        if (el.src.includes('pi_logo.svg')) {
-          el.src = '/pi_logo.png'
-          el.classList.remove('invert')
-        } else if (!el.src.includes('pi-logo-192')) {
+        if (el.src.includes('pi_logo.svg') || el.src.includes('pi_logo.png')) {
           el.src = '/pi-logo-192.png'
+          el.classList.remove('invert')
+          el.classList.add('bg-white')
         }
       }}
     />

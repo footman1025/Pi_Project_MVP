@@ -140,7 +140,11 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
       const path = (e as CustomEvent<{ path?: string }>).detail?.path
       if (path) navigate(path)
     }
+    const onPlayAlertSound = () => {
+      void unlockConnectSound().then(() => playConnectSound())
+    }
     window.addEventListener('pi:system-alert-click', onAlertClick)
+    window.addEventListener('pi:play-alert-sound', onPlayAlertSound)
 
     const channel = supabase
       .channel(`notif-count:${user.id}`)
@@ -157,11 +161,9 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
           if (row?.type === 'follow' || row?.type === 'message') {
             void unlockConnectSound().then(() => playConnectSound())
           }
-          // Never stack OS toasts: createNotification already sends Web Push with a stable tag.
-          // Local realtime toast only when push permission is not granted.
-          const pushGranted =
-            typeof Notification !== 'undefined' && Notification.permission === 'granted'
-          if (pushGranted) return
+          // Always show OS toast while this tab/PWA is alive (hidden OK).
+          // Same tag as Web Push so closed-app push + open-tab toast replace, not stack.
+          // When the website is fully closed, only Web Push (/api/push) can alert.
           if (row?.type === 'ai_match' || row?.type === 'ai_opportunity') return
           showSystemAlertForRow(row)
         })
@@ -176,6 +178,7 @@ export default function AppShell({ children, onAssistantToggle }: Props) {
       window.removeEventListener('pointerdown', unlock)
       window.removeEventListener('keydown', unlock)
       window.removeEventListener('pi:system-alert-click', onAlertClick)
+      window.removeEventListener('pi:play-alert-sound', onPlayAlertSound)
       supabase.removeChannel(channel)
     }
   }, [user, profile, navigate])

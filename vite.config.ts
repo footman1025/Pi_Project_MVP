@@ -115,8 +115,69 @@ function groqDevProxy(): Plugin {
   }
 }
 
+/** Dev adapter for Vercel-style /api/push so closed-app delivery works in local testing. */
+function pushDevProxy(): Plugin {
+  return {
+    name: 'push-dev-proxy',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        const url = req.url?.split('?')[0]
+        if (url !== '/api/push' && url !== '/api/push-hook') return next()
+
+        const env = loadEnv(server.config.mode, server.config.envDir || process.cwd(), '')
+        for (const [k, v] of Object.entries(env)) {
+          if (process.env[k] === undefined) process.env[k] = v
+        }
+
+        try {
+          const raw = await readBody(req)
+          const body = raw ? JSON.parse(raw) : {}
+          const handlerMod = url === '/api/push-hook'
+            ? await import('./api/push-hook.js')
+            : await import('./api/push.js')
+          const handler = handlerMod.default
+
+          const fakeReq = {
+            method: req.method || 'POST',
+            headers: req.headers,
+            body,
+          }
+          const fakeRes = {
+            statusCode: 200,
+            headers: {} as Record<string, string>,
+            setHeader(k: string, v: string) {
+              this.headers[k] = v
+            },
+            status(code: number) {
+              this.statusCode = code
+              return this
+            },
+            json(payload: unknown) {
+              res.statusCode = this.statusCode
+              for (const [k, v] of Object.entries(this.headers)) res.setHeader(k, v)
+              res.setHeader('Content-Type', 'application/json')
+              res.end(JSON.stringify(payload))
+            },
+            end(payload?: string) {
+              res.statusCode = this.statusCode
+              for (const [k, v] of Object.entries(this.headers)) res.setHeader(k, v)
+              res.end(payload ?? '')
+            },
+          }
+
+          await handler(fakeReq, fakeRes)
+        } catch (e: unknown) {
+          res.statusCode = 500
+          res.setHeader('Content-Type', 'application/json')
+          res.end(JSON.stringify({ error: e instanceof Error ? e.message : 'Push proxy failed' }))
+        }
+      })
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react(), groqDevProxy()],
+  plugins: [react(), groqDevProxy(), pushDevProxy()],
   envDir: '.',
   server: {
     host: '0.0.0.0',

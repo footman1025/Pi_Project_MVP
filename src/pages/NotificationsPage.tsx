@@ -384,13 +384,13 @@ export default function NotificationsPage() {
     if (push.ok || ok) {
       setPushHint(push.reason === 'local-only'
         ? 'System alerts on. Deploy VAPID for closed-app push.'
-        : 'Push enabled — keep Pi installed / allowed in browser.')
+        : 'Push connected — OS alerts work when this tab is closed')
       const { showPiSystemAlert } = await import('../lib/systemAlerts')
       showPiSystemAlert({
         title: 'Pi alerts enabled',
         body: push.reason === 'local-only'
           ? 'System alerts on. Add VAPID keys on the server for closed-app push.'
-          : 'Push enabled for likes, comments, messages, and AI suggestions.',
+          : 'You’ll get pop-up alerts even when Pi is closed. On iPhone, Install Pi to the Home Screen first.',
         path: '/notifications',
         tag: 'pi-alerts-enabled',
         force: true,

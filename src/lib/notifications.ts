@@ -72,6 +72,15 @@ function pushTagFor(type: NotifType, id: string, actorId: string) {
   return `pi-notif-${id}`
 }
 
+/** Shared with systemAlerts / AppShell so local + Web Push replace instead of stacking. */
+export function notificationPushTag(
+  type: string,
+  id: string | undefined,
+  actorId: string | null | undefined,
+) {
+  return pushTagFor((type as NotifType) || 'message', id || 'x', actorId || 'x')
+}
+
 /** One unread message row per sender — refresh text and delete extras. */
 async function coalesceUnreadMessage(input: {
   userId: string
@@ -162,6 +171,7 @@ async function fanOut(input: {
       body: input.message,
       path: deepLink,
       tag,
+      type: input.type,
     }),
     sendEmailToUser({
       userId: input.userId,
