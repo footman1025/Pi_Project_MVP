@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { playConnectSound, unlockConnectSound } from '../lib/connectSound'
 
-const STORAGE_KEY = 'pi_hello_v2'
-const ENTER_MS = 700
-const HOLD_MS = 2200
-const EXIT_MS = 900
+const STORAGE_KEY = 'pi_hello_v3'
+const ENTER_MS = 600
+const HOLD_MS = 2400
+const EXIT_MS = 800
 
 type Phase = 'enter' | 'hello' | 'exit' | 'done'
 
@@ -13,7 +13,7 @@ type Props = {
 }
 
 /**
- * First-paint Pi intro: mascot says Hello + alien ring, then disappears into the app.
+ * First-paint Pi intro: full mascot says Hello + alien ring, then fades into the app.
  */
 export default function PiHelloIntro({ onFinished }: Props) {
   const [phase, setPhase] = useState<Phase>('enter')
@@ -73,14 +73,10 @@ export default function PiHelloIntro({ onFinished }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const onTap = () => {
-    void playHello()
-  }
-
   if (phase === 'done') return null
 
-  const visible = phase === 'enter' || phase === 'hello'
   const exiting = phase === 'exit'
+  const showCopy = phase === 'hello' || phase === 'exit'
 
   return (
     <div
@@ -88,76 +84,65 @@ export default function PiHelloIntro({ onFinished }: Props) {
       aria-label="Meet Pi"
       className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden"
       style={{
-        background: 'radial-gradient(ellipse 80% 70% at 50% 45%, #0f3d4a 0%, #061018 55%, #03060c 100%)',
-        transition: `opacity ${EXIT_MS}ms ease, transform ${EXIT_MS}ms ease`,
+        // Match the mascot plate so the art doesn’t sit in a visible “box”
+        background: '#0a1a1f',
+        transition: `opacity ${EXIT_MS}ms ease`,
         opacity: exiting ? 0 : 1,
-        transform: exiting ? 'scale(1.08)' : 'scale(1)',
         pointerEvents: exiting ? 'none' : 'auto',
       }}
-      onPointerDown={onTap}
+      onPointerDown={() => {
+        void playHello()
+      }}
     >
       <div
-        className="relative flex flex-col items-center px-6"
+        className="flex flex-col items-center justify-center w-full h-full px-4 py-8"
         style={{
-          opacity: visible || exiting ? 1 : 0,
-          transform: phase === 'enter' ? 'translateY(28px) scale(0.92)' : 'translateY(0) scale(1)',
-          transition: 'opacity 0.65s ease, transform 0.75s cubic-bezier(0.22, 1, 0.36, 1)',
+          opacity: phase === 'enter' ? 0 : 1,
+          transform: phase === 'enter' ? 'scale(0.94)' : 'scale(1)',
+          transition: 'opacity 0.55s ease, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1)',
         }}
       >
-        <div
-          className="relative flex items-center justify-center"
+        <img
+          src="/pi-hello.jpg"
+          alt="Pi"
+          width={1024}
+          height={1024}
+          className="select-none pointer-events-none"
           style={{
-            filter: phase === 'hello' ? 'drop-shadow(0 0 40px rgba(45,212,191,0.35))' : 'drop-shadow(0 0 24px rgba(20,184,166,0.2))',
-            transition: 'filter 0.5s ease',
-            animation: phase === 'hello' ? 'piHelloBob 1.6s ease-in-out infinite' : undefined,
+            width: 'min(88vw, 72vh, 520px)',
+            height: 'auto',
+            aspectRatio: '1 / 1',
+            objectFit: 'contain',
+            display: 'block',
+            animation: phase === 'hello' ? 'piHelloBob 1.8s ease-in-out infinite' : undefined,
           }}
-        >
-          <img
-            src="/pi-hello.png"
-            alt="Pi"
-            width={806}
-            height={410}
-            className="select-none object-contain"
-            style={{
-              width: 'auto',
-              height: 'auto',
-              maxHeight: 'min(52vh, 380px)',
-              maxWidth: 'min(92vw, 720px)',
-              // Soften the asset’s hard rectangular frame into the intro background
-              WebkitMaskImage:
-                'radial-gradient(ellipse 78% 88% at 50% 48%, #000 52%, transparent 78%)',
-              maskImage:
-                'radial-gradient(ellipse 78% 88% at 50% 48%, #000 52%, transparent 78%)',
-            }}
-            draggable={false}
-          />
-        </div>
+          draggable={false}
+        />
 
         <p
-          className="mt-8 font-display text-3xl sm:text-4xl font-bold tracking-tight text-white"
+          className="mt-5 font-display text-4xl sm:text-5xl font-bold tracking-tight text-white text-center"
           style={{
-            opacity: phase === 'hello' || phase === 'exit' ? 1 : 0,
-            transform: phase === 'hello' || phase === 'exit' ? 'translateY(0)' : 'translateY(12px)',
-            transition: 'opacity 0.45s ease 0.15s, transform 0.45s ease 0.15s',
-            textShadow: '0 0 24px rgba(45,212,191,0.45)',
+            opacity: showCopy ? 1 : 0,
+            transform: showCopy ? 'translateY(0)' : 'translateY(10px)',
+            transition: 'opacity 0.4s ease 0.1s, transform 0.4s ease 0.1s',
           }}
         >
           Hello
         </p>
         <p
-          className="mt-2 text-sm sm:text-base text-teal-200/80 font-medium"
+          className="mt-2 text-base sm:text-lg text-teal-200/85 font-medium text-center"
           style={{
-            opacity: phase === 'hello' || phase === 'exit' ? 1 : 0,
-            transition: 'opacity 0.5s ease 0.35s',
+            opacity: showCopy ? 1 : 0,
+            transition: 'opacity 0.45s ease 0.25s',
           }}
         >
           Let me introduce you to Pi
         </p>
 
-        {needsTap && phase !== 'exit' && (
+        {needsTap && !exiting && (
           <button
             type="button"
-            className="mt-6 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400 hover:text-teal-200 transition-colors"
+            className="mt-5 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400 hover:text-teal-200 transition-colors"
             onClick={e => {
               e.stopPropagation()
               void playHello()
@@ -171,7 +156,7 @@ export default function PiHelloIntro({ onFinished }: Props) {
       <style>{`
         @keyframes piHelloBob {
           0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-8px); }
+          50% { transform: translateY(-6px); }
         }
       `}</style>
     </div>
