@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { playConnectSound, unlockConnectSound } from '../lib/connectSound'
 
-const STORAGE_KEY = 'pi_hello_v4'
+const STORAGE_KEY = 'pi_hello_v5'
 const ENTER_MS = 600
 const HOLD_MS = 2400
 const EXIT_MS = 800
 
-/** Matches the mascot plate so square photo edges dissolve into the page. */
-const PLATE = '#0a1a1f'
+/** Near-black sampled from the mascot plate (top / sides). */
+const SCENE = '#01060c'
 
 type Phase = 'enter' | 'hello' | 'exit' | 'done'
 
@@ -16,8 +16,7 @@ type Props = {
 }
 
 /**
- * First-paint Pi intro: mascot says Hello + alien ring, then fades into the app.
- * Soft-blends the photo cornice into the background with a light futuristic halo.
+ * First-paint Pi intro: soft-edged mascot + alien orbit, then fade into the app.
  */
 export default function PiHelloIntro({ onFinished }: Props) {
   const [phase, setPhase] = useState<Phase>('enter')
@@ -89,7 +88,7 @@ export default function PiHelloIntro({ onFinished }: Props) {
       aria-label="Meet Pi"
       className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden"
       style={{
-        background: `radial-gradient(ellipse 70% 60% at 50% 42%, #123038 0%, ${PLATE} 55%, #050d10 100%)`,
+        background: SCENE,
         transition: `opacity ${EXIT_MS}ms ease`,
         opacity: exiting ? 0 : 1,
         pointerEvents: exiting ? 'none' : 'auto',
@@ -106,35 +105,33 @@ export default function PiHelloIntro({ onFinished }: Props) {
           transition: 'opacity 0.55s ease, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1)',
         }}
       >
-        {/* Stage: soft-blend photo + subtle alien orbit (not a picture frame) */}
         <div
           className="relative"
           style={{
-            width: 'min(88vw, 72vh, 520px)',
+            width: 'min(90vw, 74vh, 540px)',
             aspectRatio: '1 / 1',
             animation: active ? 'piHelloBob 1.8s ease-in-out infinite' : undefined,
           }}
         >
-          {/* Soft ambient bloom */}
+          {/* Soft ambient bloom behind character */}
           <div
             aria-hidden
-            className="absolute inset-[-8%] rounded-full pointer-events-none"
+            className="absolute inset-[-10%] rounded-full pointer-events-none"
             style={{
               background:
-                'radial-gradient(circle at 50% 48%, rgba(45,212,191,0.18) 0%, rgba(56,189,248,0.06) 42%, transparent 68%)',
-              opacity: active ? 1 : 0.65,
+                'radial-gradient(circle at 50% 48%, rgba(45,212,191,0.16) 0%, rgba(56,189,248,0.05) 40%, transparent 65%)',
+              opacity: active ? 1 : 0.7,
               transition: 'opacity 0.5s ease',
-              filter: 'blur(2px)',
             }}
           />
 
-          {/* Thin orbital ring — futuristic / AI cue, not a cornice */}
+          {/* Futuristic orbit — outside the soft edge, not a photo frame */}
           <svg
             aria-hidden
-            className="absolute inset-[-6%] w-[112%] h-[112%] pointer-events-none"
+            className="absolute inset-[-7%] w-[114%] h-[114%] pointer-events-none"
             viewBox="0 0 100 100"
             style={{
-              opacity: active ? 0.9 : 0.55,
+              opacity: active ? 0.95 : 0.6,
               transition: 'opacity 0.5s ease',
               animation: active ? 'piOrbitSpin 18s linear infinite' : undefined,
             }}
@@ -142,68 +139,40 @@ export default function PiHelloIntro({ onFinished }: Props) {
             <defs>
               <linearGradient id="piOrbitGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor="rgba(45,212,191,0)" />
-                <stop offset="35%" stopColor="rgba(45,212,191,0.55)" />
-                <stop offset="55%" stopColor="rgba(125,211,252,0.35)" />
+                <stop offset="35%" stopColor="rgba(45,212,191,0.6)" />
+                <stop offset="55%" stopColor="rgba(125,211,252,0.4)" />
                 <stop offset="100%" stopColor="rgba(45,212,191,0)" />
               </linearGradient>
             </defs>
             <circle
               cx="50"
               cy="50"
-              r="47"
+              r="47.5"
               fill="none"
               stroke="url(#piOrbitGrad)"
-              strokeWidth="0.35"
-              strokeDasharray="8 14 3 22"
+              strokeWidth="0.32"
+              strokeDasharray="7 16 2 24"
               strokeLinecap="round"
             />
-            {/* Small node accents */}
-            <circle cx="50" cy="3" r="0.9" fill="rgba(45,212,191,0.85)" />
-            <circle cx="97" cy="50" r="0.7" fill="rgba(125,211,252,0.7)" />
-            <circle cx="50" cy="97" r="0.6" fill="rgba(45,212,191,0.55)" />
+            <circle cx="50" cy="2.5" r="0.85" fill="rgba(45,212,191,0.9)" />
+            <circle cx="97.5" cy="50" r="0.65" fill="rgba(125,211,252,0.75)" />
+            <circle cx="50" cy="97.5" r="0.55" fill="rgba(45,212,191,0.55)" />
           </svg>
 
-          {/* Inner soft vignette plate — kills hard square edge */}
-          <div
-            className="absolute inset-0 overflow-hidden"
-            style={{
-              WebkitMaskImage:
-                'radial-gradient(ellipse 72% 72% at 50% 48%, #000 58%, rgba(0,0,0,0.55) 72%, transparent 88%)',
-              maskImage:
-                'radial-gradient(ellipse 72% 72% at 50% 48%, #000 58%, rgba(0,0,0,0.55) 72%, transparent 88%)',
-            }}
-          >
-            <img
-              src="/pi-hello.jpg"
-              alt="Pi"
-              width={1024}
-              height={1024}
-              className="select-none pointer-events-none w-full h-full"
-              style={{
-                objectFit: 'cover',
-                objectPosition: 'center 42%',
-                display: 'block',
-                // Feather remaining hard corners into plate color
-                filter: 'contrast(1.02) saturate(1.05)',
-              }}
-              draggable={false}
-            />
-            {/* Edge tint matching page so leftover plate melts away */}
-            <div
-              aria-hidden
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: `
-                  radial-gradient(ellipse 80% 80% at 50% 48%, transparent 50%, ${PLATE} 92%),
-                  linear-gradient(to bottom, ${PLATE}00 70%, ${PLATE}cc 100%)
-                `,
-              }}
-            />
-          </div>
+          {/* Pre-feathered PNG — no square cornice */}
+          <img
+            src="/pi-hello-soft.png"
+            alt="Pi"
+            width={1024}
+            height={1024}
+            className="relative z-[1] select-none pointer-events-none w-full h-full"
+            style={{ objectFit: 'contain', display: 'block' }}
+            draggable={false}
+          />
         </div>
 
         <p
-          className="mt-6 font-display text-4xl sm:text-5xl font-bold tracking-tight text-white text-center"
+          className="mt-5 font-display text-4xl sm:text-5xl font-bold tracking-tight text-white text-center"
           style={{
             opacity: showCopy ? 1 : 0,
             transform: showCopy ? 'translateY(0)' : 'translateY(10px)',
