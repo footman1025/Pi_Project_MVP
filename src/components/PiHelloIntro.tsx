@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { playConnectSound, unlockConnectSound } from '../lib/connectSound'
 
-const STORAGE_KEY = 'pi_hello_v1'
+const STORAGE_KEY = 'pi_hello_v2'
 const ENTER_MS = 700
 const HOLD_MS = 2200
 const EXIT_MS = 900
@@ -105,7 +105,7 @@ export default function PiHelloIntro({ onFinished }: Props) {
         }}
       >
         <div
-          className="relative"
+          className="relative flex items-center justify-center"
           style={{
             filter: phase === 'hello' ? 'drop-shadow(0 0 40px rgba(45,212,191,0.35))' : 'drop-shadow(0 0 24px rgba(20,184,166,0.2))',
             transition: 'filter 0.5s ease',
@@ -113,9 +113,22 @@ export default function PiHelloIntro({ onFinished }: Props) {
           }}
         >
           <img
-            src="/pi-hello.jpg"
+            src="/pi-hello.png"
             alt="Pi"
-            className="w-[min(78vw,340px)] h-auto select-none"
+            width={806}
+            height={410}
+            className="select-none object-contain"
+            style={{
+              width: 'auto',
+              height: 'auto',
+              maxHeight: 'min(52vh, 380px)',
+              maxWidth: 'min(92vw, 720px)',
+              // Soften the asset’s hard rectangular frame into the intro background
+              WebkitMaskImage:
+                'radial-gradient(ellipse 78% 88% at 50% 48%, #000 52%, transparent 78%)',
+              maskImage:
+                'radial-gradient(ellipse 78% 88% at 50% 48%, #000 52%, transparent 78%)',
+            }}
             draggable={false}
           />
         </div>
