@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from './contexts/AuthContext'
 import { trackPageView } from './lib/analytics'
 import LoadingSpinner from './components/LoadingSpinner'
+import PiHelloIntro, { hasSeenPiHello } from './components/PiHelloIntro'
 
 import LandingPage from './pages/LandingPage'
 import OnboardingPage from './pages/OnboardingPage'
@@ -77,6 +78,7 @@ export default function App() {
   const location = useLocation()
   const { session, loading: authLoading } = useAuth()
   const [assistantOpen, setAssistantOpen] = useState(false)
+  const [helloDone, setHelloDone] = useState(() => hasSeenPiHello())
 
   const isProfilePath = location.pathname.startsWith('/p/')
   const isTransparencyPath = location.pathname === '/transparency'
@@ -113,6 +115,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-dark-950 text-white">
+      {!helloDone && <PiHelloIntro onFinished={() => setHelloDone(true)} />}
       <SeoHead />
       {isPublic ? (
         <Routes>

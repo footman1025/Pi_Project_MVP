@@ -52,23 +52,24 @@ export async function unlockConnectSound() {
  * Not replaced — same sci‑fi cue for follows + incoming messages (incl. video).
  * Safe to call from UI; no-ops if Audio is unavailable. Debounced ~900ms.
  */
-export async function playConnectSound() {
+/** @returns true if the alien ring actually started (false when autoplay-blocked). */
+export async function playConnectSound(): Promise<boolean> {
   try {
     const now = Date.now()
-    if (now - lastPlayAt < 900) return
+    if (now - lastPlayAt < 900) return true
 
     const ctx = getCtx()
-    if (!ctx) return
+    if (!ctx) return false
 
     // iOS / Chrome often keep AudioContext suspended until resume succeeds
     if (ctx.state === 'suspended') {
       try {
         await ctx.resume()
       } catch {
-        return
+        return false
       }
     }
-    if (ctx.state !== 'running') return
+    if (ctx.state !== 'running') return false
 
     lastPlayAt = now
 
@@ -79,7 +80,9 @@ export async function playConnectSound() {
     tone(ctx, 660, t0 + 0.36, 0.28, 'triangle', 0.18)
     tone(ctx, 1760, t0 + 0.55, 0.35, 'sawtooth', 0.15)
     tone(ctx, 110, t0, 0.9, 'sine', 0.1)
+    return true
   } catch {
     // Ignore autoplay / permission failures
+    return false
   }
 }
